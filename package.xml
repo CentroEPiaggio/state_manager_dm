@@ -1,5 +1,5 @@
 <package>
-  <name>dual_manipulation_manager</name>
+  <name>dual_manipulation_state_manager</name>
   <version>0.8.4</version>
   <description>
      Dual Manipulation state manager
