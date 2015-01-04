@@ -2,6 +2,7 @@
 #define ABSTRACT_STATE_H
 #include <map>
 #include "transitions.h"
+#include "shared_memory.h"
 
 template <class property>
 class abstract_state

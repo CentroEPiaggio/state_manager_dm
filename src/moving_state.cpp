@@ -1,7 +1,7 @@
 #include "moving_state.h"
+#include "ros_server.h"
 
-
-moving_state::moving_state()
+moving_state::moving_state(shared_memory& data)
 {
     
 }

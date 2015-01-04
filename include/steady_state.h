@@ -6,10 +6,10 @@
 class steady_state : public abstract_state<transition>
 {
 public:
-steady_state();
-virtual std::map< transition, bool > getResults();
-virtual void run();
-virtual bool isComplete();
+    steady_state(shared_memory& data);
+    virtual std::map< transition, bool > getResults();
+    virtual void run();
+    virtual bool isComplete();
 };
 
 #endif // STEADY_STATE_H

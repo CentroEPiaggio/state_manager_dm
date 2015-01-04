@@ -1,6 +1,6 @@
 #include "../include/steady_state.h"
 
-steady_state::steady_state()
+steady_state::steady_state(shared_memory& data)
 {
 
 }

@@ -3,8 +3,13 @@
 
 enum class transition {
     //TODO
-    task_accomplished
-    
+    started, //modules up and running, vision system up, GUI up
+    get_info, //user cmd from GUI
+    got_info, //objects found, graphs created
+    plan, //user cmd from GUI, requires informations loaded
+    abort_plan, //user cmd from GUI
+    start_moving, //user cmd from GUI
+    task_accomplished, //object was successfully put in final place
 };
 
 
