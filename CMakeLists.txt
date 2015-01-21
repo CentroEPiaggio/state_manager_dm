@@ -21,6 +21,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 
 add_executable(state_manager src/shared_memory.cpp src/getting_info_state.cpp src/planning_state.cpp src/starting_state.cpp src/ros_server.cpp src/steady_state.cpp src/moving_state.cpp src/main.cpp)
+add_dependencies(state_manager dual_manipulation_shared_generate_messages_cpp)
 target_link_libraries(state_manager ${catkin_LIBRARIES})
 
 install(TARGETS state_manager RUNTIME DESTINATION bin)
