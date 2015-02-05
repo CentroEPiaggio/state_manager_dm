@@ -88,5 +88,5 @@ bool ros_server::state_manager_ros_service(dual_manipulation_shared::state_manag
 
 ros_server::~ros_server()
 {
-    join();
+    if(loop_thread.joinable()) join();
 }
