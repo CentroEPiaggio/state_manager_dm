@@ -14,7 +14,7 @@ std::map< transition, bool > moving_state::getResults()
 
 bool moving_state::isComplete()
 {
-
+    return false;
 }
 
 void moving_state::run()

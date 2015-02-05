@@ -17,7 +17,7 @@ void planning_state::run()
 
 bool planning_state::isComplete()
 {
-
+    return false;
 }
 
 std::string planning_state::get_type()

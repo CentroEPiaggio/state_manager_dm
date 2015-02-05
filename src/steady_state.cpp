@@ -17,7 +17,7 @@ void steady_state::run()
 
 bool steady_state::isComplete()
 {
-
+    return false;
 }
 
 std::string steady_state::get_type()

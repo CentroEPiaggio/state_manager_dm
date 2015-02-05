@@ -17,7 +17,7 @@ void starting_state::run()
 
 bool starting_state::isComplete()
 {
-
+    return false;
 }
 
 std::string starting_state::get_type()

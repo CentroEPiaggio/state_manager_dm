@@ -17,7 +17,7 @@ void getting_info_state::run()
 
 bool getting_info_state::isComplete()
 {
-
+    return false;
 }
 
 std::string getting_info_state::get_type()
