@@ -88,8 +88,20 @@ void ros_server::join()
 
 bool ros_server::state_manager_ros_service(dual_manipulation_shared::state_manager_service::Request &req, dual_manipulation_shared::state_manager_service::Response &res)
 {
-    //TODO: save user commands as transitions into the transition_map
     res.ack=true;
+
+    //NOTE: maybe some of this should be removed, for now they help to force transictions
+
+    if(req.command == "started") transition_map[transition::started]=true;
+    else if(req.command == "get_info") transition_map[transition::get_info]=true;
+    else if(req.command == "plan") transition_map[transition::plan]=true;
+    else if(req.command == "got_info") transition_map[transition::got_info]=true;
+    else if(req.command == "abort_plan") transition_map[transition::abort_plan]=true;
+    else if(req.command == "start_moving") transition_map[transition::start_moving]=true;
+    else if(req.command == "task_accomplished") transition_map[transition::task_accomplished]=true;
+    else if(req.command == "exit") transition_map[transition::exit]=true;
+    else res.ack = false;
+
     return true;
 }
 
