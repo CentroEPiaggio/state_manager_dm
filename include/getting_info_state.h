@@ -11,6 +11,9 @@ public:
     virtual void run();
     virtual bool isComplete();
     virtual std::string get_type();
+private:
+    shared_memory& data_;
+    bool fresh_data;
 };
 
 #endif // GETTING_INFO_STATE_H
