@@ -5,6 +5,7 @@
 #include <getting_info_state.h>
 #include <starting_state.h>
 #include <planning_state.h>
+#include <exit_state.h>
 
 using namespace dual_manipulation::state_manager;
 
@@ -15,6 +16,7 @@ ros_server::ros_server()
     auto planning=new planning_state(data);
     auto starting=new starting_state(data);
     auto getting_info=new getting_info_state(data);
+    auto exiting=new exit_state(data);
     
     std::vector<std::tuple<abstract_state<transition>*,transition_type,abstract_state<transition>*>> transition_table{
         //------initial state---------+--------- command -----------------------------------+-- final state---- +
@@ -24,8 +26,13 @@ ros_server::ros_server()
         std::make_tuple( getting_info , std::make_pair(transition::got_info,true)           ,    steady         ),
         std::make_tuple( planning     , std::make_pair(transition::abort_plan,true)         ,    steady         ),
         std::make_tuple( planning     , std::make_pair(transition::start_moving,true)       ,    moving         ),
-        std::make_tuple( moving       , std::make_pair(transition::task_accomplished,true)  ,    steady         )
-        //--------------------------+-----------------------------------------------------+-------------------+
+        std::make_tuple( moving       , std::make_pair(transition::task_accomplished,true)  ,    steady         ),
+        //----------------------------+-----------------------------------------------------+-------------------+
+	std::make_tuple( starting     , std::make_pair(transition::exit,true)               ,    exiting           ),
+        std::make_tuple( steady       , std::make_pair(transition::exit,true)               ,    exiting           ),
+        std::make_tuple( getting_info , std::make_pair(transition::exit,true)               ,    exiting           ),
+        std::make_tuple( planning     , std::make_pair(transition::exit,true)               ,    exiting           ),
+        std::make_tuple( moving       , std::make_pair(transition::exit,true)               ,    exiting           )
     };
     sm.insert(transition_table);
     

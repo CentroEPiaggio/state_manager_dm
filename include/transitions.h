@@ -10,6 +10,7 @@ enum class transition {
     abort_plan, //user cmd from GUI
     start_moving, //user cmd from GUI
     task_accomplished, //object was successfully put in final place
+    exit, //exit the program
 };
 
 
