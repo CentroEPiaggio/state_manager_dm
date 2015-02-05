@@ -2,6 +2,7 @@
 #define GETTING_INFO_STATE_H
 
 #include <abstract_state.h>
+#include "ros/ros.h"
 
 class getting_info_state : public abstract_state<transition>
 {
@@ -14,6 +15,8 @@ public:
 private:
     shared_memory& data_;
     bool fresh_data;
+    ros::NodeHandle n;
+    ros::Publisher pub;
 };
 
 #endif // GETTING_INFO_STATE_H
