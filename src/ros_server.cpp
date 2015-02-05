@@ -48,22 +48,28 @@ void ros_server::loop()
      *   - else check next transition
      * Else do nothing
      */
+
+    while(current_state->get_type() != "exit_state")
+    {
     current_state->run();
     ros::spinOnce(); //Will check for user commands
     if (current_state->isComplete())
     {
-        auto temp_map = current_state->getResults(); //TODO save them
-        for (auto temp:temp_map)
-            transition_map[temp.first]=temp.second;
+	auto temp_map = current_state->getResults(); //TODO save them
+	for (auto temp:temp_map)
+	    transition_map[temp.first]=temp.second;
     }
     for (auto trigger: transition_map)
     {
-        auto temp_state = sm.evolve_state_machine(current_state, trigger);
-        if (temp_state!=current_state)
-        {
-            current_state=temp_state;
-            break;
-        }
+	auto temp_state = sm.evolve_state_machine(current_state, trigger);
+	if (temp_state!=current_state)
+	{
+	    current_state=temp_state;
+	    std::cout<<"- new state type: "<<current_state->get_type()<<std::endl;
+	    transition_map.clear();
+	    break;
+	}
+    }
     }
 }
 

@@ -19,3 +19,8 @@ bool getting_info_state::isComplete()
 {
 
 }
+
+std::string getting_info_state::get_type()
+{
+    return "getting_info_state";
+}

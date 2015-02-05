@@ -15,6 +15,7 @@ public:
     virtual bool isComplete()=0;
     virtual void run()=0;
     virtual std::map<property,bool> getResults()=0;
+    virtual std::string get_type()=0;
 };
 
 #endif //ABSTRACT_STATE_H

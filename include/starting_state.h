@@ -10,6 +10,7 @@ public:
     virtual std::map< transition, bool > getResults();
     virtual void run();
     virtual bool isComplete();
+    virtual std::string get_type();
 };
 
 #endif // STARTING_STATE_H

@@ -12,6 +12,7 @@ public:
     bool isComplete();
     void run();
     std::map<transition,bool> getResults();
+    virtual std::string get_type();
 };
 
 #endif // MOVING_STATE_H

@@ -19,3 +19,8 @@ bool planning_state::isComplete()
 {
 
 }
+
+std::string planning_state::get_type()
+{
+    return "planning_state";
+}

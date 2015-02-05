@@ -19,3 +19,8 @@ bool steady_state::isComplete()
 {
 
 }
+
+std::string steady_state::get_type()
+{
+    return "steady_state";
+}

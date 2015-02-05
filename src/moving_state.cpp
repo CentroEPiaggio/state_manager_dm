@@ -22,3 +22,7 @@ void moving_state::run()
 
 }
 
+std::string moving_state::get_type()
+{
+    return "moving_state";
+}

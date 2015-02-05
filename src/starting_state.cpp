@@ -19,3 +19,8 @@ bool starting_state::isComplete()
 {
 
 }
+
+std::string starting_state::get_type()
+{
+    return "starting_state";
+}
