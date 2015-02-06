@@ -15,7 +15,7 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     auto ik_grasping = new ik_grasping_substate(subdata);
     auto ik_checking_grasp = new ik_checking_grasp_substate(subdata);
     auto waiting = new ik_steady_substate(subdata);
-    auto exiting = new ik_steady_substate(subdata);
+    exiting = new ik_steady_substate(subdata);
     
     std::vector<std::tuple<abstract_state<ik_transition>*,ik_transition_type,abstract_state<ik_transition>*>> transition_table{
         //------initial state---------------+--------- command ---------------------------------------+-- final state------ +
@@ -33,9 +33,12 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
 	//----------------------------------+---------------------------------------------------------+-------------------- +
 	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::check_done,true)          ,   ik_grasping       )
     };
+
+    sm.insert(transition_table);
     
     result = false;
     complete = false;
+    current_state=waiting;
 }
 
 std::map< transition, bool > ik_control_state::getResults()
@@ -47,7 +50,7 @@ std::map< transition, bool > ik_control_state::getResults()
 
 void ik_control_state::run()
 {
-
+    if(current_state==exiting) complete = true;
 }
 
 bool ik_control_state::isComplete()

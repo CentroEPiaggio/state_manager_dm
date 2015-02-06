@@ -2,6 +2,7 @@
 #define IK_CONTROL_STATE_H
 
 #include "abstract_state.h"
+#include "state_machine.hpp"
 
 class ik_steady_substate : public abstract_state<ik_transition>
 {
@@ -26,6 +27,9 @@ public:
     bool complete;
     
 private:
+    dual_manipulation::state_manager::state_machine<abstract_state<ik_transition>*,ik_transition_type> sm;
+    abstract_state<ik_transition>* current_state;
+    ik_steady_substate* exiting;
     shared_memory& data_;
     ik_shared_memory subdata;
     void fake_plan();
