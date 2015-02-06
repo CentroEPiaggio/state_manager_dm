@@ -21,6 +21,7 @@ private:
     ros::ServiceClient client;
     dual_manipulation_shared::ik_service srv;
     bool motion_executed;
+    int seq;
 };
 
 #endif // MOVING_STATE_H

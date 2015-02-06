@@ -9,7 +9,7 @@ public:
 shared_memory();
 void set_object_pose(geometry_msgs::Pose object_pose);
 void get_object_pose(geometry_msgs::Pose& object_pose);
-
+std::vector<std::map<std::string, geometry_msgs::Pose>> cartesian_plan;
 private:
 geometry_msgs::Pose object_pose_;
 };

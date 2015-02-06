@@ -19,6 +19,11 @@ private:
     ros::ServiceClient client;
     dual_manipulation_shared::ik_service srv;
     bool plan_executed;
+    int seq;
+    bool initialize;
+
+    void fake_plan();
+    void print_plan();
 };
 
 #endif // PLANNING_STATE_H
