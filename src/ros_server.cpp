@@ -1,19 +1,20 @@
 #include "ros_server.h"
-#include <moving_state.h>
+#include <ik_control_state.h>
 #include <steady_state.h>
 #include "transitions.h"
 #include <getting_info_state.h>
 #include <starting_state.h>
-#include <planning_state.h>
+#include <semantic_planning_state.h>
 #include <exit_state.h>
 
 using namespace dual_manipulation::state_manager;
 
 ros_server::ros_server()
 {
-    auto moving=new moving_state(data);
+    auto moving=new ik_control_state(data);
     auto steady=new steady_state(data);
-    auto planning=new planning_state(data);
+    auto ready=new steady_state(data);
+    auto planning=new semantic_planning_state(data);
     auto starting=new starting_state(data);
     auto getting_info=new getting_info_state(data);
     auto exiting=new exit_state(data);
@@ -22,14 +23,15 @@ ros_server::ros_server()
         //------initial state---------+--------- command -----------------------------------+-- final state---- +
         std::make_tuple( starting     , std::make_pair(transition::started,true)            ,    steady         ),
         std::make_tuple( steady       , std::make_pair(transition::get_info,true)           ,    getting_info   ),
-        std::make_tuple( steady       , std::make_pair(transition::plan,true)               ,    planning       ),
-        std::make_tuple( getting_info , std::make_pair(transition::got_info,true)           ,    steady         ),
+        std::make_tuple( getting_info , std::make_pair(transition::got_info,true)           ,    ready          ),
+        std::make_tuple( ready        , std::make_pair(transition::plan,true)               ,    planning       ),
+        std::make_tuple( ready        , std::make_pair(transition::get_info,true)           ,    getting_info   ),
         std::make_tuple( planning     , std::make_pair(transition::abort_plan,true)         ,    steady         ),
-        std::make_tuple( planning     , std::make_pair(transition::planning_done,true)      ,    steady         ),
         std::make_tuple( planning     , std::make_pair(transition::start_moving,true)       ,    moving         ),
         std::make_tuple( moving       , std::make_pair(transition::task_accomplished,true)  ,    steady         ),
-        std::make_tuple( steady       , std::make_pair(transition::start_moving,true)       ,    moving         ),
         //----------------------------+-----------------------------------------------------+-------------------+
+//         std::make_tuple( planning     , std::make_pair(transition::planning_done,true)      ,    steady         ),
+//         std::make_tuple( steady       , std::make_pair(transition::start_moving,true)       ,    moving         ),
 	std::make_tuple( starting     , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( steady       , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( getting_info , std::make_pair(transition::exit,true)               ,    exiting           ),

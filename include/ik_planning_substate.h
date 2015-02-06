@@ -1,29 +1,26 @@
-#ifndef PLANNING_STATE_H
-#define PLANNING_STATE_H
+#ifndef ik_planning_substate_H
+#define ik_planning_substate_H
 
 #include <abstract_state.h>
 #include "ros/ros.h"
 #include "dual_manipulation_shared/ik_service.h"
 
-class planning_state : public abstract_state<transition>
+class ik_planning_substate : public abstract_state<ik_transition>
 {
 public:
-    planning_state(shared_memory& data);
-    virtual std::map< transition, bool > getResults();
+    ik_planning_substate(ik_shared_memory& data);
+    virtual std::map< ik_transition, bool > getResults();
     virtual void run();
     virtual bool isComplete();
     virtual std::string get_type();
 private:
-    shared_memory& data_;
+    ik_shared_memory& data_;
     ros::NodeHandle n;
     ros::ServiceClient client;
     dual_manipulation_shared::ik_service srv;
     bool plan_executed;
     int seq;
     bool initialize;
-
-    void fake_plan();
-    void print_plan();
 };
 
-#endif // PLANNING_STATE_H
+#endif // ik_planning_substate_H

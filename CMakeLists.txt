@@ -20,7 +20,23 @@ catkin_package()
 include_directories(include ${catkin_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 
-add_executable(state_manager src/shared_memory.cpp src/getting_info_state.cpp src/planning_state.cpp src/starting_state.cpp src/ros_server.cpp src/steady_state.cpp src/moving_state.cpp src/exit_state.cpp src/main.cpp)
+SET( STATES_FILES
+src/getting_info_state.cpp
+src/semantic_planning_state.cpp
+src/starting_state.cpp
+src/steady_state.cpp
+src/ik_control_state.cpp
+src/exit_state.cpp
+)
+
+SET( SUBSTATES_FILES
+src/ik_moving_substate.cpp
+src/ik_planning_substate.cpp
+src/ik_grasping_substate.cpp
+src/ik_checking_grasp_substate.cpp
+)
+
+add_executable(state_manager ${STATES_FILES} ${SUBSTATES_FILES} src/shared_memory.cpp  src/ros_server.cpp src/main.cpp)
 add_dependencies(state_manager dual_manipulation_shared_generate_messages_cpp)
 target_link_libraries(state_manager ${catkin_LIBRARIES})
 

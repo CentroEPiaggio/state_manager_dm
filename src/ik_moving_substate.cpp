@@ -1,7 +1,7 @@
-#include "moving_state.h"
+#include "ik_moving_substate.h"
 #include "ros_server.h"
 
-moving_state::moving_state(shared_memory& data):data_(data)
+ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
 {
     if( !ros::isInitialized() )
     {
@@ -16,27 +16,26 @@ moving_state::moving_state(shared_memory& data):data_(data)
 }
 
 
-std::map< transition, bool > moving_state::getResults()
+std::map< ik_transition, bool > ik_moving_substate::getResults()
 {
-    std::map< transition, bool > results;
-    results[transition::task_accomplished]=motion_executed;
+    std::map< ik_transition, bool > results;
+    results[ik_transition::plan]=motion_executed;
     motion_executed = false;
     return results;
 }
 
-bool moving_state::isComplete()
+bool ik_moving_substate::isComplete()
 {
     return motion_executed;
 }
 
-void moving_state::run()
+void ik_moving_substate::run()
 {
     if(motion_executed) return;
 
     geometry_msgs::Pose ee_pose;
-    data_.get_object_pose(ee_pose);
 
-    for(auto item:data_.cartesian_plan.at(seq))
+    for(auto item:data_.cartesian_plan->at(seq))
     {
 	ee_pose=item.second;
 
@@ -59,7 +58,7 @@ void moving_state::run()
     seq++;
 }
 
-std::string moving_state::get_type()
+std::string ik_moving_substate::get_type()
 {
-    return "moving_state";
+    return "ik_moving_substate";
 }

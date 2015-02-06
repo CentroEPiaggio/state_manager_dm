@@ -14,10 +14,18 @@ enum class transition {
     exit, //exit the program
 };
 
+enum class ik_transition {
+    plan,
+    move,
+    grasp,
+    done,
+    checkgrasp,
+    check_done
+};
 
 typedef std::pair<transition,bool> transition_type;
 
-
+typedef std::pair<ik_transition,bool> ik_transition_type;
 
 
 #endif //TRANSITIONS_H
