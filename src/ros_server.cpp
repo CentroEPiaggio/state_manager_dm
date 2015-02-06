@@ -25,8 +25,10 @@ ros_server::ros_server()
         std::make_tuple( steady       , std::make_pair(transition::plan,true)               ,    planning       ),
         std::make_tuple( getting_info , std::make_pair(transition::got_info,true)           ,    steady         ),
         std::make_tuple( planning     , std::make_pair(transition::abort_plan,true)         ,    steady         ),
+        std::make_tuple( planning     , std::make_pair(transition::planning_done,true)      ,    steady         ),
         std::make_tuple( planning     , std::make_pair(transition::start_moving,true)       ,    moving         ),
         std::make_tuple( moving       , std::make_pair(transition::task_accomplished,true)  ,    steady         ),
+        std::make_tuple( steady       , std::make_pair(transition::start_moving,true)       ,    moving         ),
         //----------------------------+-----------------------------------------------------+-------------------+
 	std::make_tuple( starting     , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( steady       , std::make_pair(transition::exit,true)               ,    exiting           ),
