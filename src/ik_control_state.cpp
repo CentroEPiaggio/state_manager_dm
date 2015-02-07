@@ -8,7 +8,9 @@
 ik_control_state::ik_control_state(shared_memory& data):data_(data)
 {
     fake_plan();
+    print_plan();
     subdata.cartesian_plan = &data.cartesian_plan;
+    subdata.seq_num=0;
 
     auto ik_planning = new ik_planning_substate(subdata);
     auto ik_moving = new ik_moving_substate(subdata);
@@ -49,8 +51,32 @@ std::map< transition, bool > ik_control_state::getResults()
 }
 
 void ik_control_state::run()
-{
+{    
     if(current_state==exiting) complete = true;
+    
+    if(subdata.seq_num == subdata.cartesian_plan->size())
+    {
+	current_state=exiting;
+    }
+    
+    current_state->run();
+    if (current_state->isComplete())
+    {
+	auto temp_map = current_state->getResults();
+	for (auto temp:temp_map)
+	    transition_map[temp.first]=temp.second;
+    }
+    for (auto trigger: transition_map)
+    {
+	auto temp_state = sm.evolve_state_machine(current_state, trigger);
+	if (temp_state!=current_state)
+	{
+	    current_state=temp_state;
+	    std::cout<<"- new substate type: "<<current_state->get_type()<<std::endl;
+	    transition_map.clear();
+	    break;
+	}
+    }
 }
 
 bool ik_control_state::isComplete()

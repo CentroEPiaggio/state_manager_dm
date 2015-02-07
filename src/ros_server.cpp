@@ -11,12 +11,12 @@ using namespace dual_manipulation::state_manager;
 
 ros_server::ros_server()
 {
-    auto moving=new ik_control_state(data);
+    auto starting=new starting_state(data);
     auto steady=new steady_state(data);
+    auto getting_info=new getting_info_state(data);
     auto ready=new steady_state(data);
     auto planning=new semantic_planning_state(data);
-    auto starting=new starting_state(data);
-    auto getting_info=new getting_info_state(data);
+    auto moving=new ik_control_state(data);
     auto exiting=new exit_state(data);
     
     std::vector<std::tuple<abstract_state<transition>*,transition_type,abstract_state<transition>*>> transition_table{

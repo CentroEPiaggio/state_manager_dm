@@ -11,8 +11,29 @@ ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
 
     client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
     plan_executed = false;
-    seq=0;
-    initialize = false;
+    initialized = false;
+    
+    lsub = n.subscribe("/ik_control/left_hand/action_done",0,&ik_planning_substate::callback_l,this);
+    rsub = n.subscribe("/ik_control/right_hand/action_done",0,&ik_planning_substate::callback_r,this);
+    bimanualsub = n.subscribe("/ik_control/both_hands/action_done",0,&ik_planning_substate::callback_bimanual,this);
+}
+
+void ik_planning_substate::callback_l(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Left IK Control : %s",str->data.c_str());
+    plan_executed = true;
+}
+
+void ik_planning_substate::callback_r(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Right IK Control : %s",str->data.c_str());
+    plan_executed = true;
+}
+
+void ik_planning_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Both Hands IK Control : %s",str->data.c_str());
+    plan_executed = true;
 }
 
 std::map< ik_transition, bool > ik_planning_substate::getResults()
@@ -20,32 +41,24 @@ std::map< ik_transition, bool > ik_planning_substate::getResults()
     std::map< ik_transition, bool > results;
     results[ik_transition::move]=plan_executed;
     plan_executed = false;
+    initialized = false;
     return results;
 }
 
 void ik_planning_substate::run()
 {
-    //TODO: call the planner, not the ik_control
+    if(!initialized)
+    {
+	initialized = true;
+    }
 
     if(plan_executed) return;
-
-    if(!initialize)
-    {
-	seq=0;
-	initialize = true;
-    }
-
-    if(seq>=data_.cartesian_plan->size())
-    {
-	initialize = false;
-        return;
-    }
 
     geometry_msgs::Pose ee_pose;
 
     srv.request.ee_pose.clear();
 
-    for(auto item:data_.cartesian_plan->at(seq))
+    for(auto item:data_.cartesian_plan->at(data_.seq_num))
     {
 	ee_pose=item.second;
 
@@ -56,16 +69,13 @@ void ik_planning_substate::run()
 
 	if (client.call(srv))
 	{
-	    ROS_INFO_STREAM("IK Request accepted: (" << (int)srv.response.ack << ") - seq: "<<seq);
-	    plan_executed = true;
+	    ROS_INFO_STREAM("IK Plan Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.seq_num);
 	}
 	else
 	{
-	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+// 	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
 	}
     }
-
-    seq++;
 }
 
 bool ik_planning_substate::isComplete()

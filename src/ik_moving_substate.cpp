@@ -1,5 +1,4 @@
 #include "ik_moving_substate.h"
-#include "ros_server.h"
 
 ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
 {
@@ -12,15 +11,43 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
 
     client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
     motion_executed = false;
-    seq=0;
+    initialized = false;
+    
+    lsub = n.subscribe("/ik_control/left_hand/action_done",0,&ik_moving_substate::callback_l,this);
+    rsub = n.subscribe("/ik_control/right_hand/action_done",0,&ik_moving_substate::callback_r,this);
+    bimanualsub = n.subscribe("/ik_control/both_hands/action_done",0,&ik_moving_substate::callback_bimanual,this);
 }
 
+void ik_moving_substate::callback_l(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Left IK Control : %s",str->data.c_str());
+    motion_executed = true;
+}
+
+void ik_moving_substate::callback_r(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Right IK Control : %s",str->data.c_str());
+    motion_executed = true;
+}
+
+void ik_moving_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Both Hands IK Control : %s",str->data.c_str());
+    motion_executed = true;
+}
+
+void callback_bimanual(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Bimanual IK Control : %s",str->data.c_str());
+}
 
 std::map< ik_transition, bool > ik_moving_substate::getResults()
 {
     std::map< ik_transition, bool > results;
     results[ik_transition::plan]=motion_executed;
     motion_executed = false;
+    initialized = false;
+    data_.seq_num++;
     return results;
 }
 
@@ -31,31 +58,32 @@ bool ik_moving_substate::isComplete()
 
 void ik_moving_substate::run()
 {
+    if(!initialized)
+    {
+	initialized = true;
+    }
     if(motion_executed) return;
 
     geometry_msgs::Pose ee_pose;
 
-    for(auto item:data_.cartesian_plan->at(seq))
+    for(auto item:data_.cartesian_plan->at(data_.seq_num))
     {
 	ee_pose=item.second;
 
 	srv.request.command = "execute";
 	srv.request.ee_name = item.first;
-	srv.request.time = 2;
+	srv.request.time = 0;
 	srv.request.ee_pose.push_back(ee_pose);
 
 	if (client.call(srv))
 	{
-	    ROS_INFO_STREAM("IK Request accepted: (" << (int)srv.response.ack << ") - seq: "<<seq);
-	    motion_executed = true;
+	    ROS_INFO_STREAM("IK Exec Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.seq_num);
 	}
 	else
 	{
-	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+// 	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
 	}
     }
-    
-    seq++;
 }
 
 std::string ik_moving_substate::get_type()

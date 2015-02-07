@@ -14,20 +14,8 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
     pub = n.advertise<visualization_msgs::Marker>( "/object_marker", 1000 );
 
     fresh_data = false;
-}
-
-std::map< transition, bool > getting_info_state::getResults()
-{
-    std::map< transition, bool > results;
-    results[transition::got_info]=fresh_data;
-    return results;
-}
-
-void getting_info_state::run()
-{
-    //NOTE: just a test
-
-    geometry_msgs::Pose object_pose;
+    
+    
     object_pose.position.x =  -0.41;
     object_pose.position.y = 0.1;
     object_pose.position.z = 0.1;
@@ -40,6 +28,18 @@ void getting_info_state::run()
     tf::quaternionTFToMsg(q,object_pose.orientation);
 
     data_.set_object_pose(object_pose);
+}
+
+std::map< transition, bool > getting_info_state::getResults()
+{
+    std::map< transition, bool > results;
+    results[transition::got_info]=fresh_data;
+    return results;
+}
+
+void getting_info_state::run()
+{
+    //NOTE: just a test
 
     visualization_msgs::Marker marker;
     marker.pose = object_pose;
@@ -54,7 +54,7 @@ void getting_info_state::run()
     marker.id=1;
     marker.ns="object";
     marker.header.frame_id="world";
-
+    
     pub.publish(marker);
 
     fresh_data = true;

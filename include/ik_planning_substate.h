@@ -4,6 +4,7 @@
 #include <abstract_state.h>
 #include "ros/ros.h"
 #include "dual_manipulation_shared/ik_service.h"
+#include <std_msgs/String.h>
 
 class ik_planning_substate : public abstract_state<ik_transition>
 {
@@ -19,8 +20,13 @@ private:
     ros::ServiceClient client;
     dual_manipulation_shared::ik_service srv;
     bool plan_executed;
-    int seq;
-    bool initialize;
+    bool initialized;
+    ros::Subscriber lsub;
+    ros::Subscriber rsub;
+    ros::Subscriber bimanualsub;
+    void callback_l(const std_msgs::String::ConstPtr& str);
+    void callback_r(const std_msgs::String::ConstPtr& str);
+    void callback_bimanual(const std_msgs::String::ConstPtr& str);
 };
 
 #endif // ik_planning_substate_H

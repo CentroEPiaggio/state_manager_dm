@@ -18,6 +18,7 @@ geometry_msgs::Pose object_pose_;
 class ik_shared_memory
 {
 public:
+  int seq_num;
   const std::vector<std::map<std::string, geometry_msgs::Pose>>* cartesian_plan;
   std::map<std::string,bool> ees_grasped;
   std::map<std::string,KDL::Frame> objects_ees;

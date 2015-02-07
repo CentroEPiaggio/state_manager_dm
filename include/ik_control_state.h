@@ -8,7 +8,7 @@ class ik_steady_substate : public abstract_state<ik_transition>
 {
 public:
     ik_steady_substate(ik_shared_memory& data){};
-    inline virtual std::map< ik_transition, bool > getResults(){std::map< ik_transition, bool > results; return results;};
+    inline virtual std::map< ik_transition, bool > getResults(){std::map< ik_transition, bool > results; results[ik_transition::plan]=true; return results;};
     virtual void run(){};
     virtual bool isComplete(){return true;};
     virtual std::string get_type(){return "ik_steady_substate";};
@@ -29,11 +29,13 @@ public:
 private:
     dual_manipulation::state_manager::state_machine<abstract_state<ik_transition>*,ik_transition_type> sm;
     abstract_state<ik_transition>* current_state;
+    std::map<ik_transition,bool> transition_map;
     ik_steady_substate* exiting;
     shared_memory& data_;
     ik_shared_memory subdata;
     void fake_plan();
     void print_plan();
+    bool initialized;
 };
 
 #endif // IK_CONTROL_STATE_H
