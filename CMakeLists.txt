@@ -41,4 +41,7 @@ add_executable(state_manager ${STATES_FILES} ${SUBSTATES_FILES} src/shared_memor
 add_dependencies(state_manager dual_manipulation_shared_generate_messages_cpp)
 target_link_libraries(state_manager ${catkin_LIBRARIES} lemon)
 
+add_executable(test_draw tests/test_draw_state_machine.cpp)
+target_link_libraries(test_draw lemon)
+
 install(TARGETS state_manager RUNTIME DESTINATION bin)
