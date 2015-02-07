@@ -10,7 +10,7 @@ namespace dual_manipulation{
         /** 
          * @brief STATE MACHINE EXAMPLE
          *
-         std::vector<std::tuple<state,transition,state>> transition_table{
+         * std::vector<std::tuple<state,transition,state>> transition_table{
          //--------------initial state ----------+--------- command ---------+------ final state--------- +
          std::make_tuple( state::idle            ,   COMMAND_VALVE_DATA_SENT ,    state::ready            ),
          //--------------------------------------+---------------------------+----------------------------+

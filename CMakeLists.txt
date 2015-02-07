@@ -18,6 +18,7 @@ endif()
 find_package(catkin REQUIRED COMPONENTS roscpp)
 catkin_package()
 include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(${CMAKE_INSTALL_PREFIX}/include) #this line is to find lemon include files!!
 link_directories(${catkin_LIBRARY_DIRS})
 
 SET( STATES_FILES
@@ -38,6 +39,6 @@ src/ik_checking_grasp_substate.cpp
 
 add_executable(state_manager ${STATES_FILES} ${SUBSTATES_FILES} src/shared_memory.cpp  src/ros_server.cpp src/main.cpp)
 add_dependencies(state_manager dual_manipulation_shared_generate_messages_cpp)
-target_link_libraries(state_manager ${catkin_LIBRARIES})
+target_link_libraries(state_manager ${catkin_LIBRARIES} lemon)
 
 install(TARGETS state_manager RUNTIME DESTINATION bin)
