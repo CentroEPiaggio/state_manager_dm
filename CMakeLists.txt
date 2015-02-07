@@ -37,7 +37,7 @@ src/ik_grasping_substate.cpp
 src/ik_checking_grasp_substate.cpp
 )
 
-add_executable(state_manager ${STATES_FILES} ${SUBSTATES_FILES} src/shared_memory.cpp  src/ros_server.cpp src/main.cpp)
+add_executable(state_manager ${STATES_FILES} ${SUBSTATES_FILES} src/debug_utility.cpp src/shared_memory.cpp  src/ros_server.cpp src/main.cpp)
 add_dependencies(state_manager dual_manipulation_shared_generate_messages_cpp)
 target_link_libraries(state_manager ${catkin_LIBRARIES} lemon)
 

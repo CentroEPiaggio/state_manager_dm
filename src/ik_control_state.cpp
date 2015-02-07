@@ -88,48 +88,6 @@ std::string ik_control_state::get_type()
     return "ik_control_state";
 }
 
-void ik_control_state::fake_plan()
-{
-    geometry_msgs::Pose r_ee_pose;
-    geometry_msgs::Pose l_ee_pose;
-
-    data_.get_object_pose(r_ee_pose);
-
-    data_.get_object_pose(l_ee_pose);
-    double roll = -1.565;
-    double pitch = 0.0;
-    double yaw = 0.336;
-    tf::Quaternion q;
-    q.setRPY(roll,pitch,yaw);
-    tf::quaternionTFToMsg(q,l_ee_pose.orientation);
-
-    std::map<std::string, geometry_msgs::Pose> poses;
-
-    poses["right_hand"] = r_ee_pose;
-    data_.cartesian_plan.push_back(poses);
-
-    poses.clear();
-    r_ee_pose.position.y-=0.1;
-    poses["right_hand"] = r_ee_pose;
-    data_.cartesian_plan.push_back(poses);
-
-    poses.clear();
-    l_ee_pose.position.z+=0.2;
-    l_ee_pose.position.y-=0.15;
-    poses["left_hand"] = l_ee_pose;
-    data_.cartesian_plan.push_back(poses);
-
-    poses.clear();
-    r_ee_pose.position.y+=0.1;
-    poses["right_hand"] = r_ee_pose;
-    data_.cartesian_plan.push_back(poses);
-
-    poses.clear();
-    l_ee_pose.position.y-=0.1;
-    poses["left_hand"] = l_ee_pose;
-    data_.cartesian_plan.push_back(poses);
-}
-
 void ik_control_state::print_plan()
 {
     int i=0;
