@@ -13,26 +13,26 @@ ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
     plan_executed = false;
     initialized = false;
     
-    lsub = n.subscribe("/ik_control/left_hand/action_done",0,&ik_planning_substate::callback_l,this);
-    rsub = n.subscribe("/ik_control/right_hand/action_done",0,&ik_planning_substate::callback_r,this);
-    bimanualsub = n.subscribe("/ik_control/both_hands/action_done",0,&ik_planning_substate::callback_bimanual,this);
+    lsub = n.subscribe("/ik_control/left_hand/planning_done",1,&ik_planning_substate::callback_l,this);
+    rsub = n.subscribe("/ik_control/right_hand/planning_done",1,&ik_planning_substate::callback_r,this);
+    bimanualsub = n.subscribe("/ik_control/both_hands/planning_done",1,&ik_planning_substate::callback_bimanual,this);
 }
 
 void ik_planning_substate::callback_l(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Left IK Control : %s",str->data.c_str());
+    ROS_INFO("Left IK Plan : %s",str->data.c_str());
     plan_executed = true;
 }
 
 void ik_planning_substate::callback_r(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Right IK Control : %s",str->data.c_str());
+    ROS_INFO("Right IK Plan : %s",str->data.c_str());
     plan_executed = true;
 }
 
 void ik_planning_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Both Hands IK Control : %s",str->data.c_str());
+    ROS_INFO("Both Hands IK Plan : %s",str->data.c_str());
     plan_executed = true;
 }
 

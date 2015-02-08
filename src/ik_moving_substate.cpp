@@ -13,46 +13,49 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     motion_executed = false;
     initialized = false;
     
-    lsub = n.subscribe("/ik_control/left_hand/action_done",0,&ik_moving_substate::callback_l,this);
-    rsub = n.subscribe("/ik_control/right_hand/action_done",0,&ik_moving_substate::callback_r,this);
-    bimanualsub = n.subscribe("/ik_control/both_hands/action_done",0,&ik_moving_substate::callback_bimanual,this);
+    lsub = n.subscribe("/ik_control/left_hand/action_done",1,&ik_moving_substate::callback_l,this);
+    rsub = n.subscribe("/ik_control/right_hand/action_done",1,&ik_moving_substate::callback_r,this);
+    bimanualsub = n.subscribe("/ik_control/both_hands/action_done",1,&ik_moving_substate::callback_bimanual,this);
 }
 
 void ik_moving_substate::callback_l(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Left IK Control : %s",str->data.c_str());
+    ROS_INFO("Left IK Exec : %s",str->data.c_str());
     motion_executed = true;
 }
 
 void ik_moving_substate::callback_r(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Right IK Control : %s",str->data.c_str());
+    ROS_INFO("Right IK Exec : %s",str->data.c_str());
     motion_executed = true;
 }
 
 void ik_moving_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Both Hands IK Control : %s",str->data.c_str());
+    ROS_INFO("Both Hands IK Exec : %s",str->data.c_str());
     motion_executed = true;
-}
-
-void callback_bimanual(const std_msgs::String::ConstPtr& str)
-{
-    ROS_INFO("Bimanual IK Control : %s",str->data.c_str());
 }
 
 std::map< ik_transition, bool > ik_moving_substate::getResults()
 {
     std::map< ik_transition, bool > results;
-    results[ik_transition::plan]=motion_executed;
+    if(data_.seq_num == data_.cartesian_plan->size()-1)
+    {
+	results[ik_transition::done]=motion_executed;
+    }
+    else
+    {
+	results[ik_transition::plan]=motion_executed;
+	data_.seq_num++;
+    }
     motion_executed = false;
     initialized = false;
-    data_.seq_num++;
     return results;
 }
 
 bool ik_moving_substate::isComplete()
 {
+    if(data_.seq_num == data_.cartesian_plan->size()) motion_executed=true;
     return motion_executed;
 }
 

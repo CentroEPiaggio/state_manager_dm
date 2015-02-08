@@ -16,8 +16,8 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     auto ik_moving = new ik_moving_substate(subdata);
     auto ik_grasping = new ik_grasping_substate(subdata);
     auto ik_checking_grasp = new ik_checking_grasp_substate(subdata);
-    auto waiting = new ik_steady_substate(subdata);
-    exiting = new ik_steady_substate(subdata);
+    waiting = new ik_steady_substate(subdata);
+    auto exiting = new ik_exiting_substate(subdata);
     
     std::vector<std::tuple<abstract_state<ik_transition>*,ik_transition_type,abstract_state<ik_transition>*>> transition_table{
         //------initial state---------------+--------- command ---------------------------------------+-- final state------ +
@@ -46,19 +46,18 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
 std::map< transition, bool > ik_control_state::getResults()
 {
     std::map< transition, bool > results;
+    result =  (subdata.seq_num == subdata.cartesian_plan->size()-1);
     results[transition::task_accomplished]=result;
+    subdata.seq_num=0;
+    complete=false;
+    current_state=waiting;
     return results;
 }
 
 void ik_control_state::run()
-{    
-    if(current_state==exiting) complete = true;
-    
-    if(subdata.seq_num == subdata.cartesian_plan->size())
-    {
-	current_state=exiting;
-    }
-    
+{
+    if(current_state->get_type()=="ik_exiting_substate") complete = true;
+
     current_state->run();
     if (current_state->isComplete())
     {
