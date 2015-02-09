@@ -6,18 +6,23 @@
 void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& source_marker,visualization_msgs::Marker& target_marker)
 {
     //NOTE: just a test
-    //TODO WARNING mirko: fill the right fields here!!
-    data.source_position.position.x =  -0.41;
-    data.source_position.position.y = 0.1;
-    data.source_position.position.z = 0.1;
-    
+
+    data.source_position.position.x = -0.25;
+    data.source_position.position.y = 0.3;
+    data.source_position.position.z = 0;
+
+    data.target_position.position.x = 0.3;
+    data.target_position.position.y = 0.5;
+    data.target_position.position.z = 0;
+
     double roll = 1.565;
     double pitch = 0.0;
     double yaw = 0.336;
     tf::Quaternion q;
     q.setRPY(roll,pitch,yaw);
     tf::quaternionTFToMsg(q,data.source_position.orientation);
-    
+    tf::quaternionTFToMsg(q,data.target_position.orientation);
+
     source_marker.pose = data.source_position;
     source_marker.color.a = 1;
     source_marker.color.r=0;
@@ -30,7 +35,19 @@ void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& sourc
     source_marker.id=1;
     source_marker.ns="object";
     source_marker.header.frame_id="world";
-    
+
+    target_marker.pose = data.target_position;
+    target_marker.color.a = 1;
+    target_marker.color.r=0;
+    target_marker.color.g=0;
+    target_marker.color.b=1;
+    target_marker.type = visualization_msgs::Marker::CYLINDER;
+    target_marker.scale.x=0.05;
+    target_marker.scale.y=0.05;
+    target_marker.scale.z=0.05;
+    target_marker.id=1;
+    target_marker.ns="target";
+    target_marker.header.frame_id="world";
 }
 
 void ik_control_state::fake_plan()

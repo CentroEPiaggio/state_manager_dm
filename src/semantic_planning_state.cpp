@@ -34,13 +34,13 @@ void semantic_planning_state::run()
         for (auto point : workspace.second)
             temp.emplace_back(point.first,point.second);
         geom.order_points(temp);
-        if (geom.point_in_ordered_polygon(x,y,temp))
+        if (geom.point_in_ordered_polygon(xs,ys,temp))
         {
             std::cout<<"source position is in workspace "<<workspace.first<<std::endl;
             source_found=true;
             source=workspace.first;
         }
-        if (geom.point_in_ordered_polygon(x,y,temp))
+        if (geom.point_in_ordered_polygon(xt,yt,temp))
         {
             std::cout<<"source position is in workspace "<<workspace.first<<std::endl;
             target_found=true;
@@ -79,8 +79,28 @@ void semantic_planning_state::run()
             //for each grasp understand the e.e
             //for each workspace find the centroid of the polygon
             //create a cartesian path from (grasp/workspace) to (e.e./centroid)
+    /*
+     * grasp1 W1 (table) -> grasp2 W1 (table/ee) -> grasp2 W2 (ee)      -> grasp3 W2 (ee)      -> grasp3 W3 (ee/table) -> grasp4 W3(table)
+     * not used          -> z=0 x,y=centroid W1  -> z=1 x,y=centroid W2 -> z=1 x,y=centroid W2 -> z=0 x,y=centroid W3  -> not used
+     */
     
-    
+    grasp_id previous_grasp, next_grasp;
+    workspace_id previous_workspace, next_workspace;
+    for (auto node=srv.response.path.begin();node!=srv.response.path.end();++node)
+    {
+        auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
+        auto ee_name=std::get<0>(database.EndEffectors.at(ee_id));
+        double centroid_x=0, centroid_y=0;
+        for (auto workspace: database.WorkspaceGeometry.at(node->workspace_id))
+        {
+            centroid_x+=workspace.first;
+            centroid_y+=workspace.second;
+        }
+        centroid_x=centroid_x/database.WorkspaceGeometry.at(node->workspace_id).size();
+        centroid_y=centroid_y/database.WorkspaceGeometry.at(node->workspace_id).size();
+        bool movable=std::get<1>(database.EndEffectors.at(ee_id));
+        
+    }
     
     //TODO parallelize movements between arms?!?
 }
