@@ -17,7 +17,7 @@ private:
     bool fresh_data;
     ros::NodeHandle n;
     ros::Publisher pub;
-    geometry_msgs::Pose object_pose;
+    ros::ServiceClient planner_client;
 };
 
 #endif // GETTING_INFO_STATE_H

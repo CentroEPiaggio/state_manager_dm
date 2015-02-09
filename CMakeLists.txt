@@ -15,7 +15,7 @@ else()
 endif()
 
 
-find_package(catkin REQUIRED COMPONENTS roscpp)
+find_package(catkin REQUIRED COMPONENTS roscpp dual_manipulation_shared)
 catkin_package()
 include_directories(include ${catkin_INCLUDE_DIRS})
 include_directories(${CMAKE_INSTALL_PREFIX}/include) #this line is to find lemon include files!!
