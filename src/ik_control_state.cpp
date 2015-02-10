@@ -29,7 +29,7 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
         std::make_tuple( ik_moving          , std::make_pair(ik_transition::grasp,true)               ,   ik_grasping       ),
         std::make_tuple( ik_moving          , std::make_pair(ik_transition::done,true)                ,   exiting           ),
         //----------------------------------+---------------------------------------------------------+-------------------- +
-        std::make_tuple( ik_grasping        , std::make_pair(ik_transition::grasp,true)               ,   exiting           ),
+        std::make_tuple( ik_grasping        , std::make_pair(ik_transition::done,true)                ,   exiting           ),
         std::make_tuple( ik_grasping        , std::make_pair(ik_transition::checkgrasp,true)          ,   ik_checking_grasp ),
 	std::make_tuple( ik_grasping        , std::make_pair(ik_transition::move,true)                ,   ik_planning       ),
 	//----------------------------------+---------------------------------------------------------+-------------------- +
