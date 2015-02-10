@@ -16,6 +16,11 @@ struct cartesian_command
 {
     geometry_msgs::Pose cartesian_task;
     cartesian_commands command;
+    /**
+     * @brief seq_num==0 means that the next cartesian command should be executed in parallel with this one
+     * seq_num==1 means that the next cartesian command should be executed after this one
+     */
+    int seq_num;
 };
 
 std::ostream& operator<<(std::ostream &output, const cartesian_command &o);

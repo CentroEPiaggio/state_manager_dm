@@ -22,6 +22,8 @@ std::map< transition, bool > semantic_planning_state::getResults()
 
 void semantic_planning_state::compute_centroid(double& centroid_x,double& centroid_y, workspace_id w_id)
 {
+    centroid_x=0;
+    centroid_y=0;
     for (auto workspace: database.WorkspaceGeometry.at(w_id))
     {
         centroid_x+=workspace.first;
@@ -94,10 +96,12 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                     //not found, movable, different workspaces
                     compute_centroid(centroid_x,centroid_y,next_workspace_id);
                     centroid_z=HIGH;
+                    std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
                     cartesian_command temp;
+                    temp.seq_num = 1;
                     temp.cartesian_task.position.x=centroid_x;
-                    temp.cartesian_task.position.x=centroid_y;
-                    temp.cartesian_task.position.x=centroid_z;
+                    temp.cartesian_task.position.y=centroid_y;
+                    temp.cartesian_task.position.z=centroid_z;
                     temp.command=cartesian_commands::MOVE;
                     result.push_back(std::make_pair(ee_id,temp));
                     break;
@@ -117,12 +121,16 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 centroid_z=HIGH;
             else //one is movable, change on ground
                 centroid_z=0;
+            std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
+            
             cartesian_command temp;
             temp.cartesian_task.position.x=centroid_x;
-            temp.cartesian_task.position.x=centroid_y;
-            temp.cartesian_task.position.x=centroid_z;
+            temp.cartesian_task.position.y=centroid_y;
+            temp.cartesian_task.position.z=centroid_z;
+            temp.seq_num = 1;
             temp.command=cartesian_commands::MOVE;
             if (movable) result.push_back(std::make_pair(ee_id,temp)); //move the first
+            temp.seq_num = 0;
             if (next_movable) result.push_back(std::make_pair(next_ee_id,temp)); //move the next
             node=next_node;
             continue;
