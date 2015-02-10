@@ -42,7 +42,7 @@ void getting_info_state::run()
     
     if (planner_client.call(srv))
     {
-        ROS_INFO("Object id set to %d, planner returned %d", srv.request.object_id, (int)srv.response.ack);
+        ROS_INFO("Object id set to %d, planner returned %d", (int)srv.request.object_id, (int)srv.response.ack);
         data_.obj_id=srv.request.object_id;
     }
     else
