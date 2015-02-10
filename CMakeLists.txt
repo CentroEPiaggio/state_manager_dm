@@ -44,4 +44,7 @@ target_link_libraries(state_manager ${catkin_LIBRARIES} lemon)
 add_executable(test_draw tests/test_draw_state_machine.cpp)
 target_link_libraries(test_draw lemon)
 
+add_executable(test_conversion tests/test_semantic_to_cartesian.cpp src/shared_memory.cpp src/semantic_planning_state.cpp)
+target_link_libraries(test_conversion  ${catkin_LIBRARIES} lemon)
+
 install(TARGETS state_manager RUNTIME DESTINATION bin)
