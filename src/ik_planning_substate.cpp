@@ -58,9 +58,9 @@ void ik_planning_substate::run()
 
     srv.request.ee_pose.clear();
 
-    for(auto item:data_.cartesian_plan->at(data_.seq_num))
+    for(auto item:*(data_.cartesian_plan))//->at(data_.seq_num))
     {
-	ee_pose=item.second;
+	ee_pose=item.second.cartesian_task;
 
 	srv.request.command = "plan";
 	srv.request.ee_name = item.first;

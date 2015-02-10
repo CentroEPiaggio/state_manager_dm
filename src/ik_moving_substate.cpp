@@ -69,9 +69,9 @@ void ik_moving_substate::run()
 
     geometry_msgs::Pose ee_pose;
 
-    for(auto item:data_.cartesian_plan->at(data_.seq_num))
+    auto item=data_.cartesian_plan->at(data_.seq_num);
     {
-	ee_pose=item.second;
+	ee_pose=item.second.cartesian_task;
 
 	srv.request.command = "execute";
 	srv.request.ee_name = item.first;

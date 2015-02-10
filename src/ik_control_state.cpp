@@ -93,10 +93,10 @@ void ik_control_state::print_plan()
     int i=0;
     for(auto item:data_.cartesian_plan)
     {
-	for(auto subitem:item)
+	auto subitem=item;
 	{
-	    ROS_INFO_STREAM(i<<") "<<subitem.first<<" [ p.x: "<< subitem.second.position.x<<" p.y: "<< subitem.second.position.y<<" p.z: "<< subitem.second.position.z<<
-	    " o.x: "<< subitem.second.orientation.x<<" o.y: "<< subitem.second.orientation.y<<" o.z: "<< subitem.second.orientation.z<<" o.w: "<< subitem.second.orientation.w<<" ]"<<std::endl);
+            ROS_INFO_STREAM(i<<") "<<subitem.first<<" [ p.x: "<< subitem.second.cartesian_task.position.x<<" p.y: "<< subitem.second.cartesian_task.position.y<<" p.z: "<< subitem.second.cartesian_task.position.z<<
+            " o.x: "<< subitem.second.cartesian_task.orientation.x<<" o.y: "<< subitem.second.cartesian_task.orientation.y<<" o.z: "<< subitem.second.cartesian_task.orientation.z<<" o.w: "<< subitem.second.cartesian_task.orientation.w<<" ]"<<std::endl);
 	}
 	i++;
     }

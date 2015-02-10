@@ -61,30 +61,30 @@ void ik_control_state::fake_plan()
     tf::Quaternion q;
     q.setRPY(roll,pitch,yaw);
     tf::quaternionTFToMsg(q,l_ee_pose.orientation);
-    
-    std::map<std::string, geometry_msgs::Pose> poses;
-    
-    poses["right_hand"] = r_ee_pose;
-    data_.cartesian_plan.push_back(poses);
-    
-    poses.clear();
-    r_ee_pose.position.y-=0.1;
-    poses["right_hand"] = r_ee_pose;
-    data_.cartesian_plan.push_back(poses);
-    
-    poses.clear();
-    l_ee_pose.position.z+=0.2;
-    l_ee_pose.position.y-=0.15;
-    poses["left_hand"] = l_ee_pose;
-    data_.cartesian_plan.push_back(poses);
-    
-    poses.clear();
-    r_ee_pose.position.y+=0.1;
-    poses["right_hand"] = r_ee_pose;
-    data_.cartesian_plan.push_back(poses);
-    
-    poses.clear();
-    l_ee_pose.position.y-=0.1;
-    poses["left_hand"] = l_ee_pose;
-    data_.cartesian_plan.push_back(poses);
+    //TODO: Mirko
+//     std::map<std::string, geometry_msgs::Pose> poses;
+//     
+//     poses["right_hand"] = r_ee_pose;
+//     data_.cartesian_plan.push_back(poses);
+//     
+//     poses.clear();
+//     r_ee_pose.position.y-=0.1;
+//     poses["right_hand"] = r_ee_pose;
+//     data_.cartesian_plan.push_back(poses);
+//     
+//     poses.clear();
+//     l_ee_pose.position.z+=0.2;
+//     l_ee_pose.position.y-=0.15;
+//     poses["left_hand"] = l_ee_pose;
+//     data_.cartesian_plan.push_back(poses);
+//     
+//     poses.clear();
+//     r_ee_pose.position.y+=0.1;
+//     poses["right_hand"] = r_ee_pose;
+//     data_.cartesian_plan.push_back(poses);
+//     
+//     poses.clear();
+//     l_ee_pose.position.y-=0.1;
+//     poses["left_hand"] = l_ee_pose;
+//     data_.cartesian_plan.push_back(poses);
 }

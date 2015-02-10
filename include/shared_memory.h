@@ -29,7 +29,7 @@ geometry_msgs::Pose source_position, target_position;
 grasp_id source_grasp, target_grasp;
 object_id obj_id;
 std::string object_name;
-std::vector<std::map<std::string, geometry_msgs::Pose>> cartesian_plan;
+std::vector<std::pair<endeffector_id,cartesian_command>> cartesian_plan;
 private:
 // geometry_msgs::Pose object_pose_;
 };
@@ -38,7 +38,7 @@ class ik_shared_memory
 {
 public:
   int seq_num;
-  const std::vector<std::map<std::string, geometry_msgs::Pose>>* cartesian_plan;
+  const std::vector<std::pair<endeffector_id,cartesian_command>>* cartesian_plan;
   std::map<std::string,bool> ees_grasped;
   std::map<std::string,KDL::Frame> objects_ees;
 };
