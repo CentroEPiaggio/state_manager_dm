@@ -5,6 +5,20 @@
 #include <kdl/frames.hpp>
 #include <dual_manipulation_shared/databasemapper.h>
 
+enum class cartesian_commands
+{
+    MOVE,
+    GRASP,
+    UNGRASP
+};
+
+struct cartesian_command
+{
+    geometry_msgs::Pose cartesian_task;
+    cartesian_commands command;
+};
+
+std::ostream& operator<<(std::ostream &output, const cartesian_command &o);
 class shared_memory
 {
 public:
