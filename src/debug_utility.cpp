@@ -10,11 +10,13 @@ void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& sourc
     data.source_position.position.x = -0.25;
     data.source_position.position.y = 0.3;
     data.source_position.position.z = 0;
-
+    data.source_grasp=7;
     data.target_position.position.x = 0.3;
     data.target_position.position.y = 0.5;
     data.target_position.position.z = 0;
-
+    data.target_grasp=8;
+    data.obj_id=1;
+    data.object_name="cylinder";
     double roll = 1.565;
     double pitch = 0.0;
     double yaw = 0.336;

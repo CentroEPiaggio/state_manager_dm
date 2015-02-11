@@ -8,6 +8,8 @@ enum class transition {
     got_info, //objects found, graphs created
     plan, //user cmd from GUI, requires informations loaded
     abort_plan, //user cmd from GUI
+    failed_plan, //plan was bad, no cartesian commands were produced
+    good_plan, // plan was good, ready to move
     start_moving, //user cmd from GUI
     task_accomplished, //object was successfully put in final place
     planning_done, //plan is done

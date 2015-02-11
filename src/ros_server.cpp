@@ -14,8 +14,9 @@ ros_server::ros_server()
     auto starting=new starting_state(data);
     auto steady=new steady_state(data);
     auto getting_info=new getting_info_state(data);
-    auto ready=new steady_state(data);
+    auto ready=new steady_state(data,"ready");
     auto planning=new semantic_planning_state(data);
+    auto planned = new steady_state(data,"planned");
     auto moving=new ik_control_state(data);
     auto exiting=new exit_state(data);
     
@@ -26,8 +27,10 @@ ros_server::ros_server()
         std::make_tuple( getting_info , std::make_pair(transition::got_info,true)           ,    ready          ),
         std::make_tuple( ready        , std::make_pair(transition::plan,true)               ,    planning       ),
         std::make_tuple( ready        , std::make_pair(transition::get_info,true)           ,    getting_info   ),
-        std::make_tuple( planning     , std::make_pair(transition::abort_plan,true)         ,    steady         ),
-        std::make_tuple( planning     , std::make_pair(transition::start_moving,true)       ,    moving         ),
+        std::make_tuple( planning     , std::make_pair(transition::failed_plan,true)        ,    steady         ),
+        std::make_tuple( planning     , std::make_pair(transition::good_plan,true)          ,    planned        ),
+        std::make_tuple( planned      , std::make_pair(transition::abort_plan,true)         ,    steady         ),
+        std::make_tuple( planned      , std::make_pair(transition::start_moving,true)       ,    moving         ),
         std::make_tuple( moving       , std::make_pair(transition::task_accomplished,true)  ,    steady         ),
         //----------------------------+-----------------------------------------------------+-------------------+
 //         std::make_tuple( planning     , std::make_pair(transition::planning_done,true)      ,    steady         ),
@@ -36,13 +39,15 @@ ros_server::ros_server()
         std::make_tuple( steady       , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( getting_info , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( planning     , std::make_pair(transition::exit,true)               ,    exiting           ),
+        std::make_tuple( planned      , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( moving       , std::make_pair(transition::exit,true)               ,    exiting           )
     };
     sm.insert(transition_table);
     
     service = node.advertiseService("state_manager_ros_service", &ros_server::state_manager_ros_service, this);
-    loop_thread=std::thread(&ros_server::loop,this);
     current_state=steady;
+    
+    loop_thread=std::thread(&ros_server::loop,this);
 }
 
 void ros_server::loop()
@@ -62,6 +67,7 @@ void ros_server::loop()
 
     while(current_state->get_type() != "exit_state")
     {
+    std::cout<<current_state->get_type()<<std::endl;
     current_state->run();
     ros::spinOnce(); //Will check for user commands
     if (current_state->isComplete())
@@ -94,12 +100,13 @@ bool ros_server::state_manager_ros_service(dual_manipulation_shared::state_manag
 {
     res.ack=true;
 
-    //NOTE: maybe some of this should be removed, for now they help to force transictions
+    //NOTE: maybe some of this should be removed, for now they help to force transitions
 
     if(req.command == "started") transition_map[transition::started]=true;
     else if(req.command == "get_info") transition_map[transition::get_info]=true;
     else if(req.command == "plan") transition_map[transition::plan]=true;
     else if(req.command == "got_info") transition_map[transition::got_info]=true;
+    else if(req.command == "good_plan") transition_map[transition::good_plan]=true;
     else if(req.command == "abort_plan") transition_map[transition::abort_plan]=true;
     else if(req.command == "start_moving") transition_map[transition::start_moving]=true;
     else if(req.command == "task_accomplished") transition_map[transition::task_accomplished]=true;

@@ -1,7 +1,7 @@
 #include "../include/semantic_planning_state.h"
 #include <dual_manipulation_shared/geometry_tools.h>
 #include <ros/init.h>
-
+#include <dual_manipulation_shared/stream_utils.h>
 #define HIGH 0.5
 
 semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
@@ -13,11 +13,12 @@ semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
         ros::init( argc, argv, "state_manager", ros::init_options::AnonymousName );
     }
     client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
+    completed=false;
 }
 
 std::map< transition, bool > semantic_planning_state::getResults()
 {
-
+    return internal_state;
 }
 
 void semantic_planning_state::compute_centroid(double& centroid_x,double& centroid_y, workspace_id w_id)
@@ -36,7 +37,21 @@ void semantic_planning_state::compute_centroid(double& centroid_x,double& centro
 
 bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeffector_id,cartesian_command>>& result,const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
 {
+    std::map<endeffector_id,bool> ee_grasped;
     result.clear();
+    auto ee_id = std::get<1>(database.Grasps.at(path.front().grasp_id));
+    auto ee_name=std::get<0>(database.EndEffectors.at(ee_id));
+    bool movable=std::get<1>(database.EndEffectors.at(ee_id));
+    //This approach is valid only if no more than one e.e. can grasp an object at the same time!! 
+    ee_grasped[ee_id]=true;
+    std::cout<<"Assuming that only "<<ee_name<<" is grasping the object, and no other e.e. is grasping anything!"<<std::endl;
+    for (auto node=path.begin();node!=path.end();++node)
+    {
+        auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
+        if (!ee_grasped.count(ee_id))
+            ee_grasped[ee_id]=false;
+    }
+    
     for (auto node=path.begin();node!=path.end();)//++node)
     {
         //Getting info for the current node
@@ -93,10 +108,10 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 }
                 else
                 {
-                    //not found, movable, different workspaces
+                    //not found->last e.e, movable, different workspaces
                     compute_centroid(centroid_x,centroid_y,next_workspace_id);
                     centroid_z=HIGH;
-                    std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
+//                     std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
                     cartesian_command temp;
                     temp.seq_num = 1;
                     temp.cartesian_task.position.x=centroid_x;
@@ -121,17 +136,23 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 centroid_z=HIGH;
             else //one is movable, change on ground
                 centroid_z=0;
-            std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
+//             std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
             
-            cartesian_command temp;
+            cartesian_command temp, grasp, ungrasp;
             temp.cartesian_task.position.x=centroid_x;
             temp.cartesian_task.position.y=centroid_y;
             temp.cartesian_task.position.z=centroid_z;
-            temp.seq_num = 1;
+            temp.seq_num = !next_movable; //Do not parallelize movements if only the current ee is moving
+            grasp.command=cartesian_commands::GRASP;
+            grasp.seq_num = 1;
+            ungrasp.command=cartesian_commands::UNGRASP;
+            ungrasp.seq_num = 1;
             temp.command=cartesian_commands::MOVE;
             if (movable) result.push_back(std::make_pair(ee_id,temp)); //move the first
-            temp.seq_num = 0;
+            temp.seq_num = 1;
             if (next_movable) result.push_back(std::make_pair(next_ee_id,temp)); //move the next
+            if (next_movable) {result.push_back(std::make_pair(next_ee_id,ee_grasped[next_ee_id]?ungrasp:grasp));ee_grasped[next_ee_id]=!ee_grasped[next_ee_id];}
+            if (movable) {result.push_back(std::make_pair(ee_id,ee_grasped[ee_id]?ungrasp:grasp));ee_grasped[ee_id]=!ee_grasped[ee_id];}
             node=next_node;
             continue;
         }
@@ -139,8 +160,8 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
     }
     //move the second e.e (if the first is not movable) in the source position (got from getting_info)
     auto initial_node=path.front();
-    auto ee_id = std::get<1>(database.Grasps.at(initial_node.grasp_id));
-    bool movable=std::get<1>(database.EndEffectors.at(ee_id));
+    ee_id = std::get<1>(database.Grasps.at(initial_node.grasp_id));
+    movable=std::get<1>(database.EndEffectors.at(ee_id));
     if (!movable)
     {
         result.front().second.cartesian_task=data.source_position;
@@ -153,19 +174,22 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
 
 void semantic_planning_state::run()
 {
+    completed=false;
+    internal_state.clear();
     //convert cartesian into semantic
     bool source_found=false, target_found=false;
     workspace_id source,target;
+    double xs=data.source_position.position.x;
+    double ys=data.source_position.position.y;
+    double xt=data.target_position.position.x;
+    double yt=data.target_position.position.y;
+    
     for (auto workspace: database.WorkspaceGeometry)
     {
-        double xs=data.source_position.position.x;
-        double ys=data.source_position.position.y;
-        double xt=data.target_position.position.x;
-        double yt=data.target_position.position.y;
         std::vector<Point> temp;
         for (auto point : workspace.second)
             temp.emplace_back(point.first,point.second);
-        geom.order_points(temp);
+//         geom.order_points(temp);
         if (geom.point_in_ordered_polygon(xs,ys,temp))
         {
             std::cout<<"source position is in workspace "<<workspace.first<<std::endl;
@@ -174,7 +198,7 @@ void semantic_planning_state::run()
         }
         if (geom.point_in_ordered_polygon(xt,yt,temp))
         {
-            std::cout<<"source position is in workspace "<<workspace.first<<std::endl;
+            std::cout<<"target position is in workspace "<<workspace.first<<std::endl;
             target_found=true;
             target=workspace.first;
         }
@@ -183,7 +207,12 @@ void semantic_planning_state::run()
         std::cout<<"source position is outside the workspaces!!!"<<std::endl;
     if (!target_found)
         std::cout<<"target position is outside the workspaces!!!"<<std::endl;
-    
+    if (!source_found || !target_found)
+    {
+        internal_state.insert(std::make_pair(transition::failed_plan,true));
+        completed=true;
+        return;
+    }
     
     //Call planner with the right parameters
     srv.request.command="plan";
@@ -201,12 +230,15 @@ void semantic_planning_state::run()
     else
     {
         ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service");
+        internal_state.insert(std::make_pair(transition::failed_plan,true));
+        completed=true;
+        return;
+        
         abort();//TODO: getResults should return a failed planning, and go back into steady
     }
-    
-    ros::spin();
-    
-    
+
+    ros::spinOnce();
+
     //TODO convert semantic plan into cartesian vector
             //for each grasp understand the e.e
             //for each workspace find the centroid of the polygon
@@ -218,11 +250,19 @@ void semantic_planning_state::run()
     if (srv.response.path.size()<2)
     {
         ROS_ERROR("The planner returned a path with less than 2 nodes");
+        internal_state.insert(std::make_pair(transition::failed_plan,true));
+        completed=true;
+        return;
+        
         abort();//TODO: getResults should return a failed planning, and go back into steady
     }
     if (srv.response.path.size()<3)
     {
         ROS_INFO("The planner returned a path with less than 3 nodes, should we handle this in a different way??");
+        internal_state.insert(std::make_pair(transition::failed_plan,true));
+        completed=true;
+        return;
+        
         abort();//TODO: getResults should return a failed planning, and go back into steady
     }
     std::vector<std::pair<endeffector_id,cartesian_command>> result;
@@ -230,15 +270,23 @@ void semantic_planning_state::run()
     if (!converted)
     {
         std::cout<<"Error converting semantic to cartesian!"<<std::endl;
+        internal_state.insert(std::make_pair(transition::failed_plan,true));
+        completed=true;
+        return;
+        
     }
-    //TODO go through the results and insert open/close grasps
-    
+    for (auto i:result)
+        std::cout<<i<<std::endl;
     //TODO parallelize movements between arms?!?
+    internal_state.insert(std::make_pair(transition::good_plan,true));
+    completed=true;
+    return;
+    
 }
 
 bool semantic_planning_state::isComplete()
 {
-    return false;
+    return completed;
 }
 
 std::string semantic_planning_state::get_type()

@@ -31,6 +31,8 @@ private:
     databaseMapper database;
     geometry_tools geom;
     shared_memory& data;
+    bool completed;
+    std::map< transition, bool > internal_state;
 };
 
 #endif // SEMANTIC_PLANNING_STATE_H

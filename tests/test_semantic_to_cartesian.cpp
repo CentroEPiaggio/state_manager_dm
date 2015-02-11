@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     data.target_position.position.z = 0;
     semantic_planning_state state(data);
     std::vector<std::pair<endeffector_id,cartesian_command>> result;
-    dual_manipulation_shared::planner_serviceResponse::_path_type path;
+    dual_manipulation_shared::planner_serviceResponse::_path_type path,path1;
     dual_manipulation_shared::planner_item item;
 /*
     5 3
@@ -37,6 +37,15 @@ int main(int argc, char *argv[])
     item.workspace_id=1;
     path.push_back(item);
     state.semantic_to_cartesian(result,path);
+    for (auto i:result)
+        std::cout<<i<<std::endl;
+    auto item_it=path.begin();
+    item_it++;
+    for (;item_it!=path.end();++item_it)
+    {
+        path1.push_back(*item_it);
+    }
+    state.semantic_to_cartesian(result,path1);
     for (auto i:result)
         std::cout<<i<<std::endl;
     return 0;
