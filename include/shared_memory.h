@@ -42,7 +42,7 @@ private:
 class ik_shared_memory
 {
 public:
-  int seq_num;
+  int next_plan;
   const std::vector<std::pair<endeffector_id,cartesian_command>>* cartesian_plan;
   std::map<std::string,bool> ees_grasped;
   std::map<std::string,KDL::Frame> objects_ees;

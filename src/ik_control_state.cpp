@@ -10,12 +10,10 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     fake_plan();
     print_plan();
     subdata.cartesian_plan = &data.cartesian_plan;
-    subdata.seq_num=0;
+    subdata.next_plan=0;
 
     auto ik_planning = new ik_planning_substate(subdata);
     auto ik_moving = new ik_moving_substate(subdata);
-    auto ik_grasping = new ik_grasping_substate(subdata);
-    auto ik_checking_grasp = new ik_checking_grasp_substate(subdata);
     waiting = new ik_steady_substate(subdata);
     auto exiting = new ik_exiting_substate(subdata);
     
@@ -26,14 +24,14 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
         std::make_tuple( ik_planning        , std::make_pair(ik_transition::move,true)                ,   ik_moving         ),
         //----------------------------------+---------------------------------------------------------+-------------------- +
         std::make_tuple( ik_moving          , std::make_pair(ik_transition::plan,true)                ,   ik_planning       ),
-        std::make_tuple( ik_moving          , std::make_pair(ik_transition::grasp,true)               ,   ik_grasping       ),
+//         std::make_tuple( ik_moving          , std::make_pair(ik_transition::grasp,true)               ,   ik_grasping       ),
         std::make_tuple( ik_moving          , std::make_pair(ik_transition::done,true)                ,   exiting           ),
         //----------------------------------+---------------------------------------------------------+-------------------- +
-        std::make_tuple( ik_grasping        , std::make_pair(ik_transition::done,true)                ,   exiting           ),
-        std::make_tuple( ik_grasping        , std::make_pair(ik_transition::checkgrasp,true)          ,   ik_checking_grasp ),
-	std::make_tuple( ik_grasping        , std::make_pair(ik_transition::move,true)                ,   ik_planning       ),
-	//----------------------------------+---------------------------------------------------------+-------------------- +
-	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::check_done,true)          ,   ik_grasping       )
+//         std::make_tuple( ik_grasping        , std::make_pair(ik_transition::done,true)                ,   exiting           ),
+//         std::make_tuple( ik_grasping        , std::make_pair(ik_transition::checkgrasp,true)          ,   ik_checking_grasp ),
+// 	std::make_tuple( ik_grasping        , std::make_pair(ik_transition::plan,true)                ,   ik_planning       ),
+// 	//----------------------------------+---------------------------------------------------------+-------------------- +
+// 	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::check_done,true)          ,   ik_grasping       )
     };
 
     sm.insert(transition_table);
@@ -46,9 +44,9 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
 std::map< transition, bool > ik_control_state::getResults()
 {
     std::map< transition, bool > results;
-    result =  (subdata.seq_num == subdata.cartesian_plan->size()-1);
+    result =  (subdata.next_plan == subdata.cartesian_plan->size()-1);
     results[transition::task_accomplished]=result;
-    subdata.seq_num=0;
+    subdata.next_plan=0;
     complete=false;
     current_state=waiting;
     return results;
