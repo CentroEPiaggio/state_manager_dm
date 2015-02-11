@@ -275,6 +275,7 @@ void semantic_planning_state::run()
         return;
         
     }
+    data.cartesian_plan = result;
     for (auto i:result)
         std::cout<<i<<std::endl;
     //TODO parallelize movements between arms?!?
