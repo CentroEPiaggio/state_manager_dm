@@ -45,7 +45,6 @@ private:
     ik_shared_memory subdata;
     void fake_plan();
     void print_plan();
-    bool initialized;
 };
 
 #endif // IK_CONTROL_STATE_H

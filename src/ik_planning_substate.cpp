@@ -1,4 +1,5 @@
 #include "ik_planning_substate.h"
+#include "../../shared/include/dual_manipulation_shared/databasemapper.h"
 
 ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
 {
@@ -22,19 +23,19 @@ ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
 void ik_planning_substate::callback_l(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Left IK Plan : %s",str->data.c_str());
-    plan_executed--;
+    if(str->data.c_str()=="done") plan_executed--;
 }
 
 void ik_planning_substate::callback_r(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Right IK Plan : %s",str->data.c_str());
-    plan_executed--;
+    if(str->data.c_str()=="done") plan_executed--;
 }
 
 void ik_planning_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Both Hands IK Plan : %s",str->data.c_str());
-    plan_executed--;
+    if(str->data.c_str()=="done") plan_executed--;
 }
 
 std::map< ik_transition, bool > ik_planning_substate::getResults()
@@ -62,6 +63,12 @@ void ik_planning_substate::run()
     srv.request.ee_pose.clear();
 
     int i=-1;
+    
+    if(data_.cartesian_plan->size()==0)
+    {
+	ROS_ERROR("Cartesian plan is empty!!");
+	return;
+    }
     
     do
     {

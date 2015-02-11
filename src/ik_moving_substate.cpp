@@ -28,31 +28,31 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
 void ik_moving_substate::callback_l(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Left IK Exec : %s",str->data.c_str());
-    moving_executed--;
+    if(str->data.c_str()=="done") moving_executed--;
 }
 
 void ik_moving_substate::callback_r(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Right IK Exec : %s",str->data.c_str());
-    moving_executed--;
+    if(str->data.c_str()=="done") moving_executed--;
 }
 
 void ik_moving_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Both Hands IK Exec : %s",str->data.c_str());
-    moving_executed--;
+    if(str->data.c_str()=="done") moving_executed--;
 }
 
 void ik_moving_substate::callback_r_grasp(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Right IK Exec : %s",str->data.c_str());
-    moving_executed--;
+    if(str->data.c_str()=="done") moving_executed--;
 }
 
 void ik_moving_substate::callback_l_grasp(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Right IK Exec : %s",str->data.c_str());
-    moving_executed--;
+    if(str->data.c_str()=="done") moving_executed--;
 }
 
 std::map< ik_transition, bool > ik_moving_substate::getResults()
@@ -93,6 +93,12 @@ void ik_moving_substate::run()
     int i=-1;
     int move_num=0;
     std::string ee_name;
+    
+    if(data_.cartesian_plan->size()==0)
+    {
+	ROS_ERROR("Cartesian plan is empty!!");
+	return;
+    }
 
     do
     {
