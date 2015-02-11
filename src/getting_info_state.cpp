@@ -35,7 +35,7 @@ void getting_info_state::get_target_position_from_user(visualization_msgs::Marke
     
     if (gui_target_client.call(srv))
     {
-        ROS_INFO_STREAM("Answer: ("<<srv.response.ack<<")");
+        ROS_INFO_STREAM("Answer: ("<<(bool)srv.response.ack<<")");
 	if(srv.response.ack) ROS_INFO_STREAM("Target set to "<<srv.response.target_pose.position.x<<' '<<srv.response.target_pose.position.y<<' '<<srv.response.target_pose.position.z
 	  <<' '<<srv.response.target_pose.orientation.x<<' '<<srv.response.target_pose.orientation.y<<' '<<srv.response.target_pose.orientation.z<<' '<<srv.response.target_pose.orientation.w);
         
