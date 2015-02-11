@@ -11,6 +11,7 @@ enum class transition {
     failed_plan, //plan was bad, no cartesian commands were produced
     good_plan, // plan was good, ready to move
     start_moving, //user cmd from GUI
+    abort_move, //user cmd from GUI
     task_accomplished, //object was successfully put in final place
     planning_done, //plan is done
     exit, //exit the program

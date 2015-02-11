@@ -32,6 +32,7 @@ ros_server::ros_server()
         std::make_tuple( planned      , std::make_pair(transition::abort_plan,true)         ,    steady         ),
         std::make_tuple( planned      , std::make_pair(transition::start_moving,true)       ,    moving         ),
         std::make_tuple( moving       , std::make_pair(transition::task_accomplished,true)  ,    steady         ),
+        std::make_tuple( moving       , std::make_pair(transition::abort_move,true)         ,    steady         ),
         //----------------------------+-----------------------------------------------------+-------------------+
 //         std::make_tuple( planning     , std::make_pair(transition::planning_done,true)      ,    steady         ),
 //         std::make_tuple( steady       , std::make_pair(transition::start_moving,true)       ,    moving         ),
@@ -67,7 +68,7 @@ void ros_server::loop()
 
     while(current_state->get_type() != "exit_state")
     {
-    std::cout<<current_state->get_type()<<std::endl;
+//     std::cout<<current_state->get_type()<<std::endl;
     current_state->run();
     ros::spinOnce(); //Will check for user commands
     if (current_state->isComplete())
@@ -109,6 +110,7 @@ bool ros_server::state_manager_ros_service(dual_manipulation_shared::state_manag
     else if(req.command == "good_plan") transition_map[transition::good_plan]=true;
     else if(req.command == "abort_plan") transition_map[transition::abort_plan]=true;
     else if(req.command == "start_moving") transition_map[transition::start_moving]=true;
+    else if(req.command == "abort_move") transition_map[transition::abort_move]=true;
     else if(req.command == "task_accomplished") transition_map[transition::task_accomplished]=true;
     else if(req.command == "exit") transition_map[transition::exit]=true;
     else res.ack = false;
