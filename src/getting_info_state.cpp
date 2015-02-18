@@ -3,6 +3,7 @@
 #include <dual_manipulation_shared/gui_target_service.h>
 #include "tf/tf.h"
 #include <visualization_msgs/Marker.h>
+#include "dual_manipulation_shared/scene_object_service.h"
 
 extern void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& source_marker,visualization_msgs::Marker& target_marker);
 extern void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs::Marker& source_marker);
@@ -19,6 +20,8 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
     pub = n.advertise<visualization_msgs::Marker>( "/object_marker", 1000 );
     planner_client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
     gui_target_client = n.serviceClient<dual_manipulation_shared::gui_target_service>("gui_target_service");
+    scene_object_client = n.serviceClient<dual_manipulation_shared::scene_object_service>("scene_object_ros_service");
+
     fresh_data = false;
 }
 
@@ -105,6 +108,24 @@ void getting_info_state::run()
         return;
     }
     
+    // send information to the cartesian planner (for collision checking)
+    dual_manipulation_shared::scene_object_service srv_obj;
+    srv_obj.request.command = "add";
+    // NOTE: use the weight as the ID for retrieving object information
+    srv_obj.request.attObject.weight = data_.obj_id;
+    // NOTE: this should be unique, while we can have two objects with the same "weight"
+    srv_obj.request.attObject.object.id = data_.object_name;
+    srv_obj.request.attObject.object.mesh_poses.push_back( source_marker.pose );
+    srv_obj.request.attObject.object.header.frame_id = source_marker.header.frame_id;
+    if (scene_object_client.call(srv_obj))
+    {
+	ROS_INFO("IK_control:test_grasping : %s object %s request accepted: %d", srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str(), (int)srv_obj.response.ack);
+    }
+    else
+    {
+	ROS_ERROR("IK_control:test_grasping : Failed to call service dual_manipulation_shared::scene_object_service: %s %s",srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str());
+    }
+
     fresh_data = true;
 }
 

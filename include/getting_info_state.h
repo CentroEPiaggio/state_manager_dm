@@ -18,7 +18,7 @@ private:
     bool fresh_data;
     ros::NodeHandle n;
     ros::Publisher pub;
-    ros::ServiceClient planner_client, gui_target_client;
+    ros::ServiceClient planner_client, gui_target_client, scene_object_client;
 
     void get_start_position_from_vision(visualization_msgs::Marker& source_marker);
     void get_target_position_from_user(visualization_msgs::Marker& target_marker);
