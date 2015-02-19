@@ -14,7 +14,7 @@ enum class cartesian_commands
 
 struct cartesian_command
 {
-    geometry_msgs::Pose cartesian_task;
+    geometry_msgs::Pose cartesian_task; //desired position of the HAND in the pregrasp, not the object!!
     cartesian_commands command;
     /**
      * @brief seq_num==0 means that the next cartesian command should be executed in parallel with this one

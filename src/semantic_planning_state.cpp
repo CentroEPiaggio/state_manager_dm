@@ -2,6 +2,9 @@
 #include <dual_manipulation_shared/geometry_tools.h>
 #include <ros/init.h>
 #include <dual_manipulation_shared/stream_utils.h>
+#include "dual_manipulation_shared/ik_service.h"
+#include "dual_manipulation_shared/serialization_utils.h"
+#include <kdl_conversions/kdl_msg.h>
 #define HIGH 0.5
 
 semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
@@ -35,7 +38,23 @@ void semantic_planning_state::compute_centroid(double& centroid_x,double& centro
     return;
 }
 
-bool semantic_planning_state::inverse_kinematics(endeffector_id ee_id, geometry_msgs::Pose cartesian_target)
+bool semantic_planning_state::getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE)
+{
+    dual_manipulation_shared::ik_service srv;
+    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
+    if (ok)
+        tf::poseMsgToKDL(srv.request.ee_pose.front(),Object_EE);
+    return ok;
+}
+
+bool semantic_planning_state::check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE)
+{
+    bool ok=inverse_kinematics(ee_id,World_FirstEE);
+    ok = ok && inverse_kinematics(next_ee_id,World_SecondEE);
+    return ok;
+}
+
+bool semantic_planning_state::inverse_kinematics(endeffector_id ee_id, KDL::Frame cartesian)
 {
     //TODO: get chain ik solver
     //use it
@@ -43,15 +62,24 @@ bool semantic_planning_state::inverse_kinematics(endeffector_id ee_id, geometry_
     return true;
 }
 
-void semantic_planning_state::compute_intergrasp_orientation(double centroid_x, double centroid_y, double centroid_z, 
-                                                             geometry_msgs::Quaternion& centroid_orientation, endeffector_id ee_id, 
-                                                             endeffector_id next_ee_id, grasp_id grasp, grasp_id next_grasp)
+bool semantic_planning_state::compute_intergrasp_orientation(double centroid_x, double centroid_y, double centroid_z, KDL::Frame& World_Object, endeffector_id ee_id, endeffector_id next_ee_id, grasp_id grasp, grasp_id next_grasp, object_id object)
 {
 //Case both movable (centroid_z should be HIGH)
     KDL::Frame World_Centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
     KDL::Frame Object_FirstEE, Object_SecondEE;
-    Object_FirstEE=database.Grasps_sequence[grasp][0].first;
-    Object_SecondEE=database.Grasps_sequence[next_grasp][0].first.Inverse();
+    bool ok=getPreGraspMatrix(object,grasp,Object_FirstEE);
+    if (!ok) 
+    {
+        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
+    }
+    ok = getPreGraspMatrix(object,next_grasp,Object_SecondEE);
+    if (!ok) 
+    {
+        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<next_ee_id<<std::endl;
+    }
+    
+//     Object_FirstEE=database.Grasps_sequence[grasp][0].first;
+//     Object_SecondEE=database.Grasps_sequence[next_grasp][0].first.Inverse();
     KDL::Frame Object_MiddlePosition;
     Object_MiddlePosition.p=(Object_FirstEE.p+Object_SecondEE.p)/2;
     KDL::Vector Object_Xmiddle=Object_SecondEE.p-Object_FirstEE.p;
@@ -67,28 +95,42 @@ void semantic_planning_state::compute_intergrasp_orientation(double centroid_x, 
     ca  cb  1-cc  1    1-cc
     */
     Object_Zmiddle.Normalize();
-    KDL::Vector Object_Ymiddle=Object_Xmiddle*Object_Zmiddle;
+    KDL::Vector Object_Ymiddle=Object_Zmiddle*Object_Xmiddle;
     Object_Ymiddle.Normalize();//Just in case
     Object_MiddlePosition.M=KDL::Rotation(Object_Xmiddle,Object_Ymiddle,Object_Zmiddle);
-    KDL::Frame World_Object;
     bool found=false;
     for (double anglez=0;anglez<M_PI;anglez=anglez+0.1)
     {
-        KDL::Frame Object_MiddlePositionRotatedz=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglez));
-    //iterate along rotation until a solution if found
-    for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
-    {
-        //find back the grasps
-       KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
-       World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
-//        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
-       if (found) break;
-       KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
-       World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
-//        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
-       if (found) break;
-    }
-    if (found) break;
+        KDL::Frame Object_MiddlePositionRotatedz1=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Zmiddle,anglez));
+        //iterate along rotation until a solution if found
+        for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
+        {
+            //find back the grasps
+            KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
+            World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
+            //        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            if (found) break;
+            KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
+            World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
+            //        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            if (found) break;
+        }
+        if (found) break;
+        KDL::Frame Object_MiddlePositionRotatedz2=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Zmiddle,-anglez));
+        //iterate along rotation until a solution if found
+        for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
+        {
+            //find back the grasps
+            KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
+            World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
+            //        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            if (found) break;
+            KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
+            World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
+            //        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            if (found) break;
+        }
+        if (found) break;
     }
 //Case first movable
     
@@ -98,17 +140,22 @@ void semantic_planning_state::compute_intergrasp_orientation(double centroid_x, 
     
     
     
-    
+    return found;
 }
 
 
 bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeffector_id,cartesian_command>>& result,const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
 {
+// 1) Getting preliminary information
     std::map<endeffector_id,bool> ee_grasped;
     result.clear();
     auto ee_id = std::get<1>(database.Grasps.at(path.front().grasp_id));
     auto ee_name=std::get<0>(database.EndEffectors.at(ee_id));
     bool movable=std::get<1>(database.EndEffectors.at(ee_id));
+//--------------------------------------
+
+// 2) Setting a boolean flag for each end effector in order to keep track if they are grasping something or not
+
     //This approach is valid only if no more than one e.e. can grasp an object at the same time!! 
     ee_grasped[ee_id]=true;
     std::cout<<"Assuming that only "<<ee_name<<" is grasping the object, and no other e.e. is grasping anything!"<<std::endl;
@@ -118,24 +165,31 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
         if (!ee_grasped.count(ee_id))
             ee_grasped[ee_id]=false;
     }
-    
+//-------------------------------------------
+
+// 3) Start of the main conversion loop
     for (auto node=path.begin();node!=path.end();)//++node)
     {
-        //Getting info for the current node
+        // 3.1) Getting preliminary info for the current node
         auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
         auto ee_name=std::get<0>(database.EndEffectors.at(ee_id));
         double centroid_x=0, centroid_y=0, centroid_z=0;
         geometry_msgs::Quaternion centroid_orientation;
         bool movable=std::get<1>(database.EndEffectors.at(ee_id));
+        //---------------------------
         
+        // 3.2) Is this the final_node?
         auto final_node=node;
         final_node++;
         if (final_node==path.end())
         {
-            break;
+            break; //This break jumps to 4)
         }
+        //-------------------------
+
         //From now on node is not the last in the path
-        //searching for the next node with a different end effector than the current one
+
+        // 3.3) Searching for the next node with a different end effector than the current one
         bool found=false;
         endeffector_id next_ee_id;
         workspace_id next_workspace_id;
@@ -153,33 +207,35 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 else
                 {
                     found=true;
-                    break;
+                    break; //this break jumps to 3.4)
                 }
             }
         }
+        //-----------------------
+        
+        // 3.4) Beginning of real actions, depending on the result of 3.3
         if (!found)
         {
-            //ee_id is the last end effector in the path
-            if (!movable)
+            //3.4.1) if not found, than ee_id is the last end effector in the path
+            if (!movable) //not found not movable
             {
+                //Error1
                 std::cout<<"ERROR, ee "<<ee_id<<" is the last ee but cannot move into the last node of the path!!"<<std::endl;
-//                 break;
                 return false;
             }
             else //not found, movable
             {
                 if (node->workspace_id==next_workspace_id)
                 {
+                    //Error2
                     std::cout<<"ERROR, the planner returned two nodes with same ee and same workspace!!"<<std::endl;
-//                     break;
                     return false;
                 }
-                else
+                else  //not found->last e.e, movable, different workspaces
                 {
-                    //not found->last e.e, movable, different workspaces
+                    // 3.4.2) We move the last==current end effector in the final workspace centroid, later on we will change this to the final desired position
                     compute_centroid(centroid_x,centroid_y,next_workspace_id);
                     centroid_z=HIGH;
-//                     std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
                     cartesian_command temp;
                     temp.seq_num = 1;
                     temp.ee_grasp_id=node->grasp_id;
@@ -188,47 +244,77 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                     temp.cartesian_task.position.z=centroid_z;
                     temp.command=cartesian_commands::MOVE;
                     result.push_back(std::make_pair(ee_id,temp));
-                    break;
+                    break; //This break jumps to 4)
                 }
             }
         }
-        else //found, ee_id is not the last ee in the path
+        else //found -> ee_id is not the last ee in the path
         {
+            //3.5) There is gonna be a change of grasps
+            KDL::Frame World_Object;
             if (!movable && !next_movable)
             {
+                //Error 3
                 std::cout<<"ERROR, the planner returned two nodes with not movable different ees!!"<<std::endl;
-//                 break;
                 return false;
             }
+            //--------------
+
+            // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,next_workspace_id);
             if (movable && next_movable) //both ee are movable: change above ground
             {
                 centroid_z=HIGH;
-                compute_intergrasp_orientation(centroid_x,centroid_y,centroid_z,centroid_orientation,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id);
+                compute_intergrasp_orientation(centroid_x,centroid_y,centroid_z,World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id);
             }
             else //one is movable, change on ground
             {
                 centroid_z=0;
-                compute_intergrasp_orientation(centroid_x,centroid_y,centroid_z,centroid_orientation,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id);
+                compute_intergrasp_orientation(centroid_x,centroid_y,centroid_z,World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id);
             }
-//             std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
-            
+            //--------------
+
+            //3.7) Inizialize some temporary commands to be pushed back into the plan 
             cartesian_command temp, grasp, ungrasp;
-            temp.cartesian_task.position.x=centroid_x;
-            temp.cartesian_task.position.y=centroid_y;
-            temp.cartesian_task.position.z=centroid_z;
-            temp.cartesian_task.orientation=centroid_orientation;
+            KDL::Frame Object_FirstEE, Object_SecondEE;
             temp.ee_grasp_id=node->grasp_id;
             temp.seq_num = !next_movable; //Do not parallelize movements if only the current ee is moving
+            //--------------
             grasp.command=cartesian_commands::GRASP;
             grasp.seq_num = 1;
             ungrasp.command=cartesian_commands::UNGRASP;
             ungrasp.seq_num = 1;
             temp.command=cartesian_commands::MOVE;
-            if (movable) result.push_back(std::make_pair(ee_id,temp)); //move the first
+            
+            //3.8) get the pose of the first end effector with respect to the object position
+            if (movable) 
+            {
+                bool ok=getPreGraspMatrix(data.obj_id,node->grasp_id,Object_FirstEE);
+                if (!ok) 
+                {
+                    std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
+                }
+                KDL::Frame World_GraspFirstEE = World_Object*Object_FirstEE;
+                tf::poseKDLToMsg(World_GraspFirstEE,temp.cartesian_task);
+                result.push_back(std::make_pair(ee_id,temp)); //move the first
+            }
+            
+            //3.9) get the pose of the second end effector with respect to the object position
             temp.seq_num = 1;
             temp.ee_grasp_id=next_node->grasp_id;
-            if (next_movable) result.push_back(std::make_pair(next_ee_id,temp)); //move the next
+            if (next_movable)
+            {
+                bool ok = getPreGraspMatrix(data.obj_id,next_node->grasp_id,Object_SecondEE);
+                if (!ok) 
+                {
+                    std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<next_ee_id<<std::endl;
+                }
+                KDL::Frame World_GraspSecondEE = World_Object*Object_SecondEE;
+                tf::poseKDLToMsg(World_GraspSecondEE,temp.cartesian_task);
+                result.push_back(std::make_pair(next_ee_id,temp)); //move the next
+            }
+            
+            //3.10) after moving one or two end effectors, we can grasp/ungrasp depending on the state of the ee and of movable/not movable
             if (next_movable) {result.push_back(std::make_pair(next_ee_id,ee_grasped[next_ee_id]?ungrasp:grasp));ee_grasped[next_ee_id]=!ee_grasped[next_ee_id];}
             if (movable) {result.push_back(std::make_pair(ee_id,ee_grasped[ee_id]?ungrasp:grasp));ee_grasped[ee_id]=!ee_grasped[ee_id];}
             node=next_node;
@@ -236,7 +322,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
         }
         
     }
-    //move the second e.e (if the first is not movable) in the source position (got from getting_info)
+    //4) move the second e.e (if the first is not movable) in the source position (got from getting_info)
     auto initial_node=path.front();
     ee_id = std::get<1>(database.Grasps.at(initial_node.grasp_id));
     movable=std::get<1>(database.EndEffectors.at(ee_id));
@@ -244,8 +330,8 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
     {
         result.front().second.cartesian_task=data.source_position;
     }
-    
-    //move the last e.e in the final position (got from getting_info)
+
+    //5) move the last e.e in the final position (got from getting_info)
     result.back().second.cartesian_task=data.target_position;
     return true;
 }
@@ -317,7 +403,7 @@ void semantic_planning_state::run()
 
     ros::spinOnce();
 
-    //TODO convert semantic plan into cartesian vector
+    // convert semantic plan into cartesian vector
             //for each grasp understand the e.e
             //for each workspace find the centroid of the polygon
             //create a cartesian path from (grasp/workspace) to (e.e./centroid)
