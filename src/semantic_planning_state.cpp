@@ -5,7 +5,22 @@
 #include "dual_manipulation_shared/ik_service.h"
 #include "dual_manipulation_shared/serialization_utils.h"
 #include <kdl_conversions/kdl_msg.h>
+#include <std_msgs/String.h>
 #define HIGH 0.5
+
+bool left_ik,right_ik, left_ik_ok, right_ik_ok;
+
+void plan_callback_l(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Left IK Plan : %s",str->data.c_str());
+    left_ik=true;
+}
+
+void plan_callback_r(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Right IK Plan : %s",str->data.c_str());
+    right_ik=true;
+}
 
 semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
 {
@@ -49,16 +64,42 @@ bool semantic_planning_state::getPreGraspMatrix(object_id object,grasp_id grasp,
 
 bool semantic_planning_state::check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE)
 {
-    bool ok=inverse_kinematics(ee_id,World_FirstEE);
-    ok = ok && inverse_kinematics(next_ee_id,World_SecondEE);
-    return ok;
+    inverse_kinematics(std::get<0>(database.EndEffectors[ee_id]),World_FirstEE);
+    inverse_kinematics(std::get<0>(database.EndEffectors[next_ee_id]),World_SecondEE);
+    bool done=false;
+    while (!done)
+    {
+        ros::spinOnce();
+        usleep(1000000);
+        if (left_ik && right_ik) done=left_ik_ok && right_ik_ok;
+    }
+    return done;
 }
 
-bool semantic_planning_state::inverse_kinematics(endeffector_id ee_id, KDL::Frame cartesian)
+bool semantic_planning_state::inverse_kinematics(std::string ee_name, KDL::Frame cartesian)
 {
-    //TODO: get chain ik solver
-    //use it
-    //return the result
+    static ros::NodeHandle n;
+    static ros::ServiceClient client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
+    static ros::Subscriber plan_lsub = n.subscribe("/ik_control/left_hand/planning_done",0,plan_callback_l);
+    static ros::Subscriber plan_rsub = n.subscribe("/ik_control/right_hand/planning_done",0,plan_callback_r);
+    dual_manipulation_shared::ik_service srv;
+    
+    geometry_msgs::Pose ee_pose;
+    tf::poseKDLToMsg(cartesian,ee_pose);
+    srv.request.command = "plan";
+    srv.request.ee_pose.clear();
+    srv.request.ee_pose.push_back(ee_pose);
+    srv.request.ee_name = ee_name;
+    
+    if (client.call(srv))
+    {
+        ROS_INFO("IK Request accepted: %d", (int)srv.response.ack);
+    }
+    else
+    {
+        ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service: %s %s",srv.request.ee_name.c_str(),srv.request.command.c_str());
+        return false;
+    }
     return true;
 }
 
@@ -108,11 +149,11 @@ bool semantic_planning_state::compute_intergrasp_orientation(double centroid_x, 
             //find back the grasps
             KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
             World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
-            //        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
             if (found) break;
             KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
             World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
-            //        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
             if (found) break;
         }
         if (found) break;
@@ -123,11 +164,11 @@ bool semantic_planning_state::compute_intergrasp_orientation(double centroid_x, 
             //find back the grasps
             KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
             World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
-            //        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
             if (found) break;
             KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
             World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
-            //        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
             if (found) break;
         }
         if (found) break;
