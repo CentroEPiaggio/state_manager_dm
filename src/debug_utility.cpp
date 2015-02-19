@@ -27,7 +27,6 @@ void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs:
     tf::Quaternion q;
     q.setRPY(roll,pitch,yaw);
     tf::quaternionTFToMsg(q,data.source_position.orientation);
-
     source_marker.pose = data.source_position;
     source_marker.color.a = 1;
     source_marker.color.r=0;

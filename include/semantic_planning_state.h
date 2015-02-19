@@ -25,6 +25,11 @@ public:
     
 private:
     void compute_centroid(double& centroid_x,double& centroid_y, workspace_id w_id);
+    void compute_intergrasp_orientation(double centroid_x, double centroid_y, double centroid_z, 
+                                        geometry_msgs::Quaternion& centroid_orientation, endeffector_id ee_id, 
+                                        endeffector_id next_ee_id, grasp_id grasp, grasp_id next_grasp);
+    bool inverse_kinematics(endeffector_id ee_id, geometry_msgs::Pose cartesian_target);
+    
     ros::NodeHandle n;
     ros::ServiceClient client;
     dual_manipulation_shared::planner_service srv;

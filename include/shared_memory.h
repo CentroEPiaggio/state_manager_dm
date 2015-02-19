@@ -21,6 +21,7 @@ struct cartesian_command
      * seq_num==1 means that the next cartesian command should be executed after this one
      */
     int seq_num;
+    grasp_id ee_grasp_id;
 };
 
 std::ostream& operator<<(std::ostream &output, const cartesian_command &o);
