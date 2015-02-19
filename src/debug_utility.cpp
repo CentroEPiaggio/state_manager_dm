@@ -3,14 +3,22 @@
 #include <visualization_msgs/Marker.h>
 #include <ik_control_state.h>
 
+int fake_get_grasp_id_from_database()
+{
+    // only considers a table grasp, just to be sure
+    int table_max = 15;
+    int table_min = 12;
+    return table_min + (rand() % (table_max - table_min + 1));
+}
+
 void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs::Marker& source_marker)
 {
     //NOTE: just a test
 
-    data.source_position.position.x = -0.25;
+    data.source_position.position.x = -0.35;
     data.source_position.position.y = 0.3;
-    data.source_position.position.z = 0;
-    data.source_grasp=7;
+    data.source_position.position.z = 0.051;
+    data.source_grasp=fake_get_grasp_id_from_database();
     data.obj_id=1;
     data.object_name="cylinder";
     double roll = 1.565;

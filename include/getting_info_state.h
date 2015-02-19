@@ -21,6 +21,20 @@ private:
     ros::ServiceClient planner_client, gui_target_client, scene_object_client;
 
     void get_start_position_from_vision(visualization_msgs::Marker& source_marker);
+    
+    /**
+     * @brief given and object id and its pose, return the associated grasp id (checked from the database)
+     * 
+     * @param object_id
+     *   the object_id of the object in the scene
+     * @param pose
+     *   the pose for which we want to know the grasp
+     * @param ee_id
+     *   the id of the end-effector, decided from the user (default = table)
+     * @return the index of the associated grasp id
+     */
+    int get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id = 3);
+    
     void get_target_position_from_user(visualization_msgs::Marker& target_marker);
 };
 

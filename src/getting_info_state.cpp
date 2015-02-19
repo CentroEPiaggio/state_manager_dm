@@ -7,6 +7,7 @@
 
 extern void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& source_marker,visualization_msgs::Marker& target_marker);
 extern void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs::Marker& source_marker);
+extern int fake_get_grasp_id_from_database();
 
 getting_info_state::getting_info_state(shared_memory& data):data_(data)
 {
@@ -30,6 +31,11 @@ void getting_info_state::get_start_position_from_vision(visualization_msgs::Mark
     fake_get_start_position_from_vision(data_,source_marker);
 }
 
+int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id)
+{
+    return fake_get_grasp_id_from_database();
+}
+
 void getting_info_state::get_target_position_from_user(visualization_msgs::Marker& target_marker)
 {
     dual_manipulation_shared::gui_target_service srv;
@@ -45,7 +51,6 @@ void getting_info_state::get_target_position_from_user(visualization_msgs::Marke
 	data_.target_position.position.x = srv.response.target_pose.position.x;
 	data_.target_position.position.y = srv.response.target_pose.position.y;
 	data_.target_position.position.z = srv.response.target_pose.position.z;
-	data_.target_grasp=8;
 
 	double roll = 1.565;
 	double pitch = 0.0;
@@ -53,6 +58,9 @@ void getting_info_state::get_target_position_from_user(visualization_msgs::Marke
 	tf::Quaternion q;
 	q.setRPY(roll,pitch,yaw);
 	tf::quaternionTFToMsg(q,data_.target_position.orientation);
+	
+	// TODO: ask for desired target end-effector; maybe even for desired final grasp?
+	data_.target_grasp=get_grasp_id_from_database(data_.obj_id,data_.target_position);
 
 	target_marker.pose = data_.target_position;
 	target_marker.color.a = 1;
