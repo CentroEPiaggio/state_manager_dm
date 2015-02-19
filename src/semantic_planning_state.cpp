@@ -35,6 +35,73 @@ void semantic_planning_state::compute_centroid(double& centroid_x,double& centro
     return;
 }
 
+bool semantic_planning_state::inverse_kinematics(endeffector_id ee_id, geometry_msgs::Pose cartesian_target)
+{
+    //TODO: get chain ik solver
+    //use it
+    //return the result
+    return true;
+}
+
+void semantic_planning_state::compute_intergrasp_orientation(double centroid_x, double centroid_y, double centroid_z, 
+                                                             geometry_msgs::Quaternion& centroid_orientation, endeffector_id ee_id, 
+                                                             endeffector_id next_ee_id, grasp_id grasp, grasp_id next_grasp)
+{
+//Case both movable (centroid_z should be HIGH)
+    KDL::Frame World_Centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
+    KDL::Frame Object_FirstEE, Object_SecondEE;
+    Object_FirstEE=database.Grasps_sequence[grasp][0].first;
+    Object_SecondEE=database.Grasps_sequence[next_grasp][0].first.Inverse();
+    KDL::Frame Object_MiddlePosition;
+    Object_MiddlePosition.p=(Object_FirstEE.p+Object_SecondEE.p)/2;
+    KDL::Vector Object_Xmiddle=Object_SecondEE.p-Object_FirstEE.p;
+    Object_Xmiddle.Normalize();
+    double a=Object_Xmiddle.x();
+    double b=Object_Xmiddle.y();
+    double c=Object_Xmiddle.z();
+    KDL::Vector Object_Zmiddle(a*c,b*c,1-c*c); //(I - X^T * X ) * (0 0 1)^T
+    /*
+    a b c   a b c
+    1-aa  ab  ac  0    ac
+    ba  1-bb  bc  0 =  bc
+    ca  cb  1-cc  1    1-cc
+    */
+    Object_Zmiddle.Normalize();
+    KDL::Vector Object_Ymiddle=Object_Xmiddle*Object_Zmiddle;
+    Object_Ymiddle.Normalize();//Just in case
+    Object_MiddlePosition.M=KDL::Rotation(Object_Xmiddle,Object_Ymiddle,Object_Zmiddle);
+    KDL::Frame World_Object;
+    bool found=false;
+    for (double anglez=0;anglez<M_PI;anglez=anglez+0.1)
+    {
+        KDL::Frame Object_MiddlePositionRotatedz=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglez));
+    //iterate along rotation until a solution if found
+    for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
+    {
+        //find back the grasps
+       KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
+       World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
+//        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+       if (found) break;
+       KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
+       World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
+//        found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+       if (found) break;
+    }
+    if (found) break;
+    }
+//Case first movable
+    
+    
+    
+//Case second movable
+    
+    
+    
+    
+}
+
+
 bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeffector_id,cartesian_command>>& result,const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
 {
     std::map<endeffector_id,bool> ee_grasped;
@@ -58,6 +125,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
         auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
         auto ee_name=std::get<0>(database.EndEffectors.at(ee_id));
         double centroid_x=0, centroid_y=0, centroid_z=0;
+        geometry_msgs::Quaternion centroid_orientation;
         bool movable=std::get<1>(database.EndEffectors.at(ee_id));
         
         auto final_node=node;
@@ -114,6 +182,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
 //                     std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
                     cartesian_command temp;
                     temp.seq_num = 1;
+                    temp.ee_grasp_id=node->grasp_id;
                     temp.cartesian_task.position.x=centroid_x;
                     temp.cartesian_task.position.y=centroid_y;
                     temp.cartesian_task.position.z=centroid_z;
@@ -133,15 +202,23 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             }
             compute_centroid(centroid_x,centroid_y,next_workspace_id);
             if (movable && next_movable) //both ee are movable: change above ground
+            {
                 centroid_z=HIGH;
+                compute_intergrasp_orientation(centroid_x,centroid_y,centroid_z,centroid_orientation,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id);
+            }
             else //one is movable, change on ground
+            {
                 centroid_z=0;
+                compute_intergrasp_orientation(centroid_x,centroid_y,centroid_z,centroid_orientation,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id);
+            }
 //             std::cout<<"centroid: "<<centroid_x<<" "<<centroid_y<<" "<<centroid_z<<std::endl;
             
             cartesian_command temp, grasp, ungrasp;
             temp.cartesian_task.position.x=centroid_x;
             temp.cartesian_task.position.y=centroid_y;
             temp.cartesian_task.position.z=centroid_z;
+            temp.cartesian_task.orientation=centroid_orientation;
+            temp.ee_grasp_id=node->grasp_id;
             temp.seq_num = !next_movable; //Do not parallelize movements if only the current ee is moving
             grasp.command=cartesian_commands::GRASP;
             grasp.seq_num = 1;
@@ -150,6 +227,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             temp.command=cartesian_commands::MOVE;
             if (movable) result.push_back(std::make_pair(ee_id,temp)); //move the first
             temp.seq_num = 1;
+            temp.ee_grasp_id=next_node->grasp_id;
             if (next_movable) result.push_back(std::make_pair(next_ee_id,temp)); //move the next
             if (next_movable) {result.push_back(std::make_pair(next_ee_id,ee_grasped[next_ee_id]?ungrasp:grasp));ee_grasped[next_ee_id]=!ee_grasped[next_ee_id];}
             if (movable) {result.push_back(std::make_pair(ee_id,ee_grasped[ee_id]?ungrasp:grasp));ee_grasped[ee_id]=!ee_grasped[ee_id];}
