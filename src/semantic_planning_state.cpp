@@ -14,12 +14,14 @@ void plan_callback_l(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Left IK Plan : %s",str->data.c_str());
     left_ik=true;
+    left_ik_ok = strcmp(str->data.c_str(),"error") != 0;
 }
 
 void plan_callback_r(const std_msgs::String::ConstPtr& str)
 {
     ROS_INFO("Right IK Plan : %s",str->data.c_str());
     right_ik=true;
+    right_ik_ok = strcmp(str->data.c_str(),"error") != 0;
 }
 
 semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
@@ -64,13 +66,21 @@ bool semantic_planning_state::getPreGraspMatrix(object_id object,grasp_id grasp,
 
 bool semantic_planning_state::check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE)
 {
-    inverse_kinematics(std::get<0>(database.EndEffectors[ee_id]),World_FirstEE);
-    inverse_kinematics(std::get<0>(database.EndEffectors[next_ee_id]),World_SecondEE);
+    // assume at first everything went smoothly - TODO: something better
+    left_ik = true;
+    right_ik = true;
+    left_ik_ok = true;
+    right_ik_ok = true;
+    
+    if(std::get<1>(database.EndEffectors.at(ee_id)))
+      inverse_kinematics(std::get<0>(database.EndEffectors[ee_id]),World_FirstEE);
+    if(std::get<1>(database.EndEffectors.at(next_ee_id)))
+      inverse_kinematics(std::get<0>(database.EndEffectors[next_ee_id]),World_SecondEE);
     bool done=false;
     while (!done)
     {
         ros::spinOnce();
-        usleep(1000000);
+        usleep(200000);
         if (left_ik && right_ik) done=left_ik_ok && right_ik_ok;
     }
     return done;
@@ -161,6 +171,7 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
                 if (found) break;
             }
             if (found) break;
+            if (anglez==0) continue;
             KDL::Frame Object_MiddlePositionRotatedz2=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Zmiddle,-anglez));
             //iterate along rotation until a solution if found
             for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
@@ -178,12 +189,12 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
             if (found) break;
         }
     }
-    else if (movable && !next_movable)
+    else if ((movable && !next_movable) || (!movable && next_movable))
     {
-        //Case first movable
+        //Case one ee movable
         KDL::Frame World_Centroid(World_centroid);
         KDL::Frame Object_FirstEE, Object_SecondEE;
-        bool ok=getPreGraspMatrix(object,grasp,Object_FirstEE);
+	bool ok=getPreGraspMatrix(object,grasp,Object_FirstEE);
         if (!ok) 
         {
             std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
@@ -193,19 +204,53 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
         {
             std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<next_ee_id<<std::endl;
         }
+        // from now on, first is movable and second is not movable: I don't need to keep ordering in here
+	if (!movable && next_movable)
+	{
+	  KDL::Frame switch_frame(Object_FirstEE);
+	  Object_FirstEE = Object_SecondEE;
+	  Object_SecondEE = switch_frame;
+	  endeffector_id switch_id = ee_id;
+	  ee_id = next_ee_id;
+	  next_ee_id = switch_id;
+	  // grasps are not used later, but just in case
+	  grasp_id switch_grasp = grasp;
+	  grasp = next_grasp;
+	  next_grasp = switch_grasp;
+	}
         
         // This will place the secondEE (not movable) exactly on the centroid (a table is on the centroid of the workspace)
         KDL::Frame World_Object = World_Centroid*Object_SecondEE.Inverse();
+	// to use for rotations, axis aligned with world z computed in object frame
+	KDL::Vector Object_worldZ(World_Object.Inverse().M*KDL::Vector(0,0,1));
+        
+	for (double anglez=0;anglez<M_PI;anglez=anglez+0.1)
+        {
+            KDL::Frame World_Object_Rotatedz1=World_Object*KDL::Frame(KDL::Rotation::Rot(Object_worldZ,anglez));
+            //iterate along rotation until a solution if found
+	    found = check_ik(ee_id,World_Object_Rotatedz1*Object_FirstEE,next_ee_id,World_Object_Rotatedz1*Object_SecondEE);
+	    if (found)
+	    {
+	      World_Object = World_Object_Rotatedz1;
+	      break;
+	    }
+            if (anglez==0) continue;
+            KDL::Frame World_Object_Rotatedz2=World_Object*KDL::Frame(KDL::Rotation::Rot(Object_worldZ,-anglez));
+	    found = check_ik(ee_id,World_Object_Rotatedz2*Object_FirstEE,next_ee_id,World_Object_Rotatedz2*Object_SecondEE);
+            if (found)
+	    {
+	      World_Object = World_Object_Rotatedz2;
+	      break;
+	    }
+        }
 
-        //TODO: rotate World_Object around z axes
-        //compute world_eeid = World_ObjectRotated*Object_FirstEE;
-        //check if feasible
-        //etc etc
-
-    }
-    else if (!movable && next_movable)
-    {
-        //Case second movable
+        // at the end, switch frames if necessary
+	if (!movable && next_movable)
+	{
+	  KDL::Frame switch_frame(Object_FirstEE);
+	  Object_FirstEE = Object_SecondEE;
+	  Object_SecondEE = switch_frame;
+	}
     }
     else if (!movable && !next_movable)
     {
