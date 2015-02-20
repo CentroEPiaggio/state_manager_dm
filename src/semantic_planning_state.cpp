@@ -220,7 +220,7 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
 	}
         
         // This will place the secondEE (not movable) exactly on the centroid (a table is on the centroid of the workspace)
-        KDL::Frame World_Object = World_Centroid*Object_SecondEE.Inverse();
+        World_Object = World_Centroid*Object_SecondEE.Inverse();
 	// to use for rotations, axis aligned with world z computed in object frame
 	KDL::Vector Object_worldZ(World_Object.Inverse().M*KDL::Vector(0,0,1));
         
@@ -351,15 +351,20 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 }
                 else  //not found->last e.e, movable, different workspaces
                 {
-                    // 3.4.2) We move the last==current end effector in the final workspace centroid, later on we will change this to the final desired position
+                    // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
                     compute_centroid(centroid_x,centroid_y,next_workspace_id);
                     centroid_z=HIGH;
                     cartesian_command temp;
                     temp.seq_num = 1;
                     temp.ee_grasp_id=node->grasp_id;
-                    temp.cartesian_task.position.x=centroid_x;
-                    temp.cartesian_task.position.y=centroid_y;
-                    temp.cartesian_task.position.z=centroid_z;
+		    KDL::Frame Object_EE,World_Object;
+		    bool ok=getPreGraspMatrix(data.obj_id,node->grasp_id,Object_EE);
+		    if (!ok) 
+		    {
+			std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
+		    }
+		    tf::poseMsgToKDL(data.target_position,World_Object);
+		    tf::poseKDLToMsg(World_Object*Object_EE,temp.cartesian_task);
                     temp.command=cartesian_commands::MOVE;
                     result.push_back(std::make_pair(ee_id,temp));
                     break; //This break jumps to 4)
@@ -384,7 +389,22 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             {centroid_z=HIGH;}
             else //one is movable, change on ground
             {centroid_z=0;}
-            compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id,movable,next_movable);
+            
+            // treat differently the first and last cases if the associated end-effector is not movable
+            if ((node == path.begin()) && (!movable))
+	    {
+		std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
+		tf::poseMsgToKDL(data.source_position,World_Object);
+	    }
+	    else if ((++next_node) == path.end())
+	    {
+		std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
+		tf::poseMsgToKDL(data.target_position,World_Object);
+	    }
+	    else
+	    {
+		compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id,movable,next_movable);
+	    }
 
             //--------------
 
@@ -447,17 +467,6 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
         }
         
     }
-    //4) move the second e.e (if the first is not movable) in the source position (got from getting_info)
-    auto initial_node=path.front();
-    ee_id = std::get<1>(database.Grasps.at(initial_node.grasp_id));
-    movable=std::get<1>(database.EndEffectors.at(ee_id));
-    if (!movable)
-    {
-        result.front().second.cartesian_task=data.source_position;
-    }
-
-    //5) move the last e.e in the final position (got from getting_info)
-    result.back().second.cartesian_task=data.target_position;
     return true;
 }
 
@@ -564,9 +573,12 @@ void semantic_planning_state::run()
         return;
         
     }
+    std::cout << "=== Cartesian plan print-out ===" << std::endl;
+    std::cout << "( Note that grasp/ungrasp poses are the object poses, not the end-effector ones )" << std::endl;
     data.cartesian_plan = result;
     for (auto i:result)
         std::cout<<i<<std::endl;
+    std::cout << "=== end of cartesian plan print-out ===" << std::endl;
     //TODO parallelize movements between arms?!?
     internal_state.insert(std::make_pair(transition::good_plan,true));
     completed=true;
