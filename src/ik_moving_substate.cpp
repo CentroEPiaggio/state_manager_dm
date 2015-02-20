@@ -1,4 +1,5 @@
 #include "ik_moving_substate.h"
+#include "dual_manipulation_shared/serialization_utils.h"
 
 ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
 {
@@ -88,7 +89,7 @@ void ik_moving_substate::run()
 
     moving_executed = 0;
 
-    geometry_msgs::Pose ee_pose;
+//     geometry_msgs::Pose ee_pose;
     
     int i=-1;
     int move_num=0;
@@ -104,25 +105,51 @@ void ik_moving_substate::run()
     {
         i++;
         auto item = data_.cartesian_plan->at(data_.next_plan++);
-	ee_pose=item.second.cartesian_task;
+// 	ee_pose=item.second.cartesian_task;
 
 	if(item.second.command!=cartesian_commands::MOVE)
 	{
-		srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-		srv.request.command = command_map.at(item.second.command);
-		srv.request.time = 0;
-		srv.request.ee_pose.push_back(ee_pose);
-
-	    	if (client.call(srv))
+		if(item.second.command==cartesian_commands::GRASP)
 		{
-		    ROS_INFO_STREAM("IK Exec Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
-		}
-		else
-		{
-	// 	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
-		}
+	// 		srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+	// 		srv.request.command = command_map.at(item.second.command);
+	// 		srv.request.time = 0;
+	// 		srv.request.ee_pose.push_back(ee_pose);
+		  
+			if(!deserialize_ik(srv.request,"object" + std::to_string(data_.obj_id) + "/grasp" + std::to_string(item.second.ee_grasp_id)))
+			{
+			    ROS_ERROR("Failed to deserialize");
+			}
+			else
+			{
+				if (client.call(srv))
+				{
+				    ROS_INFO_STREAM("IK Grasp Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
+				}
+				else
+				{
+			// 	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+				}
 
-		moving_executed++;
+				moving_executed++;
+			}
+		}
+		if(item.second.command!=cartesian_commands::UNGRASP)
+		{
+			srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+			srv.request.command = command_map.at(item.second.command);
+		  
+			if (client.call(srv))
+			{
+			    ROS_INFO_STREAM("IK Ungrasp Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
+			}
+			else
+			{
+			// 	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+			}
+
+			moving_executed++;
+		}
 	}
 	else
 	{

@@ -47,6 +47,7 @@ public:
   const std::vector<std::pair<endeffector_id,cartesian_command>>* cartesian_plan;
   std::map<std::string,bool> ees_grasped;
   std::map<std::string,KDL::Frame> objects_ees;
+  object_id obj_id;
 };
 
 #endif // SHARED_MEMORY_H

@@ -11,6 +11,7 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     print_plan();
     subdata.cartesian_plan = &data.cartesian_plan;
     subdata.next_plan=0;
+    subdata.obj_id = data.obj_id;
 
     auto ik_planning = new ik_planning_substate(subdata);
     auto ik_moving = new ik_moving_substate(subdata);
