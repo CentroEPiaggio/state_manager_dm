@@ -80,13 +80,13 @@ bool semantic_planning_state::inverse_kinematics(std::string ee_name, KDL::Frame
 {
     static ros::NodeHandle n;
     static ros::ServiceClient client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
-    static ros::Subscriber plan_lsub = n.subscribe("/ik_control/left_hand/planning_done",0,plan_callback_l);
-    static ros::Subscriber plan_rsub = n.subscribe("/ik_control/right_hand/planning_done",0,plan_callback_r);
+    static ros::Subscriber plan_lsub = n.subscribe("/ik_control/left_hand/check_done",0,plan_callback_l);
+    static ros::Subscriber plan_rsub = n.subscribe("/ik_control/right_hand/check_done",0,plan_callback_r);
     dual_manipulation_shared::ik_service srv;
     
     geometry_msgs::Pose ee_pose;
     tf::poseKDLToMsg(cartesian,ee_pose);
-    srv.request.command = "plan";
+    srv.request.command = "ik_check";
     srv.request.ee_pose.clear();
     srv.request.ee_pose.push_back(ee_pose);
     srv.request.ee_name = ee_name;
@@ -103,84 +103,116 @@ bool semantic_planning_state::inverse_kinematics(std::string ee_name, KDL::Frame
     return true;
 }
 
-bool semantic_planning_state::compute_intergrasp_orientation(double centroid_x, double centroid_y, double centroid_z, KDL::Frame& World_Object, endeffector_id ee_id, endeffector_id next_ee_id, grasp_id grasp, grasp_id next_grasp, object_id object)
+bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, 
+                                                             endeffector_id ee_id, endeffector_id next_ee_id, grasp_id grasp, 
+                                                             grasp_id next_grasp, object_id object,bool movable,bool next_movable)
 {
-//Case both movable (centroid_z should be HIGH)
-    KDL::Frame World_Centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
-    KDL::Frame Object_FirstEE, Object_SecondEE;
-    bool ok=getPreGraspMatrix(object,grasp,Object_FirstEE);
-    if (!ok) 
-    {
-        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
-    }
-    ok = getPreGraspMatrix(object,next_grasp,Object_SecondEE);
-    if (!ok) 
-    {
-        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<next_ee_id<<std::endl;
-    }
-    
-//     Object_FirstEE=database.Grasps_sequence[grasp][0].first;
-//     Object_SecondEE=database.Grasps_sequence[next_grasp][0].first.Inverse();
-    KDL::Frame Object_MiddlePosition;
-    Object_MiddlePosition.p=(Object_FirstEE.p+Object_SecondEE.p)/2;
-    KDL::Vector Object_Xmiddle=Object_SecondEE.p-Object_FirstEE.p;
-    Object_Xmiddle.Normalize();
-    double a=Object_Xmiddle.x();
-    double b=Object_Xmiddle.y();
-    double c=Object_Xmiddle.z();
-    KDL::Vector Object_Zmiddle(a*c,b*c,1-c*c); //(I - X^T * X ) * (0 0 1)^T
-    /*
-    a b c   a b c
-    1-aa  ab  ac  0    ac
-    ba  1-bb  bc  0 =  bc
-    ca  cb  1-cc  1    1-cc
-    */
-    Object_Zmiddle.Normalize();
-    KDL::Vector Object_Ymiddle=Object_Zmiddle*Object_Xmiddle;
-    Object_Ymiddle.Normalize();//Just in case
-    Object_MiddlePosition.M=KDL::Rotation(Object_Xmiddle,Object_Ymiddle,Object_Zmiddle);
     bool found=false;
-    for (double anglez=0;anglez<M_PI;anglez=anglez+0.1)
+    if (movable && next_movable)
     {
-        KDL::Frame Object_MiddlePositionRotatedz1=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Zmiddle,anglez));
-        //iterate along rotation until a solution if found
-        for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
+        //Case both movable (centroid_z should be HIGH)
+        KDL::Frame World_Centroid(World_centroid);
+        KDL::Frame Object_FirstEE, Object_SecondEE;
+        bool ok=getPreGraspMatrix(object,grasp,Object_FirstEE);
+        if (!ok) 
         {
-            //find back the grasps
-            KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
-            World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
-            found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
+        }
+        ok = getPreGraspMatrix(object,next_grasp,Object_SecondEE);
+        if (!ok) 
+        {
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<next_ee_id<<std::endl;
+        }
+        
+    //     Object_FirstEE=database.Grasps_sequence[grasp][0].first;
+    //     Object_SecondEE=database.Grasps_sequence[next_grasp][0].first.Inverse();
+        KDL::Frame Object_MiddlePosition;
+        Object_MiddlePosition.p=(Object_FirstEE.p+Object_SecondEE.p)/2;
+        KDL::Vector Object_Xmiddle=Object_SecondEE.p-Object_FirstEE.p;
+        Object_Xmiddle.Normalize();
+        double a=Object_Xmiddle.x();
+        double b=Object_Xmiddle.y();
+        double c=Object_Xmiddle.z();
+        KDL::Vector Object_Zmiddle(a*c,b*c,1-c*c); //(I - X^T * X ) * (0 0 1)^T
+        /*
+        a b c   a b c
+        1-aa  ab  ac  0    ac
+        ba  1-bb  bc  0 =  bc
+        ca  cb  1-cc  1    1-cc
+        */
+        Object_Zmiddle.Normalize();
+        KDL::Vector Object_Ymiddle=Object_Zmiddle*Object_Xmiddle;
+        Object_Ymiddle.Normalize();//Just in case
+        Object_MiddlePosition.M=KDL::Rotation(Object_Xmiddle,Object_Ymiddle,Object_Zmiddle);
+        for (double anglez=0;anglez<M_PI;anglez=anglez+0.1)
+        {
+            KDL::Frame Object_MiddlePositionRotatedz1=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Zmiddle,anglez));
+            //iterate along rotation until a solution if found
+            for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
+            {
+                //find back the grasps
+                KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
+                World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
+                found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+                if (found) break;
+                KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
+                World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
+                found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+                if (found) break;
+            }
             if (found) break;
-            KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
-            World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
-            found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+            KDL::Frame Object_MiddlePositionRotatedz2=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Zmiddle,-anglez));
+            //iterate along rotation until a solution if found
+            for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
+            {
+                //find back the grasps
+                KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
+                World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
+                found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+                if (found) break;
+                KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
+                World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
+                found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+                if (found) break;
+            }
             if (found) break;
         }
-        if (found) break;
-        KDL::Frame Object_MiddlePositionRotatedz2=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Zmiddle,-anglez));
-        //iterate along rotation until a solution if found
-        for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
-        {
-            //find back the grasps
-            KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
-            World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
-            found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
-            if (found) break;
-            KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
-            World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
-            found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
-            if (found) break;
-        }
-        if (found) break;
     }
-//Case first movable
-    
-    
-    
-//Case second movable
-    
-    
-    
+    else if (movable && !next_movable)
+    {
+        //Case first movable
+        KDL::Frame World_Centroid(World_centroid);
+        KDL::Frame Object_FirstEE, Object_SecondEE;
+        bool ok=getPreGraspMatrix(object,grasp,Object_FirstEE);
+        if (!ok) 
+        {
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
+        }
+        ok = getPreGraspMatrix(object,next_grasp,Object_SecondEE);
+        if (!ok) 
+        {
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<next_ee_id<<std::endl;
+        }
+        
+        // This will place the secondEE (not movable) exactly on the centroid (a table is on the centroid of the workspace)
+        KDL::Frame World_Object = World_Centroid*Object_SecondEE.Inverse();
+
+        //TODO: rotate World_Object around z axes
+        //compute world_eeid = World_ObjectRotated*Object_FirstEE;
+        //check if feasible
+        //etc etc
+
+    }
+    else if (!movable && next_movable)
+    {
+        //Case second movable
+    }
+    else if (!movable && !next_movable)
+    {
+        //error 4!!
+        std::cout<<"error! both E.E. are not movable"<<std::endl;
+        return false;
+    }
     return found;
 }
 
@@ -304,15 +336,11 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,next_workspace_id);
             if (movable && next_movable) //both ee are movable: change above ground
-            {
-                centroid_z=HIGH;
-                compute_intergrasp_orientation(centroid_x,centroid_y,centroid_z,World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id);
-            }
+            {centroid_z=HIGH;}
             else //one is movable, change on ground
-            {
-                centroid_z=0;
-                compute_intergrasp_orientation(centroid_x,centroid_y,centroid_z,World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id);
-            }
+            {centroid_z=0;}
+            compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id,movable,next_movable);
+
             //--------------
 
             //3.7) Inizialize some temporary commands to be pushed back into the plan 

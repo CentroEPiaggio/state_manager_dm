@@ -25,7 +25,9 @@ public:
     
 private:
     void compute_centroid(double& centroid_x,double& centroid_y, workspace_id w_id);
-    bool compute_intergrasp_orientation(double centroid_x, double centroid_y, double centroid_z, KDL::Frame& World_Object, endeffector_id ee_id, endeffector_id next_ee_id, grasp_id grasp, grasp_id next_grasp, object_id object);
+    bool compute_intergrasp_orientation(KDL::Vector centroid, KDL::Frame& World_Object, endeffector_id ee_id, 
+                                        endeffector_id next_ee_id, grasp_id grasp, grasp_id next_grasp, 
+                                        object_id object,bool movable,bool next_movable);
     bool inverse_kinematics(std::string ee_name, KDL::Frame cartesian);
     bool check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE);
     bool getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
