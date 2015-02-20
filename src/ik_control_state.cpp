@@ -7,7 +7,7 @@
 
 ik_control_state::ik_control_state(shared_memory& data):data_(data)
 {
-    fake_plan();
+    // fake_plan();
     print_plan();
     subdata.cartesian_plan = &data.cartesian_plan;
     subdata.next_plan=0;

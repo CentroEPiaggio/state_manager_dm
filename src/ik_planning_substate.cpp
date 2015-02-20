@@ -82,10 +82,18 @@ void ik_planning_substate::run()
 	ee_pose=item.second.cartesian_task;
 
 	srv.request.command = "plan";
-	if(i>0) srv.request.ee_name="both";
+	srv.request.ee_pose.push_back(ee_pose);
+	if(i>0)
+	{
+	    srv.request.ee_name="both_hands";
+	    if (std::get<0>(db_mapper.EndEffectors.at(item.first)) != "right_hand")
+	    {
+		//exchange the poses: they have to be: ee_pose[0] -> left; ee_pose[1] -> right
+		std::swap(srv.request.ee_pose.front(),srv.request.ee_pose.back());
+	    }
+	}
 	else srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
 	srv.request.time = 2;
-	srv.request.ee_pose.push_back(ee_pose);
 
     } while(data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0);
 
