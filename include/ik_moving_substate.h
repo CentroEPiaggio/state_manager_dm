@@ -33,6 +33,17 @@ private:
     void callback_bimanual(const std_msgs::String::ConstPtr& str);
     void callback_l_grasp(const std_msgs::String::ConstPtr& str);
     void callback_r_grasp(const std_msgs::String::ConstPtr& str);
+    
+    /**
+     * @brief change frame of reference of the grasp trajectory to the current object frame
+     * 
+     * @param object_pose
+     *        the current pose of the object (to be used for the local grasp trajectory @ee_pose
+     * @param ee_pose
+     *        a grasp trajectory expressed in object_frame, which will be returned expressed in world frame
+     *        (i.e., each frame will be "pre-multiplied" by object_pose)
+     */
+    void change_frame_to_pose_vector(geometry_msgs::Pose object_pose_msg, std::vector<geometry_msgs::Pose>& ee_pose);
 
     std::map<cartesian_commands,std::string> command_map;
     databaseMapper db_mapper;

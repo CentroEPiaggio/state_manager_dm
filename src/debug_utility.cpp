@@ -17,8 +17,8 @@ void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs:
 
     data.source_position.position.x = -0.35;
     data.source_position.position.y = 0.3;
-    data.source_position.position.z = 0.051;
-    data.source_grasp=fake_get_grasp_id_from_database();
+    data.source_position.position.z = 0.06;
+    data.source_grasp=12; // in this position, this is the right grasp I would expect from a function // fake_get_grasp_id_from_database();
     data.obj_id=1;
     data.object_name="cylinder";
     double roll = 1.565;

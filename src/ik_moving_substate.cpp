@@ -1,5 +1,6 @@
 #include "ik_moving_substate.h"
 #include "dual_manipulation_shared/serialization_utils.h"
+#include <kdl_conversions/kdl_msg.h>
 
 ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
 {
@@ -122,6 +123,8 @@ void ik_moving_substate::run()
 			}
 			else
 			{
+				// change frame of reference of the grasp trajectory to the current object frame
+				change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
 				if (client.call(srv))
 				{
 				    ROS_INFO_STREAM("IK Grasp Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
@@ -134,11 +137,14 @@ void ik_moving_substate::run()
 				moving_executed++;
 			}
 		}
-		if(item.second.command!=cartesian_commands::UNGRASP)
+		if(item.second.command==cartesian_commands::UNGRASP)
 		{
 			srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
 			srv.request.command = command_map.at(item.second.command);
 		  
+			// change frame of reference of the grasp trajectory to the current object frame
+			// (at now this is not necessary for ad ungrasp, but just in case
+			change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
 			if (client.call(srv))
 			{
 			    ROS_INFO_STREAM("IK Ungrasp Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
@@ -162,7 +168,7 @@ void ik_moving_substate::run()
     if(move_num>0)
     {
         srv.request.command = command_map.at(cartesian_commands::MOVE);
-	if(move_num>1) srv.request.ee_name="both";
+	if(move_num>1) srv.request.ee_name="both_hands";
 	else srv.request.ee_name = ee_name;
 
 	if(client.call(srv))
@@ -182,4 +188,15 @@ void ik_moving_substate::run()
 std::string ik_moving_substate::get_type()
 {
     return "ik_moving_substate";
+}
+
+void ik_moving_substate::change_frame_to_pose_vector(geometry_msgs::Pose object_pose_msg, std::vector< geometry_msgs::Pose >& ee_pose)
+{
+    KDL::Frame object_frame,ee_single_frame;
+    tf::poseMsgToKDL(object_pose_msg,object_frame);
+    for(auto item:ee_pose)
+    {
+	tf::poseMsgToKDL(item,ee_single_frame);
+	tf::poseKDLToMsg(object_frame*ee_single_frame,item);
+    }
 }
