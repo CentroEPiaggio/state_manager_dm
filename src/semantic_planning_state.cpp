@@ -429,8 +429,19 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             }
             
             //3.10) after moving one or two end effectors, we can grasp/ungrasp depending on the state of the ee and of movable/not movable
-            if (next_movable) {result.push_back(std::make_pair(next_ee_id,ee_grasped[next_ee_id]?ungrasp:grasp));ee_grasped[next_ee_id]=!ee_grasped[next_ee_id];}
-            if (movable) {result.push_back(std::make_pair(ee_id,ee_grasped[ee_id]?ungrasp:grasp));ee_grasped[ee_id]=!ee_grasped[ee_id];}
+            // make sure that the grasp/ungrasp actions have the object frame
+            tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
+            tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
+            if (next_movable)
+	    {
+	      result.push_back(std::make_pair(next_ee_id,ee_grasped[next_ee_id]?ungrasp:grasp));
+	      ee_grasped[next_ee_id]=!ee_grasped[next_ee_id];
+	    }
+            if (movable)
+	    {
+	      result.push_back(std::make_pair(ee_id,ee_grasped[ee_id]?ungrasp:grasp));
+	      ee_grasped[ee_id]=!ee_grasped[ee_id];
+	    }
             node=next_node;
             continue;
         }
