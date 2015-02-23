@@ -29,32 +29,47 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
 
 void ik_moving_substate::callback_l(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Left IK Exec : %s",str->data.c_str());
-    if(str->data.c_str()=="done") moving_executed--;
+    ROS_INFO_STREAM("Left IK Exec : " << str->data << " | moving_executed = " << moving_executed);
+    if(str->data=="done")
+	moving_executed--;
+    else
+	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
 }
 
 void ik_moving_substate::callback_r(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Right IK Exec : %s",str->data.c_str());
-    if(str->data.c_str()=="done") moving_executed--;
+    ROS_INFO_STREAM("Right IK Exec : " << str->data << " | moving_executed = " << moving_executed);
+    if(str->data=="done")
+	moving_executed--;
+    else
+	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
 }
 
 void ik_moving_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Both Hands IK Exec : %s",str->data.c_str());
-    if(str->data.c_str()=="done") moving_executed--;
+    ROS_INFO_STREAM("Both Hands IK Exec : " << str->data << " | moving_executed = " << moving_executed);
+    if(str->data=="done")
+	moving_executed--;
+    else
+	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
 }
 
 void ik_moving_substate::callback_r_grasp(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Right IK Exec : %s",str->data.c_str());
-    if(str->data.c_str()=="done") moving_executed--;
+    ROS_INFO_STREAM("Right IK Grasp : " << str->data << " | moving_executed = " << moving_executed);
+    if(str->data=="done")
+	moving_executed--;
+    else
+	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
 }
 
 void ik_moving_substate::callback_l_grasp(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Right IK Exec : %s",str->data.c_str());
-    if(str->data.c_str()=="done") moving_executed--;
+    ROS_INFO_STREAM("Left IK Grasp : " << str->data << " | moving_executed = " << moving_executed);
+    if(str->data=="done")
+	moving_executed--;
+    else
+	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
 }
 
 std::map< ik_transition, bool > ik_moving_substate::getResults()
@@ -105,26 +120,26 @@ void ik_moving_substate::run()
     do
     {
         i++;
-        auto item = data_.cartesian_plan->at(data_.next_plan++);
+        auto item = data_.cartesian_plan->at(data_.next_plan+i);
 // 	ee_pose=item.second.cartesian_task;
 
 	if(item.second.command!=cartesian_commands::MOVE)
 	{
 		if(item.second.command==cartesian_commands::GRASP)
 		{
-	// 		srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-	// 		srv.request.command = command_map.at(item.second.command);
-	// 		srv.request.time = 0;
-	// 		srv.request.ee_pose.push_back(ee_pose);
-		  
-			if(!deserialize_ik(srv.request,"object" + std::to_string(data_.obj_id) + "/grasp" + std::to_string(item.second.ee_grasp_id)))
+			if(!deserialize_ik(srv.request,"object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string((int)item.second.ee_grasp_id)))
 			{
-			    ROS_ERROR("Failed to deserialize");
+			    ROS_ERROR_STREAM("Failed to deserialize object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string((int)item.second.ee_grasp_id));
 			}
 			else
 			{
+				srv.request.attObject.object.id = *data_.object_name;
+				srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+				srv.request.command = command_map.at(item.second.command);
+			
 				// change frame of reference of the grasp trajectory to the current object frame
 				change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
+
 				if (client.call(srv))
 				{
 				    ROS_INFO_STREAM("IK Grasp Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
@@ -163,7 +178,10 @@ void ik_moving_substate::run()
 		ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
 	}
     }
-    while(data_.cartesian_plan->at(data_.next_plan).second.seq_num==0);
+    while(data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0);
+    
+    // add all the checked phases of the plan to data_.next_plan
+    data_.next_plan += i+1;
     
     if(move_num>0)
     {
@@ -194,9 +212,9 @@ void ik_moving_substate::change_frame_to_pose_vector(geometry_msgs::Pose object_
 {
     KDL::Frame object_frame,ee_single_frame;
     tf::poseMsgToKDL(object_pose_msg,object_frame);
-    for(auto item:ee_pose)
+    for(int i=0; i<ee_pose.size(); ++i)
     {
-	tf::poseMsgToKDL(item,ee_single_frame);
-	tf::poseKDLToMsg(object_frame*ee_single_frame,item);
+	tf::poseMsgToKDL(ee_pose.at(i),ee_single_frame);
+	tf::poseKDLToMsg(object_frame*ee_single_frame,ee_pose.at(i));
     }
 }

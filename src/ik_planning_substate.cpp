@@ -22,20 +22,29 @@ ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
 
 void ik_planning_substate::callback_l(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Left IK Plan : %s",str->data.c_str());
-    if(str->data.c_str()=="done") plan_executed--;
+    ROS_INFO_STREAM("Left IK Plan : " << str->data << " | plan_executed = " << plan_executed);
+    if(str->data=="done")
+	plan_executed--;
+    else
+	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
 }
 
 void ik_planning_substate::callback_r(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Right IK Plan : %s",str->data.c_str());
-    if(str->data.c_str()=="done") plan_executed--;
+    ROS_INFO_STREAM("Right IK Plan : " << str->data << " | plan_executed = " << plan_executed);
+    if(str->data=="done")
+	plan_executed--;
+    else
+	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
 }
 
 void ik_planning_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
 {
-    ROS_INFO("Both Hands IK Plan : %s",str->data.c_str());
-    if(str->data.c_str()=="done") plan_executed--;
+    ROS_INFO_STREAM("Both Hands IK Plan : " << str->data << " | plan_executed = " << plan_executed);
+    if(str->data=="done")
+	plan_executed--;
+    else
+	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
 }
 
 std::map< ik_transition, bool > ik_planning_substate::getResults()
@@ -75,10 +84,13 @@ void ik_planning_substate::run()
         i++;
 	auto item = data_.cartesian_plan->at(data_.next_plan+i);
 
-	if(item.second.command!=cartesian_commands::MOVE) continue;
-
-	plan_executed++;
-
+	if(item.second.command!=cartesian_commands::MOVE) 
+	{
+	    ROS_INFO_STREAM("Command was not MOVE: returning to ik_moving_substate");
+	    plan_sent = true;
+	    return;
+	}
+	
 	ee_pose=item.second.cartesian_task;
 
 	srv.request.command = "plan";
@@ -96,6 +108,8 @@ void ik_planning_substate::run()
 	srv.request.time = 2;
 
     } while(data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0);
+
+    plan_executed++;
 
     if(client.call(srv))
     {
