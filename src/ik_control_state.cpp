@@ -4,6 +4,7 @@
 #include "../include/ik_grasping_substate.h"
 #include "../include/ik_checking_grasp_substate.h"
 #include "tf/tf.h"
+#include "tf/transform_broadcaster.h"
 
 ik_control_state::ik_control_state(shared_memory& data):data_(data)
 {
@@ -11,7 +12,8 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     print_plan();
     subdata.cartesian_plan = &data.cartesian_plan;
     subdata.next_plan=0;
-    subdata.obj_id = data.obj_id;
+    subdata.obj_id = &data.obj_id;
+    subdata.object_name = &data.object_name;
 
     auto ik_planning = new ik_planning_substate(subdata);
     auto ik_moving = new ik_moving_substate(subdata);
@@ -57,9 +59,13 @@ void ik_control_state::run()
 {
     if(current_state->get_type()=="ik_exiting_substate") complete = true;
 
+    show_plan_with_tf();
+    
     current_state->run();
+    
     if (current_state->isComplete())
     {
+	ROS_INFO_STREAM("current_state " << current_state->get_type() << " is complete!");
 	auto temp_map = current_state->getResults();
 	for (auto temp:temp_map)
 	    transition_map[temp.first]=temp.second;
@@ -71,6 +77,13 @@ void ik_control_state::run()
 	{
 	    current_state=temp_state;
 	    std::cout<<"- new substate type: "<<current_state->get_type()<<std::endl;
+	    std::cout << "press 'y' key and enter to proceed" << std::endl;
+	    char tmp = 'n';
+	    while (tmp!='y')
+	    {
+	      std::cin >> tmp;
+	      usleep(200000);
+	    }
 	    transition_map.clear();
 	    break;
 	}
@@ -98,5 +111,22 @@ void ik_control_state::print_plan()
             " o.x: "<< subitem.second.cartesian_task.orientation.x<<" o.y: "<< subitem.second.cartesian_task.orientation.y<<" o.z: "<< subitem.second.cartesian_task.orientation.z<<" o.w: "<< subitem.second.cartesian_task.orientation.w<<" ]"<<std::endl);
 	}
 	i++;
+    }
+}
+
+void poseCallback(const cartesian_command& msg, std::string prefix)
+{
+  static tf::TransformBroadcaster br;
+  tf::Transform transform;
+  tf::poseMsgToTF(msg.cartesian_task,transform);
+  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", prefix + " | command:" + std::to_string((int)msg.command)));
+}
+
+void ik_control_state::show_plan_with_tf()
+{
+    int i=0;
+    for (auto item:(*subdata.cartesian_plan))
+    {
+      poseCallback(item.second, std::to_string(i++) + "ee_id:" + std::to_string((int)item.first));
     }
 }
