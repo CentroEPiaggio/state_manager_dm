@@ -3,7 +3,11 @@
 #include <dual_manipulation_shared/gui_target_service.h>
 #include "tf/tf.h"
 #include <visualization_msgs/Marker.h>
+#include <kdl_conversions/kdl_msg.h>
 #include "dual_manipulation_shared/scene_object_service.h"
+#include "../../shared/include/dual_manipulation_shared/databasemapper.h"
+#include <dual_manipulation_shared/serialization_utils.h>
+#include <dual_manipulation_shared/ik_service.h>
 
 extern void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& source_marker,visualization_msgs::Marker& target_marker);
 extern void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs::Marker& source_marker);
@@ -33,7 +37,50 @@ void getting_info_state::get_start_position_from_vision(visualization_msgs::Mark
 
 int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id)
 {
-    return fake_get_grasp_id_from_database();
+    // make sure we are considering only table grasps
+    ee_id = 3;
+    ROS_WARN_STREAM("!! getting_info_state::get_grasp_id_from_database : only considering table grasps for now !!");
+    
+    KDL::Frame obj_frame,grasp_frame;
+    tf::poseMsgToKDL(pose,obj_frame);
+    double r0,p0,y0,r1,p1,y1;
+    obj_frame.M.GetRPY(r0,p0,y0);
+    std::vector<geometry_msgs::Pose> grasp_traj;
+    
+    int best_grasp = -1;
+    double distance = -1.0;
+    
+    for (auto item:db_mapper_.Grasps)
+    {
+	auto ee_id_tmp = std::get<1>(item.second);
+	// for each grasp, if the end-effector is the right one
+	if ((int)ee_id_tmp == ee_id)
+	{
+	    // deserialize grasp
+	    dual_manipulation_shared::ik_service srv;
+	    // ROS_INFO_STREAM("Deserializing object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
+	    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
+	    if (ok)
+	      tf::poseMsgToKDL(srv.request.ee_pose.back(),grasp_frame);
+	    else
+	      ROS_WARN_STREAM("Unable to deserialize grasp entry : object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
+	    
+	    // from final grasp pose, get RPY angles
+	    grasp_frame.Inverse().M.GetRPY(r1,p1,y1);
+	  
+	    // check distance of the first two rotations (don't consider yaw, for which table grasps are invariant)
+	    if ((distance < 0) || ((r1-r0)*(r1-r0)+(p1-p0)*(p1-p0)) < distance)
+	    {
+		distance = ((r1-r0)*(r1-r0)+(p1-p0)*(p1-p0));
+		best_grasp = item.first;
+	    }
+	}
+    }
+    
+    ROS_INFO_STREAM("Best grasp found: " << best_grasp);
+    return best_grasp;
+
+    // return fake_get_grasp_id_from_database();
 }
 
 void getting_info_state::get_target_position_from_user(visualization_msgs::Marker& target_marker)
@@ -48,16 +95,7 @@ void getting_info_state::get_target_position_from_user(visualization_msgs::Marke
 	if(srv.response.ack) ROS_INFO_STREAM("Target set to "<<srv.response.target_pose.position.x<<' '<<srv.response.target_pose.position.y<<' '<<srv.response.target_pose.position.z
 	  <<' '<<srv.response.target_pose.orientation.x<<' '<<srv.response.target_pose.orientation.y<<' '<<srv.response.target_pose.orientation.z<<' '<<srv.response.target_pose.orientation.w);
         
-	data_.target_position.position.x = srv.response.target_pose.position.x;
-	data_.target_position.position.y = srv.response.target_pose.position.y;
-	data_.target_position.position.z = srv.response.target_pose.position.z;
-
-	double roll = 1.565;
-	double pitch = 0.0;
-	double yaw = 0.336;
-	tf::Quaternion q;
-	q.setRPY(roll,pitch,yaw);
-	tf::quaternionTFToMsg(q,data_.target_position.orientation);
+	data_.target_position = srv.response.target_pose;
 	
 	// TODO: ask for desired target end-effector; maybe even for desired final grasp?
 	data_.target_grasp=get_grasp_id_from_database(data_.obj_id,data_.target_position);

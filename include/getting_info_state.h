@@ -4,6 +4,7 @@
 #include <abstract_state.h>
 #include "ros/ros.h"
 #include <visualization_msgs/Marker.h>
+#include <dual_manipulation_shared/databasemapper.h>
 
 class getting_info_state : public abstract_state<transition>
 {
@@ -19,6 +20,8 @@ private:
     ros::NodeHandle n;
     ros::Publisher pub;
     ros::ServiceClient planner_client, gui_target_client, scene_object_client;
+    
+    databaseMapper db_mapper_;
 
     void get_start_position_from_vision(visualization_msgs::Marker& source_marker);
     
@@ -31,6 +34,7 @@ private:
      *   the pose for which we want to know the grasp
      * @param ee_id
      *   the id of the end-effector, decided from the user (default = table)
+     *   (at now table is the only implemented one)
      * @return the index of the associated grasp id
      */
     int get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id = 3);
