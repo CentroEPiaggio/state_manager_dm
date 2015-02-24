@@ -134,8 +134,13 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
             std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<next_ee_id<<std::endl;
         }
         
-    //     Object_FirstEE=database.Grasps_sequence[grasp][0].first;
-    //     Object_SecondEE=database.Grasps_sequence[next_grasp][0].first.Inverse();
+	// TODO: test the more general code (below) in an accurate way
+	World_Object.p = World_Centroid.p;
+	double rotz = (ee_id==1?M_PI/2.0:-M_PI/2.0);
+	World_Object.M = KDL::Rotation::RotZ(rotz)*Object_FirstEE.M.Inverse();
+	return true;
+	// TODO: take the above code out
+	
         KDL::Frame Object_MiddlePosition;
         Object_MiddlePosition.p=(Object_FirstEE.p+Object_SecondEE.p)/2;
         KDL::Vector Object_Xmiddle=Object_SecondEE.p-Object_FirstEE.p;
@@ -396,7 +401,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
 		std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
 		tf::poseMsgToKDL(data.source_position,World_Object);
 	    }
-	    else if ((++next_node) == path.end())
+	    else if ((next_node+1) == path.end())
 	    {
 		std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
 		tf::poseMsgToKDL(data.target_position,World_Object);
