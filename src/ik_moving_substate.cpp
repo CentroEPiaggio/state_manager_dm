@@ -75,7 +75,7 @@ void ik_moving_substate::callback_l_grasp(const std_msgs::String::ConstPtr& str)
 std::map< ik_transition, bool > ik_moving_substate::getResults()
 {
     std::map< ik_transition, bool > results;
-    if(data_.next_plan == data_.cartesian_plan->size()-1)
+    if(data_.next_plan == data_.cartesian_plan->size())
     {
 	results[ik_transition::done]=(moving_executed==0);
     }
@@ -90,7 +90,7 @@ std::map< ik_transition, bool > ik_moving_substate::getResults()
 
 bool ik_moving_substate::isComplete()
 {  
-    if(data_.next_plan == data_.cartesian_plan->size()) moving_executed=0;
+    if(data_.next_plan == data_.cartesian_plan->size()+1) moving_executed=0;
 
     return (moving_executed==0);
 }
@@ -180,9 +180,6 @@ void ik_moving_substate::run()
     }
     while(data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0);
     
-    // add all the checked phases of the plan to data_.next_plan
-    data_.next_plan += i+1;
-    
     if(move_num>0)
     {
         srv.request.command = command_map.at(cartesian_commands::MOVE);
@@ -200,6 +197,10 @@ void ik_moving_substate::run()
 	
 	moving_executed++;
     }
+    
+    // add all the checked phases of the plan to data_.next_plan
+    data_.next_plan += i+1;
+    
     move_sent=true;
 }
 

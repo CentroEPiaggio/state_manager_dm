@@ -47,7 +47,7 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
 std::map< transition, bool > ik_control_state::getResults()
 {
     std::map< transition, bool > results;
-    result =  (subdata.next_plan == subdata.cartesian_plan->size()-1);
+    result =  (subdata.next_plan == subdata.cartesian_plan->size());
     results[transition::task_accomplished]=result;
     subdata.next_plan=0;
     complete=false;
@@ -57,7 +57,11 @@ std::map< transition, bool > ik_control_state::getResults()
 
 void ik_control_state::run()
 {
-    if(current_state->get_type()=="ik_exiting_substate") complete = true;
+    if(current_state->get_type()=="ik_exiting_substate")
+    {
+	complete = true;
+	return;
+    }
 
     show_plan_with_tf();
     
@@ -77,13 +81,14 @@ void ik_control_state::run()
 	{
 	    current_state=temp_state;
 	    std::cout<<"- new substate type: "<<current_state->get_type()<<std::endl;
-	    std::cout << "press 'y' key and enter to proceed" << std::endl;
-	    char tmp = 'n';
-	    while (tmp!='y')
-	    {
-	      std::cin >> tmp;
-	      usleep(200000);
-	    }
+	    // std::cout << "press 'y' key and enter to proceed" << std::endl;
+	    // char tmp = 'n';
+	    // while (tmp!='y')
+	    // {
+	    //   std::cin >> tmp;
+	    //   usleep(200000);
+	    // }
+	    sleep(1);
 	    transition_map.clear();
 	    break;
 	}

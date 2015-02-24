@@ -18,7 +18,7 @@ class ik_exiting_substate : public abstract_state<ik_transition>
 {
 public:
     ik_exiting_substate(ik_shared_memory& data){};
-    inline virtual std::map< ik_transition, bool > getResults(){std::map< ik_transition, bool > results; results[ik_transition::plan]=true; return results;};
+    inline virtual std::map< ik_transition, bool > getResults(){std::map< ik_transition, bool > results; return results;};
     virtual void run(){};
     virtual bool isComplete(){return true;};
     virtual std::string get_type(){return "ik_exiting_substate";};
