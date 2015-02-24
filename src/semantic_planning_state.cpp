@@ -226,6 +226,25 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
         
         // This will place the secondEE (not movable) exactly on the centroid (a table is on the centroid of the workspace)
         World_Object = World_Centroid*Object_SecondEE.Inverse();
+	
+	// I can change the end-effector (else: I cannot)
+	if (movable && !next_movable)
+	{
+	    KDL::Vector handz,handz_on_xy;
+	    handz = World_Object.M * Object_FirstEE.M * KDL::Vector(0,0,1);
+	    handz_on_xy = KDL::Vector(handz.x(),handz.y(),0);
+	    handz_on_xy.Normalize();
+	    while (dot(handz_on_xy,KDL::Vector(1,0,0)) > -0.7)
+	    {
+		World_Object.M = KDL::Rotation::RotZ(M_PI/2.0)*World_Object.M;
+		handz = World_Object.M * Object_FirstEE.M * KDL::Vector(0,0,1);
+		handz_on_xy = KDL::Vector(handz.x(),handz.y(),0);
+		handz_on_xy.Normalize();
+	    }
+	}
+	return true;
+	// TODO: as above, test better the following code and make it work more in general
+	
 	// to use for rotations, axis aligned with world z computed in object frame
 	KDL::Vector Object_worldZ(World_Object.Inverse().M*KDL::Vector(0,0,1));
         
