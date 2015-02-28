@@ -83,7 +83,7 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     // return fake_get_grasp_id_from_database();
 }
 
-void getting_info_state::get_target_position_from_user(visualization_msgs::Marker& target_marker)
+void getting_info_state::get_target_position_from_user()
 {
     dual_manipulation_shared::gui_target_service srv;
     
@@ -95,23 +95,11 @@ void getting_info_state::get_target_position_from_user(visualization_msgs::Marke
 	if(srv.response.ack) ROS_INFO_STREAM("Target set to "<<srv.response.target_pose.position.x<<' '<<srv.response.target_pose.position.y<<' '<<srv.response.target_pose.position.z
 	  <<' '<<srv.response.target_pose.orientation.x<<' '<<srv.response.target_pose.orientation.y<<' '<<srv.response.target_pose.orientation.z<<' '<<srv.response.target_pose.orientation.w);
         
+	data_.source_position = srv.response.source_pose;
 	data_.target_position = srv.response.target_pose;
-	
 	// TODO: ask for desired target end-effector; maybe even for desired final grasp?
+	data_.source_grasp=get_grasp_id_from_database(data_.obj_id,data_.source_position);
 	data_.target_grasp=get_grasp_id_from_database(data_.obj_id,data_.target_position);
-
-	target_marker.pose = data_.target_position;
-	target_marker.color.a = 1;
-	target_marker.color.r=0;
-	target_marker.color.g=0;
-	target_marker.color.b=1;
-	target_marker.type = visualization_msgs::Marker::CYLINDER;
-	target_marker.scale.x=0.05;
-	target_marker.scale.y=0.05;
-	target_marker.scale.z=0.05;
-	target_marker.id=1;
-	target_marker.ns="target";
-	target_marker.header.frame_id="world";
     }
     else
     {
@@ -129,13 +117,12 @@ std::map< transition, bool > getting_info_state::getResults()
 
 void getting_info_state::run()
 {
-    visualization_msgs::Marker source_marker,target_marker;
+    visualization_msgs::Marker source_marker;
 
     get_start_position_from_vision(source_marker);
-    get_target_position_from_user(target_marker);
+    get_target_position_from_user();
     //fake_getting_info_run(data_,source_marker,target_marker);
-    pub.publish(source_marker);
-    pub.publish(target_marker);
+    // pub.publish(source_marker);
     
     dual_manipulation_shared::planner_service srv;
     srv.request.command="set object";

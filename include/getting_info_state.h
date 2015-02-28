@@ -39,7 +39,7 @@ private:
      */
     int get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id = 3);
     
-    void get_target_position_from_user(visualization_msgs::Marker& target_marker);
+    void get_target_position_from_user();
 };
 
 #endif // GETTING_INFO_STATE_H
