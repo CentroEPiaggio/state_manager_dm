@@ -24,6 +24,16 @@ public:
     virtual std::string get_type(){return "ik_exiting_substate";};
 };
 
+class ik_failing_substate : public abstract_state<ik_transition>
+{
+public:
+    ik_failing_substate(ik_shared_memory& data){};
+    inline virtual std::map< ik_transition, bool > getResults(){std::map< ik_transition, bool > results; return results;};
+    virtual void run(){};
+    virtual bool isComplete(){return true;};
+    virtual std::string get_type(){return "ik_failing_substate";};
+};
+
 class ik_control_state : public abstract_state<transition>
 {
 public:

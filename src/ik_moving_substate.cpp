@@ -12,9 +12,7 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     }
 
     client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
-    moving_executed = 9999;
-    initialized = false;
-    move_sent = false;
+
     
     lsub = n.subscribe("/ik_control/left_hand/action_done",1,&ik_moving_substate::callback_l,this);
     rsub = n.subscribe("/ik_control/right_hand/action_done",1,&ik_moving_substate::callback_r,this);
@@ -25,6 +23,15 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     command_map[cartesian_commands::MOVE] = "execute";
     command_map[cartesian_commands::GRASP] = "grasp";
     command_map[cartesian_commands::UNGRASP] = "ungrasp";
+    reset();
+}
+
+void ik_moving_substate::reset()
+{
+    moving_executed = 9999;
+    initialized = false;
+    move_sent = false;
+    failed=false;
 }
 
 void ik_moving_substate::callback_l(const std_msgs::String::ConstPtr& str)
@@ -33,7 +40,11 @@ void ik_moving_substate::callback_l(const std_msgs::String::ConstPtr& str)
     if(str->data=="done")
 	moving_executed--;
     else
+    {
 	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+        failed=true;
+        initialized=false;
+    }
 }
 
 void ik_moving_substate::callback_r(const std_msgs::String::ConstPtr& str)
@@ -42,7 +53,11 @@ void ik_moving_substate::callback_r(const std_msgs::String::ConstPtr& str)
     if(str->data=="done")
 	moving_executed--;
     else
+    {
 	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+        failed=true;
+        initialized=false;
+    }
 }
 
 void ik_moving_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
@@ -51,7 +66,11 @@ void ik_moving_substate::callback_bimanual(const std_msgs::String::ConstPtr& str
     if(str->data=="done")
 	moving_executed--;
     else
+    {
 	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+        failed=true;
+        initialized=false;
+    }
 }
 
 void ik_moving_substate::callback_r_grasp(const std_msgs::String::ConstPtr& str)
@@ -60,7 +79,11 @@ void ik_moving_substate::callback_r_grasp(const std_msgs::String::ConstPtr& str)
     if(str->data=="done")
 	moving_executed--;
     else
+    {
 	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+        failed=true;
+        initialized=false;
+    }
 }
 
 void ik_moving_substate::callback_l_grasp(const std_msgs::String::ConstPtr& str)
@@ -69,7 +92,11 @@ void ik_moving_substate::callback_l_grasp(const std_msgs::String::ConstPtr& str)
     if(str->data=="done")
 	moving_executed--;
     else
+    {
 	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+        failed=true;
+        initialized=false;
+    }
 }
 
 std::map< ik_transition, bool > ik_moving_substate::getResults()
@@ -83,8 +110,7 @@ std::map< ik_transition, bool > ik_moving_substate::getResults()
     {
 	results[ik_transition::plan]=(moving_executed==0);
     }
-    initialized = false;
-    move_sent = false;
+    results[ik_transition::fail]=failed;
     return results;
 }
 
@@ -92,13 +118,14 @@ bool ik_moving_substate::isComplete()
 {  
     if(data_.next_plan == data_.cartesian_plan->size()+1) moving_executed=0;
 
-    return (moving_executed==0);
+    return (moving_executed==0 || failed);
 }
 
 void ik_moving_substate::run()
 {
     if(!initialized)
     {
+        reset();
 	initialized = true;
     }
     if(move_sent) return;
@@ -114,6 +141,7 @@ void ik_moving_substate::run()
     if(data_.cartesian_plan->size()==0)
     {
 	ROS_ERROR("Cartesian plan is empty!!");
+        failed=true;
 	return;
     }
 
@@ -146,7 +174,9 @@ void ik_moving_substate::run()
 				}
 				else
 				{
-			// 	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+                                    failed=true;
+                                    initialized=false;
+				    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
 				}
 
 				moving_executed++;
@@ -166,7 +196,9 @@ void ik_moving_substate::run()
 			}
 			else
 			{
-			// 	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+				    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+                                    initialized=false;
+                                    failed=true;
 			}
 
 			moving_executed++;
@@ -192,7 +224,9 @@ void ik_moving_substate::run()
 	}
 	else
 	{
-    // 	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+    	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+            initialized=false;
+            failed=true;
 	}
 	
 	moving_executed++;

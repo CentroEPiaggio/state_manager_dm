@@ -34,6 +34,9 @@ private:
     void callback_l_grasp(const std_msgs::String::ConstPtr& str);
     void callback_r_grasp(const std_msgs::String::ConstPtr& str);
     
+    
+    void reset();
+    
     /**
      * @brief change frame of reference of the grasp trajectory to the current object frame
      * 
@@ -49,6 +52,7 @@ private:
     databaseMapper db_mapper;
     bool move_sent;
     int moving_executed;
+    bool failed;
 };
 
 #endif // ik_moving_substate_H

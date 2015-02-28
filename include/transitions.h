@@ -23,7 +23,8 @@ enum class ik_transition {
     grasp,
     done,
     checkgrasp,
-    check_done
+    check_done,
+    fail
 };
 
 typedef std::pair<transition,bool> transition_type;

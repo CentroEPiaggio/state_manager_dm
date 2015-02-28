@@ -19,6 +19,7 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     auto ik_moving = new ik_moving_substate(subdata);
     waiting = new ik_steady_substate(subdata);
     auto exiting = new ik_exiting_substate(subdata);
+    auto failing = new ik_failing_substate(subdata);
     
     std::vector<std::tuple<abstract_state<ik_transition>*,ik_transition_type,abstract_state<ik_transition>*>> transition_table{
         //------initial state---------------+--------- command ---------------------------------------+-- final state------ +
@@ -35,6 +36,8 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
 // 	std::make_tuple( ik_grasping        , std::make_pair(ik_transition::plan,true)                ,   ik_planning       ),
 // 	//----------------------------------+---------------------------------------------------------+-------------------- +
 // 	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::check_done,true)          ,   ik_grasping       )
+        std::make_tuple( ik_moving          , std::make_pair(ik_transition::fail,true)                ,   failing           ),
+        std::make_tuple( ik_planning        , std::make_pair(ik_transition::fail,true)                ,   failing           ),
     };
 
     sm.insert(transition_table);
@@ -48,7 +51,8 @@ std::map< transition, bool > ik_control_state::getResults()
 {
     std::map< transition, bool > results;
     result =  (subdata.next_plan == subdata.cartesian_plan->size());
-    results[transition::task_accomplished]=result;
+    if (current_state->get_type()=="ik_failing_substate") results[transition::abort_move]=true;
+    else results[transition::task_accomplished]=result;
     subdata.next_plan=0;
     complete=false;
     current_state=waiting;
@@ -57,7 +61,7 @@ std::map< transition, bool > ik_control_state::getResults()
 
 void ik_control_state::run()
 {
-    if(current_state->get_type()=="ik_exiting_substate")
+    if(current_state->get_type()=="ik_exiting_substate" || current_state->get_type()=="ik_failing_substate")
     {
 	complete = true;
 	return;
