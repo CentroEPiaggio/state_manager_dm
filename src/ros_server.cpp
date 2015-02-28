@@ -39,6 +39,7 @@ ros_server::ros_server()
 	std::make_tuple( starting     , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( steady       , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( getting_info , std::make_pair(transition::exit,true)               ,    exiting           ),
+        std::make_tuple( ready        , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( planning     , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( planned      , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( moving       , std::make_pair(transition::exit,true)               ,    exiting           )
@@ -74,7 +75,7 @@ void ros_server::loop()
     usleep(500000);
     if (current_state->isComplete())
     {
-	auto temp_map = current_state->getResults(); //TODO save them
+	auto temp_map = current_state->getResults();
 	for (auto temp:temp_map)
 	    transition_map[temp.first]=temp.second;
     }
@@ -121,5 +122,6 @@ bool ros_server::state_manager_ros_service(dual_manipulation_shared::state_manag
 
 ros_server::~ros_server()
 {
+    current_state=new exit_state(data);
     if(loop_thread.joinable()) join();
 }
