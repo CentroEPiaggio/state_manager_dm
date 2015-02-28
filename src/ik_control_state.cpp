@@ -124,7 +124,7 @@ void poseCallback(const cartesian_command& msg, std::string prefix)
   static tf::TransformBroadcaster br;
   tf::Transform transform;
   tf::poseMsgToTF(msg.cartesian_task,transform);
-  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", prefix + " | command:" + std::to_string((int)msg.command)));
+  br.sendTransform(tf::StampedTransform(transform, ros::Time(0), "world", prefix + " | command:" + std::to_string((int)msg.command)));
 }
 
 void ik_control_state::show_plan_with_tf()

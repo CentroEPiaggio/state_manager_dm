@@ -129,7 +129,12 @@ void getting_info_state::run()
     srv.request.time = 2; //TODO
     srv.request.object_id=data_.obj_id;
     srv.request.object_name=data_.object_name;
-    
+    if (!planner_client.exists())
+    {
+        ROS_ERROR("Service does not exist: dual_manipulation_shared::planner_service");
+        failed=true;
+        return;
+    }
     if (planner_client.call(srv))
     {
         ROS_INFO("Object id set to %d, planner returned %d", (int)srv.request.object_id, (int)srv.response.ack);
@@ -138,6 +143,7 @@ void getting_info_state::run()
     else
     {
         ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service");
+        failed=true;
         return;
     }
     
@@ -164,7 +170,7 @@ void getting_info_state::run()
 
 bool getting_info_state::isComplete()
 {
-    return fresh_data;
+    return fresh_data || failed;
 }
 
 std::string getting_info_state::get_type()

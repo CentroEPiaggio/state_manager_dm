@@ -5,7 +5,7 @@ ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
 {
     if( !ros::isInitialized() )
     {
-        int argc;
+        int argc=0;
 	char** argv;
 	ros::init( argc, argv, "state_manager", ros::init_options::AnonymousName );
     }
