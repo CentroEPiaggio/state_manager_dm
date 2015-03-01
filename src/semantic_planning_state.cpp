@@ -64,6 +64,18 @@ bool semantic_planning_state::getPreGraspMatrix(object_id object,grasp_id grasp,
     return ok;
 }
 
+bool semantic_planning_state::getPostGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE)
+{
+    dual_manipulation_shared::ik_service srv;
+    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
+    if (ok)
+    {
+        tf::poseMsgToKDL(srv.request.attObject.object.mesh_poses.front(),Object_EE);
+	Object_EE = Object_EE.Inverse();
+    }
+    return ok;
+}
+
 bool semantic_planning_state::check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE)
 {
     // assume at first everything went smoothly - TODO: something better
@@ -123,10 +135,10 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
         //Case both movable (centroid_z should be HIGH)
         KDL::Frame World_Centroid(World_centroid);
         KDL::Frame Object_FirstEE, Object_SecondEE;
-        bool ok=getPreGraspMatrix(object,grasp,Object_FirstEE);
+        bool ok=getPostGraspMatrix(object,grasp,Object_FirstEE);
         if (!ok) 
         {
-            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
+            std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
         }
         ok = getPreGraspMatrix(object,next_grasp,Object_SecondEE);
         if (!ok) 
@@ -199,10 +211,10 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
         //Case one ee movable
         KDL::Frame World_Centroid(World_centroid);
         KDL::Frame Object_FirstEE, Object_SecondEE;
-	bool ok=getPreGraspMatrix(object,grasp,Object_FirstEE);
+	bool ok=getPostGraspMatrix(object,grasp,Object_FirstEE);
         if (!ok) 
         {
-            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
+            std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
         }
         ok = getPreGraspMatrix(object,next_grasp,Object_SecondEE);
         if (!ok) 
@@ -382,10 +394,10 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                     temp.seq_num = 1;
                     temp.ee_grasp_id=node->grasp_id;
 		    KDL::Frame Object_EE,World_Object;
-		    bool ok=getPreGraspMatrix(data.obj_id,node->grasp_id,Object_EE);
+		    bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_EE);
 		    if (!ok) 
 		    {
-			std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
+			std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
 		    }
 		    tf::poseMsgToKDL(data.target_position,World_Object);
 		    tf::poseKDLToMsg(World_Object*Object_EE,temp.cartesian_task);
@@ -447,10 +459,10 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             //3.8) get the pose of the first end effector with respect to the object position
             if (movable) 
             {
-                bool ok=getPreGraspMatrix(data.obj_id,node->grasp_id,Object_FirstEE);
+                bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_FirstEE);
                 if (!ok) 
                 {
-                    std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
+                    std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
                 }
                 KDL::Frame World_GraspFirstEE = World_Object*Object_FirstEE;
                 tf::poseKDLToMsg(World_GraspFirstEE,temp.cartesian_task);
