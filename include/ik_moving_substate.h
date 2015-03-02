@@ -47,6 +47,7 @@ private:
      *        (i.e., each frame will be "pre-multiplied" by object_pose)
      */
     void change_frame_to_pose_vector(geometry_msgs::Pose object_pose_msg, std::vector<geometry_msgs::Pose>& ee_pose);
+    void invert_pose_order(std::vector<geometry_msgs::Pose>& ee_pose);
 
     std::map<cartesian_commands,std::string> command_map;
     databaseMapper db_mapper;

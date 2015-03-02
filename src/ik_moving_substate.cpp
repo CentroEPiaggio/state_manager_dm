@@ -182,26 +182,36 @@ void ik_moving_substate::run()
 				moving_executed++;
 			}
 		}
-		if(item.second.command==cartesian_commands::UNGRASP)
+		if(item.second.command==cartesian_commands::UNGRASP) //same ad graso, just changing the ee_pose order
 		{
-			srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-			srv.request.command = command_map.at(item.second.command);
-		  
-			// change frame of reference of the grasp trajectory to the current object frame
-			// (at now this is not necessary for ad ungrasp, but just in case
-			change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
-			if (client.call(srv))
+			if(!deserialize_ik(srv.request,"object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string((int)item.second.ee_grasp_id)))
 			{
-			    ROS_INFO_STREAM("IK Ungrasp Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
+			    ROS_ERROR_STREAM("Failed to deserialize object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string((int)item.second.ee_grasp_id));
 			}
 			else
 			{
-				    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
-                                    initialized=false;
-                                    failed=true;
-			}
+				srv.request.attObject.object.id = *data_.object_name;
+				srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+				srv.request.command = command_map.at(item.second.command);
+			
+				// change frame of reference of the grasp trajectory to the current object frame
+				change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
+				// invert the order to generate an ungrasp
+				invert_pose_order(srv.request.ee_pose);
 
-			moving_executed++;
+				if (client.call(srv))
+				{
+				    ROS_INFO_STREAM("IK Grasp Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
+				}
+				else
+				{
+                                    failed=true;
+                                    initialized=false;
+				    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+				}
+
+				moving_executed++;
+			}
 		}
 	}
 	else
@@ -252,4 +262,9 @@ void ik_moving_substate::change_frame_to_pose_vector(geometry_msgs::Pose object_
 	tf::poseMsgToKDL(ee_pose.at(i),ee_single_frame);
 	tf::poseKDLToMsg(object_frame*ee_single_frame,ee_pose.at(i));
     }
+}
+
+void ik_moving_substate::invert_pose_order(std::vector< geometry_msgs::Pose >& ee_pose)
+{
+    std::reverse(ee_pose.begin(),ee_pose.end());
 }
