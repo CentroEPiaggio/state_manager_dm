@@ -16,6 +16,7 @@ public:
     virtual void run()=0;
     virtual std::map<property,bool> getResults()=0;
     virtual std::string get_type()=0;
+    virtual void reset(){}
 };
 
 #endif //ABSTRACT_STATE_H

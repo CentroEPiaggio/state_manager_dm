@@ -85,6 +85,7 @@ void ros_server::loop()
 	if (temp_state!=current_state)
 	{
 	    current_state=temp_state;
+            current_state->reset();
 	    std::cout<<"- new state type: "<<current_state->get_type()<<std::endl;
 	    transition_map.clear();
 	    break;

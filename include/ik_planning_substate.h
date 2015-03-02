@@ -28,9 +28,11 @@ private:
     void callback_l(const std_msgs::String::ConstPtr& str);
     void callback_r(const std_msgs::String::ConstPtr& str);
     void callback_bimanual(const std_msgs::String::ConstPtr& str);
+    void reset();
     
     databaseMapper db_mapper;
     bool plan_sent;
+    bool failed;
 };
 
 #endif // ik_planning_substate_H

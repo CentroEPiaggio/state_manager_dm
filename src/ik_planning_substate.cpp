@@ -18,6 +18,15 @@ ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
     lsub = n.subscribe("/ik_control/left_hand/planning_done",1,&ik_planning_substate::callback_l,this);
     rsub = n.subscribe("/ik_control/right_hand/planning_done",1,&ik_planning_substate::callback_r,this);
     bimanualsub = n.subscribe("/ik_control/both_hands/planning_done",1,&ik_planning_substate::callback_bimanual,this);
+    reset();
+}
+
+void ik_planning_substate::reset()
+{
+    plan_executed = 9999;
+    initialized = false;
+    plan_sent = false;
+    failed=false;
 }
 
 void ik_planning_substate::callback_l(const std_msgs::String::ConstPtr& str)
@@ -26,7 +35,11 @@ void ik_planning_substate::callback_l(const std_msgs::String::ConstPtr& str)
     if(str->data=="done")
 	plan_executed--;
     else
+    {
 	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+        failed=true;
+        initialized=false;
+    }
 }
 
 void ik_planning_substate::callback_r(const std_msgs::String::ConstPtr& str)
@@ -35,7 +48,11 @@ void ik_planning_substate::callback_r(const std_msgs::String::ConstPtr& str)
     if(str->data=="done")
 	plan_executed--;
     else
+    {
 	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+        failed=true;
+        initialized=false;
+    }
 }
 
 void ik_planning_substate::callback_bimanual(const std_msgs::String::ConstPtr& str)
@@ -44,15 +61,19 @@ void ik_planning_substate::callback_bimanual(const std_msgs::String::ConstPtr& s
     if(str->data=="done")
 	plan_executed--;
     else
+    {
 	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+        failed=true;
+        initialized=false;
+    }
 }
 
 std::map< ik_transition, bool > ik_planning_substate::getResults()
 {
     std::map< ik_transition, bool > results;
     results[ik_transition::move]=(plan_executed==0);
-    initialized = false;
-    plan_sent = false;
+    results[ik_transition::fail]=failed;
+    
     return results;
 }
 
@@ -60,6 +81,7 @@ void ik_planning_substate::run()
 {
     if(!initialized)
     {
+        reset();
 	initialized = true;
     }
 
@@ -117,9 +139,10 @@ void ik_planning_substate::run()
     }
     else
     {
-// 	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+            failed=true;
+            initialized=false;
     }
-  
     plan_sent=true;
 }
 

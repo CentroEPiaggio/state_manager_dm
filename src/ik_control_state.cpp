@@ -84,6 +84,7 @@ void ik_control_state::run()
 	if (temp_state!=current_state)
 	{
 	    current_state=temp_state;
+            current_state->reset();
 	    std::cout<<"- new substate type: "<<current_state->get_type()<<std::endl;
 	    // std::cout << "press 'y' key and enter to proceed" << std::endl;
 	    // char tmp = 'n';
