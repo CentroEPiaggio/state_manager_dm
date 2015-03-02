@@ -3,6 +3,8 @@
 
 #include "abstract_state.h"
 #include "state_machine.hpp"
+#include "dual_manipulation_shared/ik_service.h"
+#include "ros/ros.h"
 
 class ik_steady_substate : public abstract_state<ik_transition>
 {
@@ -57,6 +59,9 @@ private:
     void fake_plan();
     void print_plan();
     void show_plan_with_tf();
+    ros::NodeHandle n;
+    ros::ServiceClient client;
+    dual_manipulation_shared::ik_service srv;
 };
 
 #endif // IK_CONTROL_STATE_H

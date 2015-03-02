@@ -8,6 +8,13 @@
 
 ik_control_state::ik_control_state(shared_memory& data):data_(data)
 {
+    if( !ros::isInitialized() )
+    {
+        int argc=0;
+	char** argv;
+	ros::init( argc, argv, "state_manager", ros::init_options::AnonymousName );
+    }
+
     // fake_plan();
     print_plan();
     subdata.cartesian_plan = &data.cartesian_plan;
@@ -45,6 +52,8 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     result = false;
     complete = false;
     current_state=waiting;
+
+    client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
 }
 
 std::map< transition, bool > ik_control_state::getResults()
@@ -58,6 +67,16 @@ std::map< transition, bool > ik_control_state::getResults()
 
 void ik_control_state::reset()
 {
+    srv.request.command = "free_all";
+    if(client.call(srv))
+    {
+	ROS_INFO_STREAM("IK FREE_ALL Request accepted: (" << (int)srv.response.ack << ")");
+    }
+    else
+    {
+	ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+    }
+
     subdata.next_plan=0;
     complete=false;
     current_state=waiting;
