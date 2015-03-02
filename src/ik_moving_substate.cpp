@@ -197,7 +197,8 @@ void ik_moving_substate::run()
 				// change frame of reference of the grasp trajectory to the current object frame
 				change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
 				// invert the order to generate an ungrasp
-				invert_pose_order(srv.request.ee_pose);
+				std::reverse(srv.request.ee_pose.begin(),srv.request.ee_pose.end());
+				std::reverse(srv.request.grasp_trajectory.points.begin(),srv.request.grasp_trajectory.points.end());
 
 				if (client.call(srv))
 				{
@@ -280,9 +281,4 @@ void ik_moving_substate::change_frame_to_pose_vector(geometry_msgs::Pose object_
 	tf::poseMsgToKDL(ee_pose.at(i),ee_single_frame);
 	tf::poseKDLToMsg(object_frame*ee_single_frame,ee_pose.at(i));
     }
-}
-
-void ik_moving_substate::invert_pose_order(std::vector< geometry_msgs::Pose >& ee_pose)
-{
-    std::reverse(ee_pose.begin(),ee_pose.end());
 }
