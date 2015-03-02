@@ -157,7 +157,7 @@ void ik_planning_substate::run()
 
 bool ik_planning_substate::isComplete()
 {
-    return (plan_executed==0);
+    return (plan_executed==0  || failed);
 }
 
 std::string ik_planning_substate::get_type()
