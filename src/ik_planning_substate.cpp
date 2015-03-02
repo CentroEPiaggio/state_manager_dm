@@ -108,6 +108,15 @@ void ik_planning_substate::run()
 
 	if(item.second.command!=cartesian_commands::MOVE) 
 	{
+            int j=i;
+            while(data_.cartesian_plan->at(data_.next_plan+j).second.seq_num==0)
+            {
+                j++;
+                if (data_.cartesian_plan->at(data_.next_plan+j).second.command==cartesian_commands::MOVE)
+                {
+                    ROS_ERROR("I found two MOVE commands with same sequence number, but there was some different command in the middle!!");
+                }
+            }
 	    ROS_INFO_STREAM("Command was not MOVE: returning to ik_moving_substate");
 	    plan_sent = true;
 	    return;

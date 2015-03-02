@@ -213,6 +213,24 @@ void ik_moving_substate::run()
 				moving_executed++;
 			}
 		}
+		if(item.second.command==cartesian_commands::HOME)
+                {
+                    srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+                    srv.request.command = command_map.at(item.second.command);
+
+                    if (client.call(srv))
+                    {
+                        ROS_INFO_STREAM("IK Home Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
+                    }
+                    else
+                    {
+                        ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+                        initialized=false;
+                        failed=true;
+                    }
+
+                    moving_executed++;
+                }
 	}
 	else
 	{

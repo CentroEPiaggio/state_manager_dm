@@ -9,7 +9,8 @@ enum class cartesian_commands
 {
     MOVE,
     GRASP,
-    UNGRASP
+    UNGRASP,
+    HOME
 };
 
 struct cartesian_command
@@ -36,6 +37,7 @@ grasp_id source_grasp, target_grasp;
 object_id obj_id;
 std::string object_name;
 std::vector<std::pair<endeffector_id,cartesian_command>> cartesian_plan;
+void reset();
 private:
 // geometry_msgs::Pose object_pose_;
 };
@@ -45,8 +47,6 @@ class ik_shared_memory
 public:
   int next_plan;
   const std::vector<std::pair<endeffector_id,cartesian_command>>* cartesian_plan;
-  std::map<std::string,bool> ees_grasped;
-  std::map<std::string,KDL::Frame> objects_ees;
   object_id* obj_id;
   std::string* object_name;
 };

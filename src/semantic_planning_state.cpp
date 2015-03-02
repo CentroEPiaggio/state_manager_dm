@@ -496,12 +496,32 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
 		
             if (next_movable)
 	    {
-	      result.push_back(std::make_pair(next_ee_id,ee_grasped[next_ee_id]?ungrasp:grasp));
+                if (ee_grasped[next_ee_id])
+                {
+                    std::cout<<"ERROR, next ee is being used but it has already something grasped!! The planner has done some bad things"<<std::endl;
+                    return false;
+                }
+                else
+                {
+                    result.push_back(std::make_pair(next_ee_id,grasp));
+                }
 	      ee_grasped[next_ee_id]=!ee_grasped[next_ee_id];
 	    }
             if (movable)
 	    {
-	      result.push_back(std::make_pair(ee_id,ee_grasped[ee_id]?ungrasp:grasp));
+                if (ee_grasped[ee_id])
+                {
+                    result.push_back(std::make_pair(ee_id,ungrasp));
+                    cartesian_command move_away;
+                    move_away.command=cartesian_commands::HOME;
+                    move_away.seq_num=0;
+                    result.push_back(std::make_pair(next_ee_id,move_away));
+                }
+                else
+                {
+                    std::cout<<"ERROR, first ee is being used but it has nothing grasped!! The planner has done some bad things"<<std::endl;
+                    return false;
+                }
 	      ee_grasped[ee_id]=!ee_grasped[ee_id];
 	    }
             node=next_node;
