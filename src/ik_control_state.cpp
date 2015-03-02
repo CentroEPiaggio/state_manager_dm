@@ -152,7 +152,13 @@ void poseCallback(const cartesian_command& msg, std::string prefix)
 {
   static tf::TransformBroadcaster br;
   tf::Transform transform;
-  tf::poseMsgToTF(msg.cartesian_task,transform);
+  transform.setIdentity();
+  const geometry_msgs::Quaternion& q = msg.cartesian_task.orientation;
+
+  // check for malformed poses
+  if(!(std::norm(q.x)+std::norm(q.y)+std::norm(q.z)+std::norm(q.w) < 0.001))
+    tf::poseMsgToTF(msg.cartesian_task,transform);
+
   br.sendTransform(tf::StampedTransform(transform, ros::Time(0), "world", prefix + " | command:" + std::to_string((int)msg.command)));
 }
 
