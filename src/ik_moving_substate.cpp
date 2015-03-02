@@ -125,7 +125,6 @@ void ik_moving_substate::run()
 {
     if(!initialized)
     {
-        reset();
 	initialized = true;
     }
     if(move_sent) return;
