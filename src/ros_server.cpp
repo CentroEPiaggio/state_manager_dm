@@ -11,6 +11,13 @@ using namespace dual_manipulation::state_manager;
 
 ros_server::ros_server()
 {
+    init();
+    service = node.advertiseService("state_manager_ros_service", &ros_server::state_manager_ros_service, this);
+    loop_thread=std::thread(&ros_server::loop,this);
+}
+
+void ros_server::init()
+{
     auto starting=new starting_state(data);
     auto steady=new steady_state(data);
     auto getting_info=new getting_info_state(data);
@@ -34,9 +41,9 @@ ros_server::ros_server()
         std::make_tuple( moving       , std::make_pair(transition::task_accomplished,true)  ,    steady         ),
         std::make_tuple( moving       , std::make_pair(transition::abort_move,true)         ,    steady         ),
         //----------------------------+-----------------------------------------------------+-------------------+
-//         std::make_tuple( planning     , std::make_pair(transition::planning_done,true)      ,    steady         ),
-//         std::make_tuple( steady       , std::make_pair(transition::start_moving,true)       ,    moving         ),
-	std::make_tuple( starting     , std::make_pair(transition::exit,true)               ,    exiting           ),
+        //         std::make_tuple( planning     , std::make_pair(transition::planning_done,true)      ,    steady         ),
+        //         std::make_tuple( steady       , std::make_pair(transition::start_moving,true)       ,    moving         ),
+        std::make_tuple( starting     , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( steady       , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( getting_info , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( ready        , std::make_pair(transition::exit,true)               ,    exiting           ),
@@ -45,11 +52,8 @@ ros_server::ros_server()
         std::make_tuple( moving       , std::make_pair(transition::exit,true)               ,    exiting           )
     };
     sm.insert(transition_table);
-    
-    service = node.advertiseService("state_manager_ros_service", &ros_server::state_manager_ros_service, this);
+    this->transition_table=transition_table;
     current_state=steady;
-    
-    loop_thread=std::thread(&ros_server::loop,this);
 }
 
 void ros_server::loop()
@@ -99,6 +103,15 @@ void ros_server::join()
     return loop_thread.join();
 }
 
+void ros_server::reset()
+{
+    data.reset();
+    for (auto line:transition_table)
+    {
+        delete (std::get<0>(line));
+    }
+    init();
+}
 
 bool ros_server::state_manager_ros_service(dual_manipulation_shared::state_manager_service::Request &req, dual_manipulation_shared::state_manager_service::Response &res)
 {
@@ -106,6 +119,8 @@ bool ros_server::state_manager_ros_service(dual_manipulation_shared::state_manag
 
     //NOTE: maybe some of this should be removed, for now they help to force transitions
 
+    if(req.command == "reset") reset();
+    
     if(req.command == "started") transition_map[transition::started]=true;
     else if(req.command == "get_info") transition_map[transition::get_info]=true;
     else if(req.command == "plan") transition_map[transition::plan]=true;

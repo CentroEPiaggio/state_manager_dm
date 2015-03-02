@@ -53,10 +53,15 @@ std::map< transition, bool > ik_control_state::getResults()
     result =  (subdata.next_plan == subdata.cartesian_plan->size());
     if (current_state->get_type()=="ik_failing_substate") results[transition::abort_move]=true;
     else results[transition::task_accomplished]=result;
+    return results;
+}
+
+void ik_control_state::reset()
+{
     subdata.next_plan=0;
     complete=false;
     current_state=waiting;
-    return results;
+    current_state->reset();
 }
 
 void ik_control_state::run()

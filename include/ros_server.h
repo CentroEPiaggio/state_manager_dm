@@ -22,12 +22,13 @@ public:
     shared_memory data;
 private:
     void loop();
+    void init();
     std::thread loop_thread;
-    
+    void reset();
     ros::NodeHandle node;
     bool state_manager_ros_service(dual_manipulation_shared::state_manager_service::Request &req, dual_manipulation_shared::state_manager_service::Response &res);
     ros::ServiceServer service;
-    
+    std::vector<std::tuple<abstract_state<transition>*,transition_type,abstract_state<transition>*>> transition_table;
     state_machine<abstract_state<transition>*,transition_type> sm;
     abstract_state<transition>* current_state;
     std::map<transition,bool> transition_map;

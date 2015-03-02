@@ -42,6 +42,7 @@ public:
     virtual void run();
     virtual bool isComplete();
     virtual std::string get_type();
+    virtual void reset();
     private:
     bool result;
     bool complete;
