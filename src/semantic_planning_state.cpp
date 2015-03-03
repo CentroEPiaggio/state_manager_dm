@@ -514,7 +514,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                     result.push_back(std::make_pair(ee_id,ungrasp));
                     cartesian_command move_away;
                     move_away.command=cartesian_commands::HOME;
-                    move_away.seq_num=0;
+                    move_away.seq_num=1;
                     result.push_back(std::make_pair(next_ee_id,move_away));
                 }
                 else
