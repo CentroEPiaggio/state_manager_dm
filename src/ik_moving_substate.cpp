@@ -23,6 +23,7 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     command_map[cartesian_commands::MOVE] = "execute";
     command_map[cartesian_commands::GRASP] = "grasp";
     command_map[cartesian_commands::UNGRASP] = "ungrasp";
+    command_map[cartesian_commands::HOME] = "home";
     reset();
 }
 
