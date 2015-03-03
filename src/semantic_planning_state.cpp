@@ -490,9 +490,15 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
 	    // add in the cartesian_command the grasp ID we are considering
 	    if (ee_grasped[ee_id])
+            {
 		grasp.ee_grasp_id = next_node->grasp_id;
+                ungrasp.ee_grasp_id = node->grasp_id;
+            }
 	    else if (ee_grasped[next_ee_id])
+            {
 		grasp.ee_grasp_id = node->grasp_id;
+                ungrasp.ee_grasp_id = next_node->grasp_id;
+            }
 		
             if (next_movable)
 	    {
