@@ -34,6 +34,8 @@ semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
     }
     client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
     completed=false;
+    
+    fine_tuning[0]=KDL::Frame(KDL::Rotation::RotZ(0.0));
 }
 
 std::map< transition, bool > semantic_planning_state::getResults()
@@ -127,8 +129,10 @@ bool semantic_planning_state::inverse_kinematics(std::string ee_name, KDL::Frame
 
 bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, 
                                                              endeffector_id ee_id, endeffector_id next_ee_id, grasp_id grasp, 
-                                                             grasp_id next_grasp, object_id object,bool movable,bool next_movable)
+                                                             grasp_id next_grasp, object_id object,bool movable,bool next_movable,int aggiuntivo)
 {
+  std::cout << "compute_intergrasp_orientation : counter=" << counter++ << std::endl;
+  std::cout << "compute_intergrasp_orientation : aggiuntivo=" << aggiuntivo << std::endl;
     bool found=false;
     if (movable && next_movable)
     {
@@ -150,6 +154,10 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
 	World_Object.p = World_Centroid.p;
 	double rotz = (ee_id==1?M_PI/2.0:-M_PI/2.0);
 	World_Object.M = KDL::Rotation::RotZ(rotz)*Object_FirstEE.M.Inverse();
+	
+	KDL::Frame object_rotated;
+	object_rotated = World_Object*KDL::Frame(KDL::Vector(-1.0*(World_Object.M.Inverse()*World_Object.p)))*fine_tuning[counter-1];
+	World_Object = object_rotated*KDL::Frame(KDL::Vector(object_rotated.M.Inverse()*World_Object.p));
 	return true;
 	// TODO: take the above code out
 	
@@ -254,6 +262,9 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
 		handz_on_xy.Normalize();
 	    }
 	}
+	KDL::Frame object_rotated;
+	object_rotated = World_Object*KDL::Frame(KDL::Vector(-1.0*(World_Object.M.Inverse()*World_Object.p)))*fine_tuning[counter-1];
+	World_Object = object_rotated*KDL::Frame(KDL::Vector(object_rotated.M.Inverse()*World_Object.p));
 	return true;
 	// TODO: as above, test better the following code and make it work more in general
 	
@@ -439,7 +450,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
 	    }
 	    else
 	    {
-		compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id,movable,next_movable);
+		compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id,movable,next_movable,result.size());
 	    }
 
             //--------------

@@ -141,6 +141,7 @@ void ik_planning_substate::run()
 
     plan_executed++;
 
+    std::cout << "data_.next_plan+i = " << data_.next_plan+i << std::endl;
     if(client.call(srv))
     {
 	ROS_INFO_STREAM("IK Plan Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
