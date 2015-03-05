@@ -7,6 +7,7 @@
 #include <kdl_conversions/kdl_msg.h>
 #include <std_msgs/String.h>
 #define HIGH 0.5
+#define LOW 0.06
 
 bool left_ik,right_ik, left_ik_ok, right_ik_ok;
 
@@ -435,7 +436,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             if (movable && next_movable) //both ee are movable: change above ground
             {centroid_z=HIGH;}
             else //one is movable, change on ground
-            {centroid_z=0;}
+            {centroid_z=LOW;}
             
             // treat differently the first and last cases if the associated end-effector is not movable
             if ((node == path.begin()) && (!movable))
