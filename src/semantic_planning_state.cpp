@@ -586,7 +586,8 @@ void semantic_planning_state::run()
     srv.request.source.workspace_id=source;
     srv.request.destination.grasp_id=data.target_grasp;
     srv.request.destination.workspace_id=target;
-    
+    srv.request.filtered_source_nodes=data.filtered_source_nodes;
+    srv.request.filtered_target_nodes=data.filtered_target_nodes;
     if (client.call(srv))
     {
         ROS_INFO("Planning Request accepted: %d", (int)srv.response.ack);
@@ -639,7 +640,11 @@ void semantic_planning_state::run()
         internal_state.insert(std::make_pair(transition::failed_plan,true));
         completed=true;
         return;
-        
+
+        std::cout<<"Let's go for a geometric backtracking ride, shall we?"<<std::endl;
+        internal_state.insert(std::make_pair(transition::re_plan,true));
+        completed=true;
+        return;
     }
     std::cout << "=== Cartesian plan print-out ===" << std::endl;
     std::cout << "( Note that grasp/ungrasp poses are the object poses, not the end-effector ones )" << std::endl;
