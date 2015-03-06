@@ -38,9 +38,9 @@ semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
     
 //     fine_tuning[3]=KDL::Frame(KDL::Rotation::RotZ(M_PI/2.0));
 //     fine_tuning[6]=KDL::Frame(KDL::Vector(0,0,0.0));
-//     fine_tuning[4]=KDL::Frame(KDL::Rotation::RotX(-1.0*M_PI/9.0),KDL::Vector(0,0,-0.02));
 //     fine_tuning[7]=KDL::Frame(KDL::Rotation::RotY(M_PI/18.0),KDL::Vector(0,0,-0.17));
-//     fine_tuning[5]=KDL::Frame(KDL::Vector(0.0,0.025,0.0));
+    fine_tuning[4]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
+    fine_tuning[5]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
 }
 
 std::map< transition, bool > semantic_planning_state::getResults()
@@ -497,8 +497,21 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             KDL::Frame World_GraspSecondEE;
             temp.seq_num = 1;
             temp.ee_grasp_id=next_node->grasp_id;
+	    
+	    //superhack - part 1 - copy
+	    KDL::Frame Mirko(World_Object);
+	    
             if (next_movable)
             {
+		std::cout << "result.size() : " << result.size() << std::endl;
+		//superhack - part 2 - change the world!
+		if(movable)
+		{
+		  std::cout << "...and movable!" << std::endl;
+		  World_Object.M = fine_tuning[result.size()].M*World_Object.M;
+		  World_Object.p = World_Object.p + fine_tuning[result.size()].p;
+		}
+
                 bool ok = getPreGraspMatrix(data.obj_id,next_node->grasp_id,Object_SecondEE);
                 if (!ok) 
                 {
@@ -517,6 +530,10 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             //3.10) after moving one or two end effectors, we can grasp/ungrasp depending on the state of the ee and of movable/not movable
             // make sure that the grasp/ungrasp actions have the object frame
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
+	    
+	    //superhack - part 3 - go back
+	    World_Object = Mirko;
+	    
             tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
 	    // add in the cartesian_command the grasp ID we are considering
 	    if (ee_grasped[ee_id])
