@@ -36,12 +36,10 @@ semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
     client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
     completed=false;
     
-    fine_tuning[3]=KDL::Frame(KDL::Rotation::RotZ(M_PI/2.0));
-    fine_tuning[6]=KDL::Frame(KDL::Vector(0,0,0.0));
-//     fine_tuning[7]=KDL::Frame(KDL::Vector(0,0,-0.15));
-    
-    fine_tuning[4]=KDL::Frame(KDL::Rotation::RotX(-1.0*M_PI/9.0),KDL::Vector(0,0,-0.02));
-    fine_tuning[7]=KDL::Frame(KDL::Rotation::RotY(M_PI/18.0),KDL::Vector(0,0,-0.17));
+//     fine_tuning[3]=KDL::Frame(KDL::Rotation::RotZ(M_PI/2.0));
+//     fine_tuning[6]=KDL::Frame(KDL::Vector(0,0,0.0));
+//     fine_tuning[4]=KDL::Frame(KDL::Rotation::RotX(-1.0*M_PI/9.0),KDL::Vector(0,0,-0.02));
+//     fine_tuning[7]=KDL::Frame(KDL::Rotation::RotY(M_PI/18.0),KDL::Vector(0,0,-0.17));
 //     fine_tuning[5]=KDL::Frame(KDL::Vector(0.0,0.025,0.0));
 }
 
