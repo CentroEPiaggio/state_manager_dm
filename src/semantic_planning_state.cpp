@@ -297,6 +297,15 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
     return found;
 }
 
+bool semantic_planning_state::is_final_node(dual_manipulation_shared::planner_serviceResponse::_path_type::iterator node, const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
+{
+    auto temp_node=node;
+    temp_node++;
+    if (temp_node==path.end())
+        return true;
+    else
+        return false;
+}
 
 bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeffector_id,cartesian_command>>& result,const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
 {
@@ -306,6 +315,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
     auto ee_id = std::get<1>(database.Grasps.at(path.front().grasp_id));
     auto ee_name=std::get<0>(database.EndEffectors.at(ee_id));
     bool movable=std::get<1>(database.EndEffectors.at(ee_id));
+    bool final_result=true;
 //--------------------------------------
 
 // 2) Setting a boolean flag for each end effector in order to keep track if they are grasping something or not
@@ -331,14 +341,15 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
         geometry_msgs::Quaternion centroid_orientation;
         bool movable=std::get<1>(database.EndEffectors.at(ee_id));
         //---------------------------
-        
+
         // 3.2) Is this the final_node?
-        auto final_node=node;
-        final_node++;
-        if (final_node==path.end())
-        {
-            break; //This break jumps to 4)
-        }
+        if (is_final_node(node,path))
+            final_result=true; break; //This break jumps to 4)
+
+        // 3.2.1) Saving backtracking informations
+        current_item=*node;
+        next_item=*(node++);
+        node--;
         //-------------------------
 
         //From now on node is not the last in the path
@@ -531,7 +542,6 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
 	      ee_grasped[ee_id]=!ee_grasped[ee_id];
 	    }
             node=next_node;
-            continue;
         }
         
     }
