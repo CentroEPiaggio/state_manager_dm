@@ -547,6 +547,13 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
 	    }
             if (movable)
 	    {
+		
+		// consider the ungrasp trajectory as higher if ungrasping on a table
+		if(!next_movable)
+		{
+		    ungrasp.cartesian_task.position.z = ungrasp.cartesian_task.position.z + 0.07;
+		}
+		
                 if (ee_grasped[ee_id])
                 {
                     result.push_back(std::make_pair(ee_id,ungrasp));
@@ -566,7 +573,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
 	    // dopo il grasp passo dall'alto
 	    if(next_movable && !movable)
 	    {
-	      World_GraspSecondEE.p.z(HIGH/2.0);
+	      World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
 	      tf::poseKDLToMsg(World_GraspSecondEE,temp.cartesian_task);
 	      result.push_back(std::make_pair(next_ee_id,temp));
 	    }
