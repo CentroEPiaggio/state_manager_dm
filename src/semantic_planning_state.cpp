@@ -552,6 +552,14 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 }
 	      ee_grasped[ee_id]=!ee_grasped[ee_id];
 	    }
+
+	    // dopo il grasp passo dall'alto
+	    if(next_movable && !movable)
+	    {
+	      World_GraspSecondEE.p.z(HIGH/2.0);
+	      tf::poseKDLToMsg(World_GraspSecondEE,temp.cartesian_task);
+	      result.push_back(std::make_pair(next_ee_id,temp));
+	    }
             node=next_node;
             continue;
         }
