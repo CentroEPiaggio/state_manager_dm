@@ -154,11 +154,13 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
 	// TODO: test the more general code (below) in an accurate way
 	World_Object.p = World_Centroid.p;
 	double rotz = (ee_id==1?M_PI/2.0:-M_PI/2.0);
-	World_Object.M = KDL::Rotation::RotZ(rotz)*Object_FirstEE.M.Inverse();
+	World_Object.M = KDL::Rotation::RotZ(rotz)*(Object_FirstEE.M.Inverse());
 	
-	KDL::Frame object_rotated;
-	object_rotated = World_Object*KDL::Frame(KDL::Vector(-1.0*(World_Object.M.Inverse()*World_Object.p)))*fine_tuning[counter-1];
-	World_Object = object_rotated*KDL::Frame(KDL::Vector(object_rotated.M.Inverse()*World_Object.p));
+	//KDL::Frame object_rotated;
+	//object_rotated = World_Object*KDL::Frame(KDL::Vector(-1.0*(World_Object.M.Inverse()*World_Object.p)))*fine_tuning[aggiuntivo];
+	//World_Object = object_rotated*KDL::Frame(KDL::Vector(object_rotated.M.Inverse()*World_Object.p));
+	World_Object.M = fine_tuning[aggiuntivo].M*World_Object.M;
+	World_Object.p = World_Object.p + fine_tuning[aggiuntivo].p;
 	return true;
 	// TODO: take the above code out
 	
@@ -263,9 +265,11 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
 		handz_on_xy.Normalize();
 	    }
 	}
-	KDL::Frame object_rotated;
-	object_rotated = World_Object*KDL::Frame(KDL::Vector(-1.0*(World_Object.M.Inverse()*World_Object.p)))*fine_tuning[counter-1];
-	World_Object = object_rotated*KDL::Frame(KDL::Vector(object_rotated.M.Inverse()*World_Object.p));
+	//KDL::Frame object_rotated;
+	//object_rotated = World_Object*KDL::Frame(KDL::Vector(-1.0*(World_Object.M.Inverse()*World_Object.p)))*fine_tuning[aggiuntivo];
+	//World_Object = object_rotated*KDL::Frame(KDL::Vector(object_rotated.M.Inverse()*World_Object.p));
+	World_Object.M = fine_tuning[aggiuntivo].M*World_Object.M;
+	World_Object.p = World_Object.p + fine_tuning[aggiuntivo].p;
 	return true;
 	// TODO: as above, test better the following code and make it work more in general
 	
