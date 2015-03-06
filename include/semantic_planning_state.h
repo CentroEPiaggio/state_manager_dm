@@ -32,7 +32,7 @@ private:
     bool check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE);
     bool getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
     bool getPostGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
-    bool is_final_node(dual_manipulation_shared::planner_serviceResponse::_path_type::iterator node, const dual_manipulation_shared::planner_serviceResponse::_path_type& path);
+    bool is_final_node(dual_manipulation_shared::planner_serviceResponse::_path_type::const_iterator node, const dual_manipulation_shared::planner_serviceResponse::_path_type& path);
     ros::NodeHandle n;
     ros::ServiceClient client;
     dual_manipulation_shared::planner_service srv;

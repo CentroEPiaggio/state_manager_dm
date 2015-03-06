@@ -297,7 +297,7 @@ bool semantic_planning_state::compute_intergrasp_orientation(KDL::Vector World_c
     return found;
 }
 
-bool semantic_planning_state::is_final_node(dual_manipulation_shared::planner_serviceResponse::_path_type::iterator node, const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
+bool semantic_planning_state::is_final_node(dual_manipulation_shared::planner_serviceResponse::_path_type::const_iterator node, const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
 {
     auto temp_node=node;
     temp_node++;
