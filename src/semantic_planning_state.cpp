@@ -316,6 +316,9 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
     auto ee_name=std::get<0>(database.EndEffectors.at(ee_id));
     bool movable=std::get<1>(database.EndEffectors.at(ee_id));
     bool final_result=true;
+// 1.1) Setting up variables to be used for backtracking errors
+    dual_manipulation_shared::planner_item previous_item, current_item, next_item;
+    previous_item=current_item=next_item=path.front();
 //--------------------------------------
 
 // 2) Setting a boolean flag for each end effector in order to keep track if they are grasping something or not
@@ -386,7 +389,8 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             {
                 //Error1
                 std::cout<<"ERROR, ee "<<ee_id<<" is the last ee but cannot move into the last node of the path!!"<<std::endl;
-                return false;
+                final_result=false;
+                break; //This break jumps to 4)
             }
             else //not found, movable
             {
@@ -394,7 +398,8 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 {
                     //Error2
                     std::cout<<"ERROR, the planner returned two nodes with same ee and same workspace!!"<<std::endl;
-                    return false;
+                    final_result=false;
+                    break; //This break jumps to 4)
                 }
                 else  //not found->last e.e, movable, different workspaces
                 {
@@ -414,6 +419,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
 		    tf::poseKDLToMsg(World_Object*Object_EE,temp.cartesian_task);
                     temp.command=cartesian_commands::MOVE;
                     result.push_back(std::make_pair(ee_id,temp));
+                    final_result=true;
                     break; //This break jumps to 4)
                 }
             }
@@ -426,7 +432,8 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             {
                 //Error 3
                 std::cout<<"ERROR, the planner returned two nodes with not movable different ees!!"<<std::endl;
-                return false;
+                final_result=false;
+                break; //This break jumps to 4)
             }
             //--------------
 
@@ -516,7 +523,8 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 if (ee_grasped[next_ee_id])
                 {
                     std::cout<<"ERROR, next ee is being used but it has already something grasped!! The planner has done some bad things"<<std::endl;
-                    return false;
+                    final_result=false;
+                    break; //This break jumps to 4)
                 }
                 else
                 {
@@ -537,15 +545,22 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 else
                 {
                     std::cout<<"ERROR, first ee is being used but it has nothing grasped!! The planner has done some bad things"<<std::endl;
-                    return false;
+                    final_result=false;
+                    break; //This break jumps to 4)
                 }
 	      ee_grasped[ee_id]=!ee_grasped[ee_id];
 	    }
             node=next_node;
         }
-        
+        previous_item=current_item;
     }
-    return true;
+    //4) end of this nightmare
+    if (final_result==false)
+    {
+        //Here we should check for previous_item,current_item and next_item in order to understand what should be saved in 
+        // shared_memory filtered_source_nodes and filtered_target_nodes so that we can go for backtracking
+    }
+    return final_result;
 }
 
 void semantic_planning_state::run()
