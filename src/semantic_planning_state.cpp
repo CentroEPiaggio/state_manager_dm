@@ -486,6 +486,7 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
             }
             
             //3.9) get the pose of the second end effector with respect to the object position
+            KDL::Frame World_GraspSecondEE;
             temp.seq_num = 1;
             temp.ee_grasp_id=next_node->grasp_id;
             if (next_movable)
@@ -495,7 +496,12 @@ bool semantic_planning_state::semantic_to_cartesian(std::vector<std::pair<endeff
                 {
                     std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<next_ee_id<<std::endl;
                 }
-                KDL::Frame World_GraspSecondEE = World_Object*Object_SecondEE;
+                World_GraspSecondEE = World_Object*Object_SecondEE;
+		// pre-grasp piu in alto
+		if(!movable)
+		{
+		    World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
+		}
                 tf::poseKDLToMsg(World_GraspSecondEE,temp.cartesian_task);
                 result.push_back(std::make_pair(next_ee_id,temp)); //move the next
             }
