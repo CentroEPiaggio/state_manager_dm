@@ -158,9 +158,8 @@ void getting_info_state::run()
     // send information to the cartesian planner (for collision checking)
     dual_manipulation_shared::scene_object_service srv_obj;
     srv_obj.request.command = "add";
-    // NOTE: use the weight as the ID for retrieving object information
-    srv_obj.request.attObject.weight = data_.obj_id;
-    // NOTE: this should be unique, while we can have two objects with the same "weight"
+    srv_obj.request.object_db_id = data_.obj_id;
+    // NOTE: this should be unique, while we can have more objects with the same "object_db_id"
     srv_obj.request.attObject.object.id = data_.object_name;
     srv_obj.request.attObject.object.mesh_poses.push_back( data_.source_position );
     srv_obj.request.attObject.object.header.frame_id = "world";
