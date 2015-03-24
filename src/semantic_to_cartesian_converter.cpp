@@ -12,6 +12,26 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 this->database=database;
 }
 
+void semantic_to_cartesian_converter::compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node)
+{
+    centroid_x=0;
+    centroid_y=0;
+    auto w_id=node.next_workspace_id;
+    for (auto workspace: database.WorkspaceGeometry.at(w_id))
+    {
+        centroid_x+=workspace.first;
+        centroid_y+=workspace.second;
+    }
+    centroid_x=centroid_x/database.WorkspaceGeometry.at(w_id).size();
+    centroid_y=centroid_y/database.WorkspaceGeometry.at(w_id).size();
+    if (node.type==node_properties::MOVABLE_TO_MOVABLE) //both ee are movable: change above ground
+    {centroid_z=HIGH;}
+    else //one is movable, change on ground
+    {centroid_z=LOW;}
+    
+    return;
+}
+
 node_info semantic_to_cartesian_converter::find_node_properties(const dual_manipulation_shared::planner_serviceResponse::_path_type& path,const dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& node)
 {
     node_info result;
@@ -52,9 +72,9 @@ node_info semantic_to_cartesian_converter::find_node_properties(const dual_manip
         if (!movable && !movable) result.type=node_properties::FIXED_TO_FIXED;            //if (!movable && !next_movable)
         result.current_ee_id=ee_id;
         result.next_ee_id=next_ee_id;
-        result.grasp_id=node->grasp_id;
+        result.current_grasp_id=node->grasp_id;
         result.next_grasp_id=next_node->grasp_id;
-        result.workspace_id=workspace_id;
+        result.current_workspace_id=workspace_id;
         result.next_workspace_id=next_workspace_id;
     }
     else
@@ -92,7 +112,8 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
     {
         double centroid_x=0, centroid_y=0, centroid_z=0;
         geometry_msgs::Quaternion centroid_orientation;
-
+        KDL::Frame World_Object;
+        
         // 3.1) Getting preliminary info for the current node
         node_info node = find_node_properties(path,node_it);
         //---------------------------
@@ -107,10 +128,62 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         // 3.4) Beginning of real actions, depending on the result of 3.3
         if (node.type==node_properties::LAST_EE_FIXED)
         {
+            //Error1
+            std::cout<<"ERROR, ee "<<node.current_ee_id<<" is the last ee but cannot move into the last node of the path!!"<<std::endl;
+            return false;
+        }
+        else if (node.type==node_properties::LAST_EE_MOVABLE)
+        {
+            if (node.current_workspace_id==node.next_workspace_id)
+            {
+                //Error2
+                std::cout<<"ERROR, the planner returned two nodes with same ee and same workspace!!"<<std::endl;
+                return false;
+            }
+            else  //not found->last e.e, movable, different workspaces
+            {
+                // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
+                compute_centroid(centroid_x,centroid_y,next_workspace_id);
+                centroid_z=HIGH;
+                cartesian_command temp;
+                temp.seq_num = 1;
+                temp.ee_grasp_id=node->grasp_id;
+                KDL::Frame Object_EE,World_Object;
+                bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_EE);
+                if (!ok) 
+                {
+                    std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
+                }
+                tf::poseMsgToKDL(data.target_position,World_Object);
+                tf::poseKDLToMsg(World_Object*Object_EE,temp.cartesian_task);
+                temp.command=cartesian_commands::MOVE;
+                result.push_back(std::make_pair(ee_id,temp));
+                break; //This break jumps to 4)
+            }
+        }
+        else if (node.type==node_properties::FIXED_TO_FIXED)
+        {
+            //Error 3
+            std::cout<<"ERROR, the planner returned two nodes with not movable different ees!!"<<std::endl;
+            return false;
+        }
+        else if (node.type=node_properties::node_properties::FIXED_TO_MOVABLE)
+        {
+            // 3.6) compute a rough position of the place where the change of grasp will happen
+            compute_centroid(centroid_x,centroid_y,centroid_z,node);
             
         }
-        else if (1)
+        else if (node.type=node_properties::node_properties::MOVABLE_TO_FIXED)
         {
+            // 3.6) compute a rough position of the place where the change of grasp will happen
+            compute_centroid(centroid_x,centroid_y,centroid_z,node);
+            
+        }
+        else if (node.type=node_properties::node_properties::MOVABLE_TO_MOVABLE)
+        {
+            // 3.6) compute a rough position of the place where the change of grasp will happen
+            compute_centroid(centroid_x,centroid_y,centroid_z,node);
+            
         }
 
         
@@ -120,64 +193,8 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         
         
         
-        if (!found)
+        if (found) //found -> ee_id is not the last ee in the path
         {
-            //3.4.1) if not found, than ee_id is the last end effector in the path
-            if (!movable) //not found not movable
-            {
-                //Error1
-                std::cout<<"ERROR, ee "<<ee_id<<" is the last ee but cannot move into the last node of the path!!"<<std::endl;
-                return false;
-            }
-            else //not found, movable
-            {
-                if (node->workspace_id==next_workspace_id)
-                {
-                    //Error2
-                    std::cout<<"ERROR, the planner returned two nodes with same ee and same workspace!!"<<std::endl;
-                    return false;
-                }
-                else  //not found->last e.e, movable, different workspaces
-                {
-                    // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
-                    compute_centroid(centroid_x,centroid_y,next_workspace_id);
-                    centroid_z=HIGH;
-                    cartesian_command temp;
-                    temp.seq_num = 1;
-                    temp.ee_grasp_id=node->grasp_id;
-                    KDL::Frame Object_EE,World_Object;
-                    bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_EE);
-                    if (!ok) 
-                    {
-                        std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
-                    }
-                    tf::poseMsgToKDL(data.target_position,World_Object);
-                    tf::poseKDLToMsg(World_Object*Object_EE,temp.cartesian_task);
-                    temp.command=cartesian_commands::MOVE;
-                    result.push_back(std::make_pair(ee_id,temp));
-                    break; //This break jumps to 4)
-                }
-            }
-        }
-        else //found -> ee_id is not the last ee in the path
-        {
-            //3.5) There is gonna be a change of grasps
-            KDL::Frame World_Object;
-            if (!movable && !next_movable)
-            {
-                //Error 3
-                std::cout<<"ERROR, the planner returned two nodes with not movable different ees!!"<<std::endl;
-                return false;
-            }
-            //--------------
-            
-            // 3.6) compute a rough position of the place where the change of grasp will happen
-            compute_centroid(centroid_x,centroid_y,next_workspace_id);
-            if (movable && next_movable) //both ee are movable: change above ground
-            {centroid_z=HIGH;}
-            else //one is movable, change on ground
-            {centroid_z=LOW;}
-            
             // treat differently the first and last cases if the associated end-effector is not movable
             if ((node == path.begin()) && (!movable))
             {

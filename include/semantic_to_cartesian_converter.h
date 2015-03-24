@@ -17,8 +17,8 @@ struct node_info
 {
     node_properties type=node_properties::FIXED_TO_FIXED;
     endeffector_id current_ee_id=-1, next_ee_id=-1;
-    workspace_id next_workspace_id=-1, workspace_id=-1;
-    grasp_id grasp_id=-1, next_grasp_id=-1;
+    workspace_id next_workspace_id=-1, current_workspace_id=-1;
+    grasp_id current_grasp_id=-1, next_grasp_id=-1;
 };
 
 class semantic_to_cartesian_converter
@@ -28,7 +28,7 @@ public:
     
 private:
     node_info find_node_properties(const dual_manipulation_shared::planner_serviceResponse::_path_type& path, const std::vector::iterator& node);
-    
+    void compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node);
     void initialize_grasped_map(const dual_manipulation_shared::planner_serviceResponse::_path_type& path);
     
 private:
