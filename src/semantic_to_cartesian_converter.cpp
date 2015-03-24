@@ -98,6 +98,25 @@ void semantic_to_cartesian_converter::initialize_grasped_map(const dual_manipula
     std::cout<<"Assuming that only "<<std::get<0>(database.EndEffectors.at(grasping_ee))<<" is grasping the object, and no other e.e. is grasping anything!"<<std::endl;
 }
 
+void super_compute_intergrasp_orientation()
+{
+    // treat differently the first and last cases if the associated end-effector is not movable
+    if ((node == path.begin()) && (!movable))
+    {
+        std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
+        tf::poseMsgToKDL(data.source_position,World_Object);
+    }
+    else if ((next_node+1) == path.end())
+    {
+        std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
+        tf::poseMsgToKDL(data.target_position,World_Object);
+    }
+    else
+    {
+        compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id,movable,next_movable,result.size());
+    }
+}
+
 bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_id,cartesian_command>>& result,const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
 {
     // 1) Clearing result vector
@@ -171,48 +190,23 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         {
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            
+            super_compute_intergrasp_orientation();
         }
         else if (node.type=node_properties::node_properties::MOVABLE_TO_FIXED)
         {
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            
+            super_compute_intergrasp_orientation();
         }
         else if (node.type=node_properties::node_properties::MOVABLE_TO_MOVABLE)
         {
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            
+            super_compute_intergrasp_orientation();
         }
 
-        
-        
-        
-        
-        
-        
-        
         if (found) //found -> ee_id is not the last ee in the path
         {
-            // treat differently the first and last cases if the associated end-effector is not movable
-            if ((node == path.begin()) && (!movable))
-            {
-                std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
-                tf::poseMsgToKDL(data.source_position,World_Object);
-            }
-            else if ((next_node+1) == path.end())
-            {
-                std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
-                tf::poseMsgToKDL(data.target_position,World_Object);
-            }
-            else
-            {
-                compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id,movable,next_movable,result.size());
-            }
-            
-            //--------------
-            
             //3.7) Inizialize some temporary commands to be pushed back into the plan 
             cartesian_command temp, grasp, ungrasp;
             KDL::Frame Object_FirstEE, Object_SecondEE;
