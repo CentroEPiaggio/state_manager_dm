@@ -50,12 +50,7 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         //---------------------------
         
         // 3.2) Is this the final_node?
-        auto final_node=node;
-        final_node++;
-        if (final_node==path.end())
-        {
-            break; //This break jumps to 4)
-        }
+        if (node+1==path.end()) break; //This break jumps to 4)
         //-------------------------
         
         //From now on node is not the last in the path
