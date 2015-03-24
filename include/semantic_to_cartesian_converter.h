@@ -21,8 +21,12 @@ public:
     
 private:
     
-     private:
+    void initialize_grasped_map(endeffector_id grasping_ee, const dual_manipulation_shared::planner_serviceResponse::_path_type& path);
+    
+private:
      databaseMapper database;
+     std::map<endeffector_id,bool> ee_grasped;
+     
 };
 
 #endif // SEMANTIC_TO_CARTESIAN_CONVERTER_H

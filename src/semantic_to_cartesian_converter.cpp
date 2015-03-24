@@ -13,28 +13,29 @@ this->database=database;
 }
 
 
+void semantic_to_cartesian_converter::initialize_grasped_map(endeffector_id grasping_ee,const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
+{
+    //This approach is valid only if no more than one e.e. can grasp an object at the same time!! 
+    for (auto node=path.begin();node!=path.end();++node)
+    {
+        auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
+        ee_grasped[ee_id]=false;
+    }
+    ee_grasped[grasping_ee]=true;
+    std::cout<<"Assuming that only "<<std::get<0>(database.EndEffectors.at(grasping_ee))<<" is grasping the object, and no other e.e. is grasping anything!"<<std::endl;
+}
 
 
 bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_id,cartesian_command>>& result,const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
 {
     // 1) Getting preliminary information
-    std::map<endeffector_id,bool> ee_grasped;
     result.clear();
     auto ee_id = std::get<1>(database.Grasps.at(path.front().grasp_id));
     bool movable=std::get<1>(database.EndEffectors.at(ee_id));
     //--------------------------------------
     
     // 2) Setting a boolean flag for each end effector in order to keep track if they are grasping something or not
-    
-    //This approach is valid only if no more than one e.e. can grasp an object at the same time!! 
-    ee_grasped[ee_id]=true;
-    std::cout<<"Assuming that only "<<std::get<0>(database.EndEffectors.at(ee_id))<<" is grasping the object, and no other e.e. is grasping anything!"<<std::endl;
-    for (auto node=path.begin();node!=path.end();++node)
-    {
-        auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
-        if (!ee_grasped.count(ee_id))
-            ee_grasped[ee_id]=false;
-    }
+    initialize_grasped_map(ee_id);
     //-------------------------------------------
     
     // 3) Start of the main conversion loop
