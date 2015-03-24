@@ -12,6 +12,58 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 this->database=database;
 }
 
+node_info semantic_to_cartesian_converter::find_node_properties(const dual_manipulation_shared::planner_serviceResponse::_path_type& path,const dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& node)
+{
+    node_info result;
+    auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
+    bool movable=std::get<1>(database.EndEffectors.at(ee_id));
+    if (node+1==path.end()) 
+    {
+        result.type=node_properties::FINAL_NODE;
+        return result;
+    }
+    // 3.3) Searching for the next node with a different end effector than the current one
+    bool found=false;
+    endeffector_id next_ee_id;
+    workspace_id next_workspace_id;
+    bool next_movable=false;
+    auto next_node=node;
+    while (!found && next_node!=path.end())
+    {
+        next_node++;
+        if (next_node!=path.end())
+        {
+            next_ee_id = std::get<1>(database.Grasps.at(next_node->grasp_id));
+            next_workspace_id = next_node->workspace_id;
+            next_movable=std::get<1>(database.EndEffectors.at(next_ee_id));
+            if (ee_id==next_ee_id) continue;
+            else
+            {
+                found=true;
+                break;
+            }
+        }
+    }
+    if (found)
+    {
+        if (movable && !movable) result.type=node_properties::MOVABLE_TO_FIXED;          //found, one is movable, change on ground
+        if (!movable && movable) result.type=node_properties::FIXED_TO_MOVABLE;          //found, one is movable, change on ground
+        if (movable && movable) result.type=node_properties::MOVABLE_TO_MOVABLE;        //found, both ee are movable: change above ground
+        if (!movable && !movable) result.type=node_properties::FIXED_TO_FIXED;            //if (!movable && !next_movable)
+        result.current_ee_id=ee_id;
+        result.next_ee_id=next_ee_id;
+        result.grasp_id=node->grasp_id;
+        result.next_grasp_id=next_node->grasp_id;
+        result.workspace_id=workspace_id;
+        result.next_workspace_id=next_workspace_id;
+    }
+    else
+    {
+        if (!movable) result.type=node_properties::LAST_EE_FIXED;             //3.4.1) if not found, than ee_id is the last end effector in the path //not found not movable
+        else result.type=node_properties::LAST_EE_MOVABLE;            //else //not found->last e.e, movable
+    }
+    return result;
+}
 
 void semantic_to_cartesian_converter::initialize_grasped_map(const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
 {
@@ -36,46 +88,38 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
     //-------------------------------------------
     
     // 3) Start of the main conversion loop
-    for (auto node=path.begin();node!=path.end();)//++node)
+    for (auto node_it=path.begin();node_it!=path.end();)//++node)
     {
-        // 3.1) Getting preliminary info for the current node
-        auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
         double centroid_x=0, centroid_y=0, centroid_z=0;
         geometry_msgs::Quaternion centroid_orientation;
-        bool movable=std::get<1>(database.EndEffectors.at(ee_id));
+
+        // 3.1) Getting preliminary info for the current node
+        node_info node = find_node_properties(path,node_it);
         //---------------------------
-        
+
         // 3.2) Is this the final_node?
-        if (node+1==path.end()) break; //This break jumps to 4)
+        if (node.type==node_properties::FINAL_NODE) break; //This break jumps to 4)
         //-------------------------
-        
         //From now on node is not the last in the path
-        
         // 3.3) Searching for the next node with a different end effector than the current one
-        bool found=false;
-        endeffector_id next_ee_id;
-        workspace_id next_workspace_id;
-        bool next_movable=false;
-        auto next_node=node;
-        while (!found && next_node!=path.end())
-        {
-            next_node++;
-            if (next_node!=path.end())
-            {
-                next_ee_id = std::get<1>(database.Grasps.at(next_node->grasp_id));
-                next_workspace_id = next_node->workspace_id;
-                next_movable=std::get<1>(database.EndEffectors.at(next_ee_id));
-                if (ee_id==next_ee_id) continue;
-                else
-                {
-                    found=true;
-                    break; //this break jumps to 3.4)
-                }
-            }
-        }
-        //-----------------------
-        
+        //Done in find_node_properties
+
         // 3.4) Beginning of real actions, depending on the result of 3.3
+        if (node.type==node_properties::LAST_EE_FIXED)
+        {
+            
+        }
+        else if (1)
+        {
+        }
+
+        
+        
+        
+        
+        
+        
+        
         if (!found)
         {
             //3.4.1) if not found, than ee_id is the last end effector in the path
