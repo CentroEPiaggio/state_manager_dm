@@ -21,7 +21,6 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
     std::map<endeffector_id,bool> ee_grasped;
     result.clear();
     auto ee_id = std::get<1>(database.Grasps.at(path.front().grasp_id));
-    auto ee_name=std::get<0>(database.EndEffectors.at(ee_id));
     bool movable=std::get<1>(database.EndEffectors.at(ee_id));
     //--------------------------------------
     
@@ -29,7 +28,7 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
     
     //This approach is valid only if no more than one e.e. can grasp an object at the same time!! 
     ee_grasped[ee_id]=true;
-    std::cout<<"Assuming that only "<<ee_name<<" is grasping the object, and no other e.e. is grasping anything!"<<std::endl;
+    std::cout<<"Assuming that only "<<std::get<0>(database.EndEffectors.at(ee_id))<<" is grasping the object, and no other e.e. is grasping anything!"<<std::endl;
     for (auto node=path.begin();node!=path.end();++node)
     {
         auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
@@ -43,7 +42,6 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
     {
         // 3.1) Getting preliminary info for the current node
         auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
-        auto ee_name=std::get<0>(database.EndEffectors.at(ee_id));
         double centroid_x=0, centroid_y=0, centroid_z=0;
         geometry_msgs::Quaternion centroid_orientation;
         bool movable=std::get<1>(database.EndEffectors.at(ee_id));
