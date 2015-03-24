@@ -132,6 +132,8 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         double centroid_x=0, centroid_y=0, centroid_z=0;
         geometry_msgs::Quaternion centroid_orientation;
         KDL::Frame World_Object;
+        KDL::Frame Object_FirstEE, Object_SecondEE;
+        KDL::Frame World_GraspSecondEE;
         
         // 3.1) Getting preliminary info for the current node
         node_info node = find_node_properties(path,node_it);
@@ -194,22 +196,72 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         }
         else if (node.type=node_properties::node_properties::MOVABLE_TO_FIXED)
         {
+            cartesian_command move_command;
+            move_command.command=cartesian_commands::MOVE;
+            move_command.ee_grasp_id=node.current_ee_id;
+            move_command.ee_grasp_id=node.current_grasp_id;
+            move_command.seq_num=1;//do not parallelize with the fixed ee :)
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
             super_compute_intergrasp_orientation();
+            bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_FirstEE);
+            if (!ok) 
+            {
+                std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.current_ee_id<<std::endl;
+            }
+            KDL::Frame World_GraspFirstEE = World_Object*Object_FirstEE;
+            tf::poseKDLToMsg(World_GraspFirstEE,move_command.cartesian_task);
+            result.push_back(std::make_pair(node.current_ee_id,move_command)); //move the first
+            
         }
         else if (node.type=node_properties::node_properties::MOVABLE_TO_MOVABLE)
         {
+            cartesian_command move_command;
+            move_command.command=cartesian_commands::MOVE;
+            move_command.ee_grasp_id=node.current_ee_id;
+            move_command.ee_grasp_id=node.current_grasp_id;
+            move_command.seq_num=0;//Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
             super_compute_intergrasp_orientation();
+            bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_FirstEE);
+            if (!ok) 
+            {
+                std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.current_ee_id<<std::endl;
+            }
+            KDL::Frame World_GraspFirstEE = World_Object*Object_FirstEE;
+            tf::poseKDLToMsg(World_GraspFirstEE,move_command.cartesian_task);
+            result.push_back(std::make_pair(node.current_ee_id,move_command)); //move the first
+            
         }
 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         if (found) //found -> ee_id is not the last ee in the path
         {
             //3.7) Inizialize some temporary commands to be pushed back into the plan 
             cartesian_command temp, grasp, ungrasp;
-            KDL::Frame Object_FirstEE, Object_SecondEE;
             temp.ee_grasp_id=node->grasp_id;
             temp.seq_num = !next_movable; //Do not parallelize movements if only the current ee is moving
             //--------------
@@ -219,21 +271,7 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             ungrasp.seq_num = 1;
             temp.command=cartesian_commands::MOVE;
             
-            //3.8) get the pose of the first end effector with respect to the object position
-            if (movable) 
-            {
-                bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_FirstEE);
-                if (!ok) 
-                {
-                    std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
-                }
-                KDL::Frame World_GraspFirstEE = World_Object*Object_FirstEE;
-                tf::poseKDLToMsg(World_GraspFirstEE,temp.cartesian_task);
-                result.push_back(std::make_pair(ee_id,temp)); //move the first
-            }
-            
             //3.9) get the pose of the second end effector with respect to the object position
-            KDL::Frame World_GraspSecondEE;
             temp.seq_num = 1;
             temp.ee_grasp_id=next_node->grasp_id;
             
