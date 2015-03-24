@@ -21,7 +21,7 @@ public:
     
 private:
     
-    void initialize_grasped_map(endeffector_id grasping_ee, const dual_manipulation_shared::planner_serviceResponse::_path_type& path);
+    void initialize_grasped_map(const dual_manipulation_shared::planner_serviceResponse::_path_type& path);
     
 private:
      databaseMapper database;
