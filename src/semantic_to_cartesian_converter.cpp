@@ -193,6 +193,12 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
             super_compute_intergrasp_orientation();
+            #if SUPERHACK
+            //superhack - part 1 - copy
+            KDL::Frame Mirko(World_Object);
+            #endif
+            std::cout << "result.size() : " << result.size() << std::endl;
+            
         }
         else if (node.type=node_properties::node_properties::MOVABLE_TO_FIXED)
         {
@@ -212,6 +218,10 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             KDL::Frame World_GraspFirstEE = World_Object*Object_FirstEE;
             tf::poseKDLToMsg(World_GraspFirstEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_command)); //move the first
+            #if SUPERHACK
+            //superhack - part 1 - copy
+            KDL::Frame Mirko(World_Object);
+            #endif
             
         }
         else if (node.type=node_properties::node_properties::MOVABLE_TO_MOVABLE)
@@ -232,6 +242,17 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             KDL::Frame World_GraspFirstEE = World_Object*Object_FirstEE;
             tf::poseKDLToMsg(World_GraspFirstEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_command)); //move the first
+            #if SUPERHACK
+            //superhack - part 1 - copy
+            KDL::Frame Mirko(World_Object);
+            #endif
+            std::cout << "result.size() : " << result.size() << std::endl;
+            #if SUPERHACK
+            //superhack - part 2 - change the world!
+                std::cout << "...and movable!" << std::endl;
+                World_Object.M = fine_tuning[result.size()].M*World_Object.M;
+                World_Object.p = World_Object.p + fine_tuning[result.size()].p;
+            #endif
             
         }
 
@@ -275,22 +296,8 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             temp.seq_num = 1;
             temp.ee_grasp_id=next_node->grasp_id;
             
-#if SUPERHACK
-            //superhack - part 1 - copy
-            KDL::Frame Mirko(World_Object);
-#endif
             if (next_movable)
             {
-                std::cout << "result.size() : " << result.size() << std::endl;
-#if SUPERHACK
-                //superhack - part 2 - change the world!
-                if(movable)
-                {
-                    std::cout << "...and movable!" << std::endl;
-                    World_Object.M = fine_tuning[result.size()].M*World_Object.M;
-                    World_Object.p = World_Object.p + fine_tuning[result.size()].p;
-                }
-#endif
                 bool ok = getPreGraspMatrix(data.obj_id,next_node->grasp_id,Object_SecondEE);
                 if (!ok) 
                 {
