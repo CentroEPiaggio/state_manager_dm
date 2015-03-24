@@ -198,6 +198,20 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             KDL::Frame Mirko(World_Object);
             #endif
             std::cout << "result.size() : " << result.size() << std::endl;
+            bool ok = getPreGraspMatrix(data.obj_id,next_node->grasp_id,Object_SecondEE);
+            if (!ok) 
+            {
+                std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<next_ee_id<<std::endl;
+            }
+            World_GraspSecondEE = World_Object*Object_SecondEE;
+            #if SUPERHACK //raise more the grasp
+            if(!movable)
+            {
+                World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
+            }
+            #endif
+            tf::poseKDLToMsg(World_GraspSecondEE,temp.cartesian_task);
+            result.push_back(std::make_pair(next_ee_id,temp)); //move the next
             
         }
         else if (node.type=node_properties::node_properties::MOVABLE_TO_FIXED)
@@ -228,7 +242,6 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         {
             cartesian_command move_command;
             move_command.command=cartesian_commands::MOVE;
-            move_command.ee_grasp_id=node.current_ee_id;
             move_command.ee_grasp_id=node.current_grasp_id;
             move_command.seq_num=0;//Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
@@ -249,10 +262,22 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             std::cout << "result.size() : " << result.size() << std::endl;
             #if SUPERHACK
             //superhack - part 2 - change the world!
-                std::cout << "...and movable!" << std::endl;
-                World_Object.M = fine_tuning[result.size()].M*World_Object.M;
-                World_Object.p = World_Object.p + fine_tuning[result.size()].p;
+            std::cout << "...and movable!" << std::endl;
+            World_Object.M = fine_tuning[result.size()].M*World_Object.M;
+            World_Object.p = World_Object.p + fine_tuning[result.size()].p;
             #endif
+            bool ok = getPreGraspMatrix(data.obj_id,node.next_grasp_id,Object_SecondEE);
+            if (!ok) 
+            {
+                std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.next_ee_id<<std::endl;
+            }
+            cartesian_command second_move_command;
+            second_move_command.command=cartesian_commands::MOVE;
+            second_move_command.ee_grasp_id=node.next_ee_id;
+            second_move_command.seq_num=1;//Do not parallelize
+            World_GraspSecondEE = World_Object*Object_SecondEE;
+            tf::poseKDLToMsg(World_GraspSecondEE,second_move_command.cartesian_task);
+            result.push_back(std::make_pair(node.next_ee_id,second_move_command)); //move the next
             
         }
 
@@ -295,24 +320,6 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             //3.9) get the pose of the second end effector with respect to the object position
             temp.seq_num = 1;
             temp.ee_grasp_id=next_node->grasp_id;
-            
-            if (next_movable)
-            {
-                bool ok = getPreGraspMatrix(data.obj_id,next_node->grasp_id,Object_SecondEE);
-                if (!ok) 
-                {
-                    std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<next_ee_id<<std::endl;
-                }
-                World_GraspSecondEE = World_Object*Object_SecondEE;
-#if SUPERHACK //raise more the grasp
-                if(!movable)
-                {
-                    World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
-                }
-#endif
-                tf::poseKDLToMsg(World_GraspSecondEE,temp.cartesian_task);
-                result.push_back(std::make_pair(next_ee_id,temp)); //move the next
-            }
             
             //3.10) after moving one or two end effectors, we can grasp/ungrasp depending on the state of the ee and of movable/not movable
             // make sure that the grasp/ungrasp actions have the object frame
