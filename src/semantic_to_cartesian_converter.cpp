@@ -205,13 +205,21 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             }
             World_GraspSecondEE = World_Object*Object_SecondEE;
             #if SUPERHACK //raise more the grasp
-            if(!movable)
-            {
-                World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
-            }
+            World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
             #endif
-            tf::poseKDLToMsg(World_GraspSecondEE,temp.cartesian_task);
-            result.push_back(std::make_pair(next_ee_id,temp)); //move the next
+            cartesian_command move_command(cartesian_commands::MOVE, 1, node.next_grasp_id);
+            tf::poseKDLToMsg(World_GraspSecondEE,move_command.cartesian_task);
+            result.push_back(std::make_pair(node.next_ee_id,move_command)); //move the next
+            
+            //From fixed to movable we will grasp the object
+            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id);
+            result.push_back(std::make_pair(node.next_ee_id,grasp));
+            #if SUPERHACK
+            World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
+            #endif
+            //Back to before the grasp (retreat)
+            tf::poseKDLToMsg(World_GraspSecondEE,move_command.cartesian_task);
+            result.push_back(std::make_pair(node.next_ee_id,move_command));
             
         }
         else if (node.type=node_properties::node_properties::MOVABLE_TO_FIXED)
@@ -236,7 +244,14 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             //superhack - part 1 - copy
             KDL::Frame Mirko(World_Object);
             #endif
-            
+            #if SUPERHACK
+            // consider the ungrasp trajectory as higher if ungrasping on a table
+            ungrasp.cartesian_task.position.z = ungrasp.cartesian_task.position.z + 0.07;
+            #endif
+            cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id);
+            result.push_back(std::make_pair(node.current_ee_id,ungrasp));
+            cartesian_command move_away(cartesian_commands::HOME,1,-1);
+            result.push_back(std::make_pair(node.current_ee_id,move_away));
         }
         else if (node.type=node_properties::node_properties::MOVABLE_TO_MOVABLE)
         {
@@ -278,7 +293,20 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             World_GraspSecondEE = World_Object*Object_SecondEE;
             tf::poseKDLToMsg(World_GraspSecondEE,second_move_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,second_move_command)); //move the next
-            
+            //From movable to movable we will grasp the object and ungrasp it
+            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id);
+            // make sure that the grasp/ungrasp actions have the object frame
+            tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
+            result.push_back(std::make_pair(node.next_ee_id,grasp));
+            cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id);
+            #if SUPERHACK
+            //superhack - part 3 - go back
+            World_Object = Mirko;
+            #endif
+            tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
+            result.push_back(std::make_pair(node.current_ee_id,ungrasp));
+            cartesian_command move_away(cartesian_commands::HOME,1,-1);
+            result.push_back(std::make_pair(node.current_ee_id,move_away));
         }
 
         
@@ -322,13 +350,6 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             temp.ee_grasp_id=next_node->grasp_id;
             
             //3.10) after moving one or two end effectors, we can grasp/ungrasp depending on the state of the ee and of movable/not movable
-            // make sure that the grasp/ungrasp actions have the object frame
-            tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
-#if SUPERHACK
-            //superhack - part 3 - go back
-            World_Object = Mirko;
-#endif
-            tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             // add in the cartesian_command the grasp ID we are considering
             if (ee_grasped[ee_id])
             {
@@ -341,38 +362,6 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
                 ungrasp.ee_grasp_id = next_node->grasp_id;
             }
             
-            if (next_movable)
-            {
-                result.push_back(std::make_pair(next_ee_id,grasp));
-                ee_grasped[next_ee_id]=!ee_grasped[next_ee_id];
-            }
-            if (movable)
-            {
-#if SUPERHACK
-                // consider the ungrasp trajectory as higher if ungrasping on a table
-                if(!next_movable)
-                {
-                    ungrasp.cartesian_task.position.z = ungrasp.cartesian_task.position.z + 0.07;
-                }
-#endif
-                if (ee_grasped[ee_id])
-                {
-                    result.push_back(std::make_pair(ee_id,ungrasp));
-                    cartesian_command move_away;
-                    move_away.command=cartesian_commands::HOME;
-                    move_away.seq_num=1;
-                    result.push_back(std::make_pair(ee_id,move_away));
-                }
-                ee_grasped[ee_id]=!ee_grasped[ee_id];
-            }
-            if(next_movable && !movable)
-            {
-#if SUPERHACK
-                World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
-#endif
-                tf::poseKDLToMsg(World_GraspSecondEE,temp.cartesian_task);
-                result.push_back(std::make_pair(next_ee_id,temp));
-            }
             node=next_node;
             continue;
         }
