@@ -32,7 +32,10 @@ void semantic_to_cartesian_converter::compute_centroid(double& centroid_x,double
     return;
 }
 
-node_info semantic_to_cartesian_converter::find_node_properties(const dual_manipulation_shared::planner_serviceResponse::_path_type& path,const dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& node)
+node_info semantic_to_cartesian_converter::find_node_properties(const dual_manipulation_shared::planner_serviceResponse::_path_type& path,
+                                                                const dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& node,
+                                                                dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& next_node
+                                                               )
 {
     node_info result;
     auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
@@ -47,7 +50,6 @@ node_info semantic_to_cartesian_converter::find_node_properties(const dual_manip
     endeffector_id next_ee_id;
     workspace_id next_workspace_id;
     bool next_movable=false;
-    auto next_node=node;
     while (!found && next_node!=path.end())
     {
         next_node++;
@@ -136,7 +138,8 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         KDL::Frame World_GraspSecondEE;
         
         // 3.1) Getting preliminary info for the current node
-        node_info node = find_node_properties(path,node_it);
+        auto next_node_it=node_it;
+        node_info node = find_node_properties(path,node_it,next_node_it);
         //---------------------------
 
         // 3.2) Is this the final_node?
@@ -308,64 +311,11 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             cartesian_command move_away(cartesian_commands::HOME,1,-1);
             result.push_back(std::make_pair(node.current_ee_id,move_away));
         }
-
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        if (found) //found -> ee_id is not the last ee in the path
+        else 
         {
-            //3.7) Inizialize some temporary commands to be pushed back into the plan 
-            cartesian_command temp, grasp, ungrasp;
-            temp.ee_grasp_id=node->grasp_id;
-            temp.seq_num = !next_movable; //Do not parallelize movements if only the current ee is moving
-            //--------------
-            grasp.command=cartesian_commands::GRASP;
-            grasp.seq_num = 1;
-            ungrasp.command=cartesian_commands::UNGRASP;
-            ungrasp.seq_num = 1;
-            temp.command=cartesian_commands::MOVE;
-            
-            //3.9) get the pose of the second end effector with respect to the object position
-            temp.seq_num = 1;
-            temp.ee_grasp_id=next_node->grasp_id;
-            
-            //3.10) after moving one or two end effectors, we can grasp/ungrasp depending on the state of the ee and of movable/not movable
-            // add in the cartesian_command the grasp ID we are considering
-            if (ee_grasped[ee_id])
-            {
-                grasp.ee_grasp_id = next_node->grasp_id;
-                ungrasp.ee_grasp_id = node->grasp_id;
-            }
-            else if (ee_grasped[next_ee_id])
-            {
-                grasp.ee_grasp_id = node->grasp_id;
-                ungrasp.ee_grasp_id = next_node->grasp_id;
-            }
-            
-            node=next_node;
-            continue;
+            std::cout<<"SUPER ERROR!!"<<std::endl;
         }
-        
+        node_it=next_node_it;
     }
     return true;
 }

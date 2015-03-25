@@ -27,7 +27,7 @@ public:
      semantic_to_cartesian_converter(const databaseMapper& database);
     
 private:
-    node_info find_node_properties(const dual_manipulation_shared::planner_serviceResponse::_path_type& path, const std::vector::iterator& node);
+    node_info find_node_properties(const dual_manipulation_shared::planner_serviceResponse::_path_type& path, const dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& node, dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& next_node);
     void compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node);
     void initialize_grasped_map(const dual_manipulation_shared::planner_serviceResponse::_path_type& path);
     
