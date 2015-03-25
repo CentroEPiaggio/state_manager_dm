@@ -15,6 +15,10 @@ enum class cartesian_commands
 
 struct cartesian_command
 {
+    cartesian_command(cartesian_commands command,int seq_num,grasp_id ee_grasp_id):command(command),seq_num(seq_num),ee_grasp_id(ee_grasp_id)
+    {
+        
+    };
     geometry_msgs::Pose cartesian_task; //desired position of the HAND in the pregrasp, not the object!!
     cartesian_commands command;
     /**
