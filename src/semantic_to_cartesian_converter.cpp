@@ -164,21 +164,21 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             else  //not found->last e.e, movable, different workspaces
             {
                 // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
-                compute_centroid(centroid_x,centroid_y,next_workspace_id);
-                centroid_z=HIGH;
-                cartesian_command temp;
-                temp.seq_num = 1;
-                temp.ee_grasp_id=node->grasp_id;
+                compute_centroid(centroid_x,centroid_y,centroid_z,node);
+                //TODO: probably we want to write here the final desired position, not the centroid of the workspace
+                cartesian_command move_command;
+                move_command.command=cartesian_commands::MOVE;
+                move_command.seq_num = 1;
+                move_command.ee_grasp_id=node.current_grasp_id;
                 KDL::Frame Object_EE,World_Object;
-                bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_EE);
+                bool ok=getPostGraspMatrix(data.obj_id,node.current_grasp_id,Object_EE);
                 if (!ok) 
                 {
-                    std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<ee_id<<std::endl;
+                    std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.current_ee_id<<std::endl;
                 }
                 tf::poseMsgToKDL(data.target_position,World_Object);
-                tf::poseKDLToMsg(World_Object*Object_EE,temp.cartesian_task);
-                temp.command=cartesian_commands::MOVE;
-                result.push_back(std::make_pair(ee_id,temp));
+                tf::poseKDLToMsg(World_Object*Object_EE,move_command.cartesian_task);
+                result.push_back(std::make_pair(node.current_ee_id,move_command));
                 break; //This break jumps to 4)
             }
         }
@@ -365,7 +365,6 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
                 }
                 ee_grasped[ee_id]=!ee_grasped[ee_id];
             }
-            
             if(next_movable && !movable)
             {
 #if SUPERHACK
