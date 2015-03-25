@@ -4,13 +4,46 @@
 #include <dual_manipulation_shared/planner_serviceResponse.h>
 #include <vector>
 #include <kdl_conversions/kdl_msg.h>
+#include "dual_manipulation_shared/serialization_utils.h"
 
 #define SUPERHACK 0
+#define HIGH 0.5
+#define LOW 0.06
+
 
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database)
 {
 this->database=database;
+fine_tuning[4]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
+fine_tuning[5]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
+
 }
+
+bool semantic_to_cartesian_converter::getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE)
+{
+    dual_manipulation_shared::ik_service srv;
+    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
+    if (ok)
+        tf::poseMsgToKDL(srv.request.ee_pose.front(),Object_EE);
+    
+    // get away a little more
+    Object_EE.p = Object_EE.p * 1.3;
+    
+    return ok;
+}
+
+bool semantic_to_cartesian_converter::getPostGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE)
+{
+    dual_manipulation_shared::ik_service srv;
+    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
+    if (ok)
+    {
+        tf::poseMsgToKDL(srv.request.attObject.object.mesh_poses.front(),Object_EE);
+        Object_EE = Object_EE.Inverse();
+    }
+    return ok;
+}
+
 
 void semantic_to_cartesian_converter::compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node)
 {
@@ -87,47 +120,197 @@ node_info semantic_to_cartesian_converter::find_node_properties(const dual_manip
     return result;
 }
 
-void semantic_to_cartesian_converter::initialize_grasped_map(const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
+bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, 
+                                                             endeffector_id ee_id, endeffector_id next_ee_id, grasp_id grasp, 
+                                                             grasp_id next_grasp, object_id object,bool movable,bool next_movable,int aggiuntivo)
 {
-    //This approach is valid only if no more than one e.e. can grasp an object at the same time!! 
-    for (auto node=path.begin();node!=path.end();++node)
+    std::cout << "compute_intergrasp_orientation : counter=" << counter++ << std::endl;
+    std::cout << "compute_intergrasp_orientation : aggiuntivo=" << aggiuntivo << std::endl;
+    bool found=false;
+    if (movable && next_movable)
     {
-        auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
-        ee_grasped[ee_id]=false;
+        //Case both movable (centroid_z should be HIGH)
+        KDL::Frame World_Centroid(World_centroid);
+        KDL::Frame Object_FirstEE, Object_SecondEE;
+        bool ok=getPostGraspMatrix(object,grasp,Object_FirstEE);
+        if (!ok) 
+        {
+            std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
+        }
+        ok = getPreGraspMatrix(object,next_grasp,Object_SecondEE);
+        if (!ok) 
+        {
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<next_ee_id<<std::endl;
+        }
+        
+        // TODO: test the more general code (below) in an accurate way
+        World_Object.p = World_Centroid.p;
+        double rotz = (ee_id==1?M_PI/2.0:-M_PI/2.0);
+        World_Object.M = KDL::Rotation::RotZ(rotz)*(Object_FirstEE.M.Inverse());
+        
+        //KDL::Frame object_rotated;
+        //object_rotated = World_Object*KDL::Frame(KDL::Vector(-1.0*(World_Object.M.Inverse()*World_Object.p)))*fine_tuning[aggiuntivo];
+        //World_Object = object_rotated*KDL::Frame(KDL::Vector(object_rotated.M.Inverse()*World_Object.p));
+        World_Object.M = fine_tuning[aggiuntivo].M*World_Object.M;
+        World_Object.p = World_Object.p + fine_tuning[aggiuntivo].p;
+        return true;
+        // TODO: take the above code out
+        
+        KDL::Frame Object_MiddlePosition;
+        Object_MiddlePosition.p=(Object_FirstEE.p+Object_SecondEE.p)/2;
+        KDL::Vector Object_Xmiddle=Object_SecondEE.p-Object_FirstEE.p;
+        Object_Xmiddle.Normalize();
+        double a=Object_Xmiddle.x();
+        double b=Object_Xmiddle.y();
+        double c=Object_Xmiddle.z();
+        KDL::Vector Object_Zmiddle(a*c,b*c,1-c*c); //(I - X^T * X ) * (0 0 1)^T
+        /*
+         *        a b c   a b c
+         *        1-aa  ab  ac  0    ac
+         *        ba  1-bb  bc  0 =  bc
+         *        ca  cb  1-cc  1    1-cc
+         */
+        Object_Zmiddle.Normalize();
+        KDL::Vector Object_Ymiddle=Object_Zmiddle*Object_Xmiddle;
+        Object_Ymiddle.Normalize();//Just in case
+        Object_MiddlePosition.M=KDL::Rotation(Object_Xmiddle,Object_Ymiddle,Object_Zmiddle);
+        for (double anglez=0;anglez<M_PI;anglez=anglez+0.1)
+        {
+            KDL::Frame Object_MiddlePositionRotatedz1=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Zmiddle,anglez));
+            //iterate along rotation until a solution if found
+            for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
+            {
+                //find back the grasps
+                KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
+                World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
+                found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+                if (found) break;
+                KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz1*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
+                World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
+                found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+                if (found) break;
+            }
+            if (found) break;
+            if (anglez==0) continue;
+            KDL::Frame Object_MiddlePositionRotatedz2=Object_MiddlePosition*KDL::Frame(KDL::Rotation::Rot(Object_Zmiddle,-anglez));
+            //iterate along rotation until a solution if found
+            for (double anglex=0;anglex<M_PI;anglex=anglex+0.1)
+            {
+                //find back the grasps
+                KDL::Frame Object_MiddlePositionRotatedx1=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,anglex));
+                World_Object = World_Centroid*Object_MiddlePositionRotatedx1.Inverse();
+                found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+                if (found) break;
+                KDL::Frame Object_MiddlePositionRotatedx2=Object_MiddlePositionRotatedz2*KDL::Frame(KDL::Rotation::Rot(Object_Xmiddle,-anglex));
+                World_Object = World_Centroid*Object_MiddlePositionRotatedx2.Inverse();
+                found = check_ik(ee_id,World_Object*Object_FirstEE,next_ee_id,World_Object*Object_SecondEE);
+                if (found) break;
+            }
+            if (found) break;
+        }
     }
-    auto grasping_ee = std::get<1>(database.Grasps.at(path.front().grasp_id));
-    ee_grasped[grasping_ee]=true;
-    std::cout<<"Assuming that only "<<std::get<0>(database.EndEffectors.at(grasping_ee))<<" is grasping the object, and no other e.e. is grasping anything!"<<std::endl;
+    else if ((movable && !next_movable) || (!movable && next_movable))
+    {
+        //Case one ee movable
+        KDL::Frame World_Centroid(World_centroid);
+        KDL::Frame Object_FirstEE, Object_SecondEE;
+        bool ok=getPostGraspMatrix(object,grasp,Object_FirstEE);
+        if (!ok) 
+        {
+            std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<ee_id<<std::endl;
+        }
+        ok = getPreGraspMatrix(object,next_grasp,Object_SecondEE);
+        if (!ok) 
+        {
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<next_ee_id<<std::endl;
+        }
+        // from now on, first is movable and second is not movable: I don't need to keep ordering in here
+        if (!movable && next_movable)
+        {
+            KDL::Frame switch_frame(Object_FirstEE);
+            Object_FirstEE = Object_SecondEE;
+            Object_SecondEE = switch_frame;
+            endeffector_id switch_id = ee_id;
+            ee_id = next_ee_id;
+            next_ee_id = switch_id;
+            // grasps are not used later, but just in case
+            grasp_id switch_grasp = grasp;
+            grasp = next_grasp;
+            next_grasp = switch_grasp;
+        }
+        
+        // This will place the secondEE (not movable) exactly on the centroid (a table is on the centroid of the workspace)
+        World_Object = World_Centroid*Object_SecondEE.Inverse();
+        
+        // I can change the end-effector (else: I cannot)
+        if (movable && !next_movable)
+        {
+            KDL::Vector handz,handz_on_xy;
+            handz = World_Object.M * Object_FirstEE.M * KDL::Vector(0,0,1);
+            handz_on_xy = KDL::Vector(handz.x(),handz.y(),0);
+            handz_on_xy.Normalize();
+            while (dot(handz_on_xy,KDL::Vector(1,0,0)) > -0.7)
+            {
+                World_Object.M = KDL::Rotation::RotZ(M_PI/2.0)*World_Object.M;
+                handz = World_Object.M * Object_FirstEE.M * KDL::Vector(0,0,1);
+                handz_on_xy = KDL::Vector(handz.x(),handz.y(),0);
+                handz_on_xy.Normalize();
+            }
+        }
+        //KDL::Frame object_rotated;
+        //object_rotated = World_Object*KDL::Frame(KDL::Vector(-1.0*(World_Object.M.Inverse()*World_Object.p)))*fine_tuning[aggiuntivo];
+        //World_Object = object_rotated*KDL::Frame(KDL::Vector(object_rotated.M.Inverse()*World_Object.p));
+        World_Object.M = fine_tuning[aggiuntivo].M*World_Object.M;
+        World_Object.p = World_Object.p + fine_tuning[aggiuntivo].p;
+        return true;
+        // TODO: as above, test better the following code and make it work more in general
+        
+        // to use for rotations, axis aligned with world z computed in object frame
+        KDL::Vector Object_worldZ(World_Object.Inverse().M*KDL::Vector(0,0,1));
+        
+        for (double anglez=0;anglez<M_PI;anglez=anglez+0.1)
+        {
+            KDL::Frame World_Object_Rotatedz1=World_Object*KDL::Frame(KDL::Rotation::Rot(Object_worldZ,anglez));
+            //iterate along rotation until a solution if found
+            found = check_ik(ee_id,World_Object_Rotatedz1*Object_FirstEE,next_ee_id,World_Object_Rotatedz1*Object_SecondEE);
+            if (found)
+            {
+                World_Object = World_Object_Rotatedz1;
+                break;
+            }
+            if (anglez==0) continue;
+            KDL::Frame World_Object_Rotatedz2=World_Object*KDL::Frame(KDL::Rotation::Rot(Object_worldZ,-anglez));
+            found = check_ik(ee_id,World_Object_Rotatedz2*Object_FirstEE,next_ee_id,World_Object_Rotatedz2*Object_SecondEE);
+            if (found)
+            {
+                World_Object = World_Object_Rotatedz2;
+                break;
+            }
+        }
+        
+        // at the end, switch frames if necessary
+        if (!movable && next_movable)
+        {
+            KDL::Frame switch_frame(Object_FirstEE);
+            Object_FirstEE = Object_SecondEE;
+            Object_SecondEE = switch_frame;
+        }
+    }
+    else if (!movable && !next_movable)
+    {
+        //error 4!!
+        std::cout<<"error! both E.E. are not movable"<<std::endl;
+        return false;
+    }
+    return found;
 }
 
-void super_compute_intergrasp_orientation()
-{
-    // treat differently the first and last cases if the associated end-effector is not movable
-    if ((node == path.begin()) && (!movable))
-    {
-        std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
-        tf::poseMsgToKDL(data.source_position,World_Object);
-    }
-    else if ((next_node+1) == path.end())
-    {
-        std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
-        tf::poseMsgToKDL(data.target_position,World_Object);
-    }
-    else
-    {
-        compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,ee_id,next_ee_id,node->grasp_id,next_node->grasp_id,data.obj_id,movable,next_movable,result.size());
-    }
-}
 
 bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_id,cartesian_command>>& result,const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
 {
     // 1) Clearing result vector
     result.clear();
 
-    // 2) Setting a boolean flag for each end effector in order to keep track if they are grasping something or not
-    initialize_grasped_map();
-    //-------------------------------------------
-    
     // 3) Start of the main conversion loop
     for (auto node_it=path.begin();node_it!=path.end();)//++node)
     {
@@ -195,16 +378,22 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         {
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            super_compute_intergrasp_orientation();
+            if (node_it == path.begin())
+            {
+                std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
+                tf::poseMsgToKDL(data.source_position,World_Object);
+            }
+            else
+                compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
             #if SUPERHACK
             //superhack - part 1 - copy
             KDL::Frame Mirko(World_Object);
             #endif
             std::cout << "result.size() : " << result.size() << std::endl;
-            bool ok = getPreGraspMatrix(data.obj_id,next_node->grasp_id,Object_SecondEE);
+            bool ok = getPreGraspMatrix(data.obj_id,node.next_grasp_id,Object_SecondEE);
             if (!ok) 
             {
-                std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<next_ee_id<<std::endl;
+                std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.next_ee_id<<std::endl;
             }
             World_GraspSecondEE = World_Object*Object_SecondEE;
             #if SUPERHACK //raise more the grasp
@@ -234,7 +423,13 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             move_command.seq_num=1;//do not parallelize with the fixed ee :)
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            super_compute_intergrasp_orientation();
+            if ((next_node_it+1) == path.end())
+            {
+                std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
+                tf::poseMsgToKDL(data.target_position,World_Object);
+            }
+            else
+                compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
             bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_FirstEE);
             if (!ok) 
             {
@@ -264,7 +459,13 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             move_command.seq_num=0;//Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            super_compute_intergrasp_orientation();
+            if ((next_node_it+1) == path.end())
+            {
+                std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
+                tf::poseMsgToKDL(data.target_position,World_Object);
+            }
+            else
+                compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
             bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_FirstEE);
             if (!ok) 
             {
