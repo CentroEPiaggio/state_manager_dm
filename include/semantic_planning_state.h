@@ -2,6 +2,7 @@
 #define SEMANTIC_PLANNING_STATE_H
 
 #include "abstract_state.h"
+#include "semantic_to_cartesian_converter.h"
 #include <dual_manipulation_shared/databasemapper.h>
 #include <dual_manipulation_shared/geometry_tools.h>
 #include <dual_manipulation_shared/planner_service.h>
@@ -21,18 +22,8 @@ public:
     virtual void run();
     virtual bool isComplete();
     virtual std::string get_type();
-    bool semantic_to_cartesian(std::vector<std::pair<endeffector_id,cartesian_command>>& result,const dual_manipulation_shared::planner_serviceResponse::_path_type& path);//TODO make private
-    
 private:
 
-    void compute_centroid(double& centroid_x,double& centroid_y, workspace_id w_id);
-    bool compute_intergrasp_orientation(KDL::Vector centroid, KDL::Frame& World_Object, endeffector_id ee_id, 
-                                        endeffector_id next_ee_id, grasp_id grasp, grasp_id next_grasp, 
-                                        object_id object,bool movable,bool next_movable,int aggiuntivo);
-    bool inverse_kinematics(std::string ee_name, KDL::Frame cartesian);
-    bool check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE);
-    bool getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
-    bool getPostGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
     ros::NodeHandle n;
     ros::ServiceClient client;
     dual_manipulation_shared::planner_service srv;
@@ -41,6 +32,7 @@ private:
     shared_memory& data;
     bool completed;
     std::map< transition, bool > internal_state;
+    semantic_to_cartesian_converter converter;
 };
 
 #endif // SEMANTIC_PLANNING_STATE_H

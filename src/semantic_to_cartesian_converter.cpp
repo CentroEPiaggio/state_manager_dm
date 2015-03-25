@@ -10,6 +10,22 @@
 #define HIGH 0.5
 #define LOW 0.06
 
+bool left_ik,right_ik, left_ik_ok, right_ik_ok;
+
+void plan_callback_l(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Left IK Plan : %s",str->data.c_str());
+    left_ik=true;
+    left_ik_ok = strcmp(str->data.c_str(),"error") != 0;
+}
+
+void plan_callback_r(const std_msgs::String::ConstPtr& str)
+{
+    ROS_INFO("Right IK Plan : %s",str->data.c_str());
+    right_ik=true;
+    right_ik_ok = strcmp(str->data.c_str(),"error") != 0;
+}
+
 
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database)
 {
@@ -120,9 +136,58 @@ node_info semantic_to_cartesian_converter::find_node_properties(const dual_manip
     return result;
 }
 
+bool semantic_to_cartesian_converter::check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE)
+{
+    // assume at first everything went smoothly - TODO: something better
+    left_ik = true;
+    right_ik = true;
+    left_ik_ok = true;
+    right_ik_ok = true;
+    
+    if(std::get<1>(database.EndEffectors.at(ee_id)))
+        inverse_kinematics(std::get<0>(database.EndEffectors[ee_id]),World_FirstEE);
+    if(std::get<1>(database.EndEffectors.at(next_ee_id)))
+        inverse_kinematics(std::get<0>(database.EndEffectors[next_ee_id]),World_SecondEE);
+    bool done=false;
+    while (!done)
+    {
+        ros::spinOnce();
+        usleep(200000);
+        if (left_ik && right_ik) done=left_ik_ok && right_ik_ok;
+    }
+    return done;
+}
+
+bool semantic_to_cartesian_converter::inverse_kinematics(std::string ee_name, KDL::Frame cartesian)
+{
+    static ros::NodeHandle n;
+    static ros::ServiceClient client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
+    static ros::Subscriber plan_lsub = n.subscribe("/ik_control/left_hand/check_done",0,plan_callback_l);
+    static ros::Subscriber plan_rsub = n.subscribe("/ik_control/right_hand/check_done",0,plan_callback_r);
+    dual_manipulation_shared::ik_service srv;
+    
+    geometry_msgs::Pose ee_pose;
+    tf::poseKDLToMsg(cartesian,ee_pose);
+    srv.request.command = "ik_check";
+    srv.request.ee_pose.clear();
+    srv.request.ee_pose.push_back(ee_pose);
+    srv.request.ee_name = ee_name;
+    
+    if (client.call(srv))
+    {
+        ROS_INFO("IK Request accepted: %d", (int)srv.response.ack);
+    }
+    else
+    {
+        ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service: %s %s",srv.request.ee_name.c_str(),srv.request.command.c_str());
+        return false;
+    }
+    return true;
+}
+
+
 bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, 
-                                                             endeffector_id ee_id, endeffector_id next_ee_id, grasp_id grasp, 
-                                                             grasp_id next_grasp, object_id object,bool movable,bool next_movable,int aggiuntivo)
+                                                             const node_info& node, object_id object,int aggiuntivo)
 {
     std::cout << "compute_intergrasp_orientation : counter=" << counter++ << std::endl;
     std::cout << "compute_intergrasp_orientation : aggiuntivo=" << aggiuntivo << std::endl;
@@ -306,7 +371,9 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 }
 
 
-bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_id,cartesian_command>>& result,const dual_manipulation_shared::planner_serviceResponse::_path_type& path)
+bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_id,cartesian_command>>& result,
+                                              const dual_manipulation_shared::planner_serviceResponse::_path_type& path,
+                                              const shared_memory& data)
 {
     // 1) Clearing result vector
     result.clear();
@@ -329,10 +396,8 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         if (node.type==node_properties::FINAL_NODE) break; //This break jumps to 4)
         //-------------------------
         //From now on node is not the last in the path
-        // 3.3) Searching for the next node with a different end effector than the current one
-        //Done in find_node_properties
 
-        // 3.4) Beginning of real actions, depending on the result of 3.3
+        // 3.4) Beginning of real actions, depending on the result of 3.1
         if (node.type==node_properties::LAST_EE_FIXED)
         {
             //Error1
@@ -518,5 +583,6 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         }
         node_it=next_node_it;
     }
+    // 4) return
     return true;
 }

@@ -1,6 +1,8 @@
 #ifndef SEMANTIC_TO_CARTESIAN_CONVERTER_H
 #define SEMANTIC_TO_CARTESIAN_CONVERTER_H
 #include <dual_manipulation_shared/databasemapper.h>
+#include "shared_memory.h"
+#include <dual_manipulation_shared/planner_serviceResponse.h>
 #include <kdl/frames.hpp>
 
 enum class node_properties
@@ -26,7 +28,7 @@ class semantic_to_cartesian_converter
 {
 public:
      semantic_to_cartesian_converter(const databaseMapper& database);
-    
+     bool convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const dual_manipulation_shared::planner_serviceResponse_< std::allocator >::_path_type& path, const shared_memory& data);
 private:
     node_info find_node_properties(const dual_manipulation_shared::planner_serviceResponse::_path_type& path, const dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& node, dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& next_node);
     void compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node);
