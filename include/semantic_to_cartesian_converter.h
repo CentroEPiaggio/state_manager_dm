@@ -32,9 +32,11 @@ private:
     node_info find_node_properties(const std::vector<dual_manipulation_shared::planner_item>& path, const std::vector<dual_manipulation_shared::planner_item>::const_iterator& node, std::vector<dual_manipulation_shared::planner_item>::const_iterator& next_node);
     void compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node);
     bool getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
+    bool getGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
     bool getPostGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
     bool inverse_kinematics(std::string ee_name, KDL::Frame cartesian);
-    bool check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE);
+    bool check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< double >& result_first, std::vector< double >& result_second);
+    bool check_ik(std::string ee_name, KDL::Frame World_EE);
     bool compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, 
                                                                          endeffector_id ee_id, endeffector_id next_ee_id, grasp_id grasp, 
                                                                          grasp_id next_grasp, object_id object,
@@ -44,6 +46,7 @@ private:
      databaseMapper database;
      int counter=0;
      std::map<int,KDL::Frame> fine_tuning;
+     std::vector<KDL::Rotation> sphere_sampling;
 };
 
 #endif // SEMANTIC_TO_CARTESIAN_CONVERTER_H

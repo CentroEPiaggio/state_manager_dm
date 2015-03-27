@@ -5,10 +5,17 @@
 #include <vector>
 #include <kdl_conversions/kdl_msg.h>
 #include "dual_manipulation_shared/serialization_utils.h"
+#include <math.h>
+#include <algorithm>    // std::min_element, std::max_element
+#include <std_msgs/String.h>
 
 #define SUPERHACK 0
 #define HIGH 0.5
 #define LOW 0.06
+#define ANGLE_STEPS 6.0
+
+static std::vector<double> left_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
+static std::vector<double> right_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 
 bool left_ik,right_ik, left_ik_ok, right_ik_ok;
 
@@ -29,10 +36,25 @@ void plan_callback_r(const std_msgs::String::ConstPtr& str)
 
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database)
 {
-this->database=database;
-fine_tuning[4]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
-fine_tuning[5]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
-
+  this->database=database;
+  fine_tuning[4]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
+  fine_tuning[5]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
+  double t=(1.0+sqrt(5.0))/2.0;
+  for (double angle=-M_PI;angle<M_PI-0.001;angle=angle+2.0*M_PI/ANGLE_STEPS)
+  {
+    for (int i=0;i<4;i++)
+    {
+      sphere_sampling.emplace_back(KDL::Rotation::Rot(KDL::Vector(0, i&2?-1:1, i&1?-t:t),angle));
+    }
+    for (int i=4;i<8;i++)
+    {
+      sphere_sampling.emplace_back(KDL::Rotation::Rot(KDL::Vector(i&2?-1:1, i&1?-t:t, 0),angle));
+    }
+    for (int i=8;i<12;i++)
+    {
+      sphere_sampling.emplace_back(KDL::Rotation::Rot(KDL::Vector(i&1?-t:t, 0, i&2?-1:1),angle));
+    }
+  }
 }
 
 bool semantic_to_cartesian_converter::getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE)
@@ -42,8 +64,20 @@ bool semantic_to_cartesian_converter::getPreGraspMatrix(object_id object,grasp_i
     if (ok)
         tf::poseMsgToKDL(srv.request.ee_pose.front(),Object_EE);
     
+#if SUPERHACK
     // get away a little more
     Object_EE.p = Object_EE.p * 1.3;
+#endif
+    
+    return ok;
+}
+
+bool semantic_to_cartesian_converter::getGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE)
+{
+    dual_manipulation_shared::ik_service srv;
+    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
+    if (ok)
+        tf::poseMsgToKDL(srv.request.ee_pose.back(),Object_EE);
     
     return ok;
 }
@@ -128,18 +162,16 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     return result;
 }
 
-bool semantic_to_cartesian_converter::check_ik(endeffector_id ee_id, KDL::Frame World_FirstEE, endeffector_id next_ee_id, KDL::Frame World_SecondEE)
+bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector<double>& result_first, std::vector<double>& result_second)
 {
     // assume at first everything went smoothly - TODO: something better
     left_ik = true;
     right_ik = true;
     left_ik_ok = true;
     right_ik_ok = true;
-    
-    if(std::get<1>(database.EndEffectors.at(ee_id)))
-        inverse_kinematics(std::get<0>(database.EndEffectors[ee_id]),World_FirstEE);
-    if(std::get<1>(database.EndEffectors.at(next_ee_id)))
-        inverse_kinematics(std::get<0>(database.EndEffectors[next_ee_id]),World_SecondEE);
+
+    inverse_kinematics(current_ee_name,World_FirstEE);
+    inverse_kinematics(next_ee_name,World_SecondEE);
     bool done=false;
     while (!done)
     {
@@ -148,6 +180,12 @@ bool semantic_to_cartesian_converter::check_ik(endeffector_id ee_id, KDL::Frame 
         if (left_ik && right_ik) done=left_ik_ok && right_ik_ok;
     }
     return done;
+}
+
+bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame World_EE)
+{
+    // TODO: implement me!
+    return true;
 }
 
 bool semantic_to_cartesian_converter::inverse_kinematics(std::string ee_name, KDL::Frame cartesian)
