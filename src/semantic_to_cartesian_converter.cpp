@@ -89,11 +89,6 @@ node_info semantic_to_cartesian_converter::find_node_properties(const dual_manip
     node_info result;
     auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
     bool movable=std::get<1>(database.EndEffectors.at(ee_id));
-    if (node+1==path.end()) 
-    {
-        result.type=node_properties::FINAL_NODE;
-        return result;
-    }
     // 3.3) Searching for the next node with a different end effector than the current one
     bool found=false;
     endeffector_id next_ee_id=-1;
@@ -391,45 +386,30 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
         auto next_node_it=node_it;
         node_info node = find_node_properties(path,node_it,next_node_it);
         //---------------------------
-
-        // 3.2) Is this the final_node?
-        if (node.type==node_properties::FINAL_NODE) break; //This break jumps to 4)
-        //-------------------------
         //From now on node is not the last in the path
 
         // 3.4) Beginning of real actions, depending on the result of 3.1
         if (node.type==node_properties::LAST_EE_FIXED)
         {
-            //Error1
-            std::cout<<"ERROR, ee "<<node.current_ee_id<<" is the last ee but cannot move into the last node of the path!!"<<std::endl;
-            return false;
+            break;
         }
         else if (node.type==node_properties::LAST_EE_MOVABLE)
         {
-            if (node.current_workspace_id==node.next_workspace_id)
-            {
-                //Error2
-                std::cout<<"ERROR, the planner returned two nodes with same ee and same workspace!!"<<std::endl;
-                return false;
-            }
-            else  //not found->last e.e, movable, different workspaces
-            {
-                // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
-                cartesian_command move_command;
-                move_command.command=cartesian_commands::MOVE;
-                move_command.seq_num = 1;
-                move_command.ee_grasp_id=node.current_grasp_id;
-                KDL::Frame Object_EE,World_Object;
-                bool ok=getPostGraspMatrix(data.obj_id,node.current_grasp_id,Object_EE);
-                if (!ok) 
-                {
-                    std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.current_ee_id<<std::endl;
-                }
-                tf::poseMsgToKDL(data.target_position,World_Object);
-                tf::poseKDLToMsg(World_Object*Object_EE,move_command.cartesian_task);
-                result.push_back(std::make_pair(node.current_ee_id,move_command));
-                break; //This break jumps to 4)
-            }
+	    // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
+	    cartesian_command move_command;
+	    move_command.command=cartesian_commands::MOVE;
+	    move_command.seq_num = 1;
+	    move_command.ee_grasp_id=node.current_grasp_id;
+	    KDL::Frame Object_EE,World_Object;
+	    bool ok=getPostGraspMatrix(data.obj_id,node.current_grasp_id,Object_EE);
+	    if (!ok) 
+	    {
+		std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.current_ee_id<<std::endl;
+	    }
+	    tf::poseMsgToKDL(data.target_position,World_Object);
+	    tf::poseKDLToMsg(World_Object*Object_EE,move_command.cartesian_task);
+	    result.push_back(std::make_pair(node.current_ee_id,move_command));
+	    break; //This break jumps to 4)
         }
         else if (node.type==node_properties::FIXED_TO_FIXED)
         {
@@ -455,7 +435,7 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
                 std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.next_ee_id<<std::endl;
             }
             World_GraspSecondEE = World_Object*Object_SecondEE;
-            #if SUPERHACK //raise more the grasp
+            #if SUPERHACK //raise more the grasp to avoid collision : this *should* be fixed
             KDL::Frame World_GraspSecondEE_original(World_GraspSecondEE);
             World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
             #endif
@@ -524,13 +504,7 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             move_command.seq_num=0;//Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            if ((next_node_it+1) == path.end())
-            {
-                std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
-                tf::poseMsgToKDL(data.target_position,World_Object);
-            }
-            else
-                compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
+            compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
             bool ok=getPostGraspMatrix(data.obj_id,node->grasp_id,Object_FirstEE);
             if (!ok) 
             {
@@ -542,15 +516,11 @@ bool semantic_to_cartesian_converter::convert(std::vector<std::pair<endeffector_
             #if SUPERHACK
             //superhack - part 1 - copy
             KDL::Frame Mirko(World_Object);
-            #endif
-            std::cout << "result.size() : " << result.size() << std::endl;
-            #if SUPERHACK
             //superhack - part 2 - change the world!
-            std::cout << "...and movable!" << std::endl;
             World_Object.M = fine_tuning[result.size()].M*World_Object.M;
             World_Object.p = World_Object.p + fine_tuning[result.size()].p;
             #endif
-            bool ok = getPreGraspMatrix(data.obj_id,node.next_grasp_id,Object_SecondEE);
+            ok = getPreGraspMatrix(data.obj_id,node.next_grasp_id,Object_SecondEE);
             if (!ok) 
             {
                 std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.next_ee_id<<std::endl;

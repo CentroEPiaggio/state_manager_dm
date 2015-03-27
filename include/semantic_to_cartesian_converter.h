@@ -7,7 +7,6 @@
 
 enum class node_properties
 {
-    FINAL_NODE,                //  if (final_node==path.end())
     MOVABLE_TO_FIXED,          //found, one is movable, change on ground
     FIXED_TO_MOVABLE,          //found, one is movable, change on ground
     MOVABLE_TO_MOVABLE,        //found, both ee are movable: change above ground
