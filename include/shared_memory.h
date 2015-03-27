@@ -15,6 +15,7 @@ enum class cartesian_commands
 
 struct cartesian_command
 {
+    cartesian_command(){};
     cartesian_command(cartesian_commands command,int seq_num,grasp_id ee_grasp_id):command(command),seq_num(seq_num),ee_grasp_id(ee_grasp_id)
     {
         
