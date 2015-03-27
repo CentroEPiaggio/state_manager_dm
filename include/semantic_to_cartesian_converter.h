@@ -37,10 +37,7 @@ private:
     bool inverse_kinematics(std::string ee_name, KDL::Frame cartesian);
     bool check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< double >& result_first, std::vector< double >& result_second);
     bool check_ik(std::string ee_name, KDL::Frame World_EE);
-    bool compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, 
-                                                                         endeffector_id ee_id, endeffector_id next_ee_id, grasp_id grasp, 
-                                                                         grasp_id next_grasp, object_id object,
-                                                                         bool movable,bool next_movable,int aggiuntivo);
+    bool compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object,const node_info& node, object_id object,int aggiuntivo);
     
 private:
      databaseMapper database;
