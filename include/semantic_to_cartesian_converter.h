@@ -27,9 +27,9 @@ class semantic_to_cartesian_converter
 {
 public:
      semantic_to_cartesian_converter(const databaseMapper& database);
-     bool convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const dual_manipulation_shared::planner_serviceResponse_< std::allocator >::_path_type& path, const shared_memory& data);
+     bool convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector<dual_manipulation_shared::planner_item>& path, const shared_memory& data);
 private:
-    node_info find_node_properties(const dual_manipulation_shared::planner_serviceResponse::_path_type& path, const dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& node, dual_manipulation_shared::planner_serviceResponse::_path_type::iterator& next_node);
+    node_info find_node_properties(const std::vector<dual_manipulation_shared::planner_item>& path, const std::vector<dual_manipulation_shared::planner_item>::const_iterator& node, std::vector<dual_manipulation_shared::planner_item>::const_iterator& next_node);
     void compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node);
     bool getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
     bool getPostGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE);
