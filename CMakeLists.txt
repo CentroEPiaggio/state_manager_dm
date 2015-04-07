@@ -51,7 +51,7 @@ add_executable(test_draw tests/test_draw_state_machine.cpp)
 add_dependencies(test_draw dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared lemon)
 target_link_libraries(test_draw lemon)
 
-add_executable(test_conversion tests/test_semantic_to_cartesian.cpp src/shared_memory.cpp src/semantic_planning_state.cpp)
+add_executable(test_conversion tests/test_semantic_to_cartesian.cpp src/semantic_to_cartesian_converter.cpp src/shared_memory.cpp src/semantic_planning_state.cpp)
 add_dependencies(test_conversion dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared lemon)
 target_link_libraries(test_conversion  ${catkin_LIBRARIES} lemon)
 

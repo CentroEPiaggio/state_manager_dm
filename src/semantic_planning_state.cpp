@@ -66,66 +66,63 @@ void semantic_planning_state::run()
         completed=true;
         return;
     }
-    
-    //Call planner with the right parameters
-    srv.request.command="plan";
-    srv.request.source.grasp_id=data.source_grasp;
-    srv.request.source.workspace_id=source;
-    srv.request.destination.grasp_id=data.target_grasp;
-    srv.request.destination.workspace_id=target;
-    
-    if (client.call(srv))
+    int max_counter=25;
+    while(max_counter>0)
     {
-        ROS_INFO("Planning Request accepted: %d", (int)srv.response.ack);
-        for (auto node:srv.response.path)
-            std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
-    }
-    else
-    {
-        ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service");
-        internal_state.insert(std::make_pair(transition::failed_plan,true));
-        completed=true;
-        return;
-        
-        abort();//TODO: getResults should return a failed planning, and go back into steady
-    }
+        max_counter--;
+        //Call planner with the right parameters
+        srv.request.command="plan";
+        srv.request.source.grasp_id=data.source_grasp;
+        srv.request.source.workspace_id=source;
+        srv.request.destination.grasp_id=data.target_grasp;
+        srv.request.destination.workspace_id=target;
+        srv.request.filtered_source_nodes=data.filtered_source_nodes;
+        srv.request.filtered_target_nodes=data.filtered_target_nodes;
 
-    ros::spinOnce();
+        if (client.call(srv))
+        {
+            ROS_INFO("Planning Request accepted: %d", (int)srv.response.ack);
+            for (auto node:srv.response.path)
+                std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
+        }
+        else
+        {
+            ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service");
+            internal_state.insert(std::make_pair(transition::failed_plan,true));
+            completed=true;
+            return;
+        }
 
-    if (srv.response.path.size()<2)
-    {
-        ROS_ERROR("The planner returned a path with less than 2 nodes");
-        internal_state.insert(std::make_pair(transition::failed_plan,true));
-        completed=true;
-        return;
-        
-        abort();//TODO: getResults should return a failed planning, and go back into steady
+        ros::spinOnce();
+
+        if (srv.response.path.size()<2)
+        {
+            ROS_ERROR("The planner returned a path with less than 2 nodes");
+            internal_state.insert(std::make_pair(transition::failed_plan,true));
+            completed=true;
+            return;
+        }
+        if (srv.response.path.size()<3)
+        {
+            ROS_INFO("The planner returned a path with less than 3 nodes, should we handle this in a different way??");
+            internal_state.insert(std::make_pair(transition::failed_plan,true));
+            completed=true;
+            return;
+        }
+        std::vector<std::pair<endeffector_id,cartesian_command>> result;
+        bool converted=converter.convert(result,srv.response.path,data,data.filtered_source_nodes,data.filtered_target_nodes);
+        if (!converted)
+        {
+            std::cout<<"Error converting semantic to cartesian!, I will try again for "<<max_counter<<std::endl;
+            continue;
+        }
+        std::cout << "=== Cartesian plan print-out ===" << std::endl;
+        std::cout << "( Note that grasp/ungrasp poses are the object poses, not the end-effector ones )" << std::endl;
+        data.cartesian_plan = result;
+        for (auto i:result)
+            std::cout<<i<<std::endl;
+        std::cout << "=== end of cartesian plan print-out ===" << std::endl;
     }
-    if (srv.response.path.size()<3)
-    {
-        ROS_INFO("The planner returned a path with less than 3 nodes, should we handle this in a different way??");
-        internal_state.insert(std::make_pair(transition::failed_plan,true));
-        completed=true;
-        return;
-        
-        abort();//TODO: getResults should return a failed planning, and go back into steady
-    }
-    std::vector<std::pair<endeffector_id,cartesian_command>> result;
-    bool converted=converter.convert(result,srv.response.path,data);
-    if (!converted)
-    {
-        std::cout<<"Error converting semantic to cartesian!"<<std::endl;
-        internal_state.insert(std::make_pair(transition::failed_plan,true));
-        completed=true;
-        return;
-        
-    }
-    std::cout << "=== Cartesian plan print-out ===" << std::endl;
-    std::cout << "( Note that grasp/ungrasp poses are the object poses, not the end-effector ones )" << std::endl;
-    data.cartesian_plan = result;
-    for (auto i:result)
-        std::cout<<i<<std::endl;
-    std::cout << "=== end of cartesian plan print-out ===" << std::endl;
     //TODO parallelize movements between arms?!?
     internal_state.insert(std::make_pair(transition::good_plan,true));
     completed=true;

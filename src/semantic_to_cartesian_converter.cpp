@@ -57,8 +57,9 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
   }
 }
 
-bool semantic_to_cartesian_converter::getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE)
+bool semantic_to_cartesian_converter::getPreGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE) const
 {
+    //TODO CACHE VALUES
     dual_manipulation_shared::ik_service srv;
     bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
     if (ok)
@@ -72,8 +73,9 @@ bool semantic_to_cartesian_converter::getPreGraspMatrix(object_id object,grasp_i
     return ok;
 }
 
-bool semantic_to_cartesian_converter::getGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE)
+bool semantic_to_cartesian_converter::getGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE) const
 {
+    //TODO CACHE VALUES
     dual_manipulation_shared::ik_service srv;
     bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
     if (ok)
@@ -82,8 +84,9 @@ bool semantic_to_cartesian_converter::getGraspMatrix(object_id object, grasp_id 
     return ok;
 }
 
-bool semantic_to_cartesian_converter::getPostGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE)
+bool semantic_to_cartesian_converter::getPostGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE) const
 {
+    //TODO CACHE VALUES
     dual_manipulation_shared::ik_service srv;
     bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
     if (ok)
@@ -95,7 +98,7 @@ bool semantic_to_cartesian_converter::getPostGraspMatrix(object_id object, grasp
 }
 
 
-void semantic_to_cartesian_converter::compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node)
+void semantic_to_cartesian_converter::compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node) const
 {
     centroid_x=0;
     centroid_y=0;
@@ -115,7 +118,7 @@ void semantic_to_cartesian_converter::compute_centroid(double& centroid_x,double
     return;
 }
 
-node_info semantic_to_cartesian_converter::find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node)
+node_info semantic_to_cartesian_converter::find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node) const
 {
     node_info result;
     auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
@@ -125,7 +128,7 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     endeffector_id next_ee_id=-1;
     workspace_id next_workspace_id=-1;
     bool next_movable=false;
-    while (!found && next_node!=path.end())
+    while (!found && next_node!=path.end()) //Here we simplify (i.e. remove) all the transitions such that ee_id=next_ee_id and workspace_id != next_workspace_id
     {
         next_node++;
         if (next_node!=path.end())
@@ -162,7 +165,18 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     return result;
 }
 
-bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector<double>& result_first, std::vector<double>& result_second)
+void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
+{
+        dual_manipulation_shared::planner_item source_node,target_node;
+        source_node.grasp_id=node.current_grasp_id;
+        source_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
+        target_node.grasp_id=node.next_grasp_id;
+        target_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
+        filtered_source_nodes.push_back(source_node);
+        filtered_target_nodes.push_back(target_node);
+}
+
+bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector<double>& result_first, std::vector<double>& result_second) const
 {
     // assume at first everything went smoothly - TODO: something better
     left_ik = true;
@@ -182,13 +196,13 @@ bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL:
     return done;
 }
 
-bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame World_EE)
+bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame World_EE) const
 {
     // TODO: implement me!
     return true;
 }
 
-bool semantic_to_cartesian_converter::inverse_kinematics(std::string ee_name, KDL::Frame cartesian)
+bool semantic_to_cartesian_converter::inverse_kinematics(std::string ee_name, KDL::Frame cartesian) const
 {
     static ros::NodeHandle n;
     static ros::ServiceClient client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
@@ -216,8 +230,7 @@ bool semantic_to_cartesian_converter::inverse_kinematics(std::string ee_name, KD
 }
 
 
-bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, 
-                                                             const node_info& node, object_id object,int aggiuntivo)
+bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, const node_info& node, object_id object, int aggiuntivo) const
 {
     KDL::Frame World_Centroid_f(World_centroid);
     KDL::Frame Object_FirstEE, Object_SecondEE,Object_GraspFirstEE,Object_GraspSecondEE;
@@ -306,7 +319,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
     }
 }
   
-bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data)
+  bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
 {
     // 1) Clearing result vector
     result.clear();
@@ -359,14 +372,19 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         {
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
+            bool intergrasp_ok = true;
             if (node_it == path.begin())
             {
                 std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
                 tf::poseMsgToKDL(data.source_position,World_Object);
             }
             else
-                compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
-            std::cout << "result.size() : " << result.size() << std::endl;
+                intergrasp_ok = compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
+            if (!intergrasp_ok)
+            {
+                addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
+                return false;
+            }            std::cout << "result.size() : " << result.size() << std::endl;
             bool ok = getPreGraspMatrix(data.obj_id,node.next_grasp_id,Object_SecondEE);
             if (!ok) 
             {
@@ -409,13 +427,19 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             move_command.seq_num=1;//do not parallelize with the fixed ee :)
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
+            bool intergrasp_ok =true;
             if ((next_node_it+1) == path.end())
             {
                 std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
                 tf::poseMsgToKDL(data.target_position,World_Object);
             }
             else
-                compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
+                intergrasp_ok = compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
+            if (!intergrasp_ok)
+            {
+                addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
+                return false;
+            }
             bool ok=getPostGraspMatrix(data.obj_id,node.current_grasp_id,Object_FirstEE);
             if (!ok) 
             {
@@ -442,7 +466,12 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             move_command.seq_num=0;//Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
+            bool intergrasp_ok = compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
+            if (!intergrasp_ok)
+            {
+                addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
+                return false;
+            }
             bool ok=getPostGraspMatrix(data.obj_id,node.current_grasp_id,Object_FirstEE);
             if (!ok) 
             {
