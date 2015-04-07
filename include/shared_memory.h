@@ -4,6 +4,7 @@
 #include "geometry_msgs/Pose.h"
 #include <kdl/frames.hpp>
 #include <dual_manipulation_shared/databasemapper.h>
+#include <dual_manipulation_shared/planner_item.h>
 
 enum class cartesian_commands
 {
@@ -42,6 +43,7 @@ grasp_id source_grasp, target_grasp;
 object_id obj_id;
 std::string object_name;
 std::vector<std::pair<endeffector_id,cartesian_command>> cartesian_plan;
+std::vector<dual_manipulation_shared::planner_item> filtered_source_nodes,filtered_target_nodes;
 void reset();
 private:
 // geometry_msgs::Pose object_pose_;
