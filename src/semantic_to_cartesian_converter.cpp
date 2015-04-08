@@ -301,8 +301,8 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
     else if (node.type==node_properties::MOVABLE_TO_FIXED)
     {
 	World_Object = World_Centroid_f*(Object_SecondEE.Inverse());
-	if(check_ik(next_ee_name,World_Object*Object_FirstEE))
-	  if(check_ik(next_ee_name,World_Object*Object_GraspFirstEE))
+	if(check_ik(current_ee_name,World_Object*Object_FirstEE))
+	  if(check_ik(current_ee_name,World_Object*Object_GraspFirstEE))
 	    return true;
 	return false;
     }
