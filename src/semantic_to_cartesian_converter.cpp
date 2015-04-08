@@ -17,23 +17,6 @@
 static std::vector<double> left_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 static std::vector<double> right_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 
-bool left_ik,right_ik, left_ik_ok, right_ik_ok;
-
-void plan_callback_l(const std_msgs::String::ConstPtr& str)
-{
-    ROS_INFO("Left IK Plan : %s",str->data.c_str());
-    left_ik=true;
-    left_ik_ok = strcmp(str->data.c_str(),"error") != 0;
-}
-
-void plan_callback_r(const std_msgs::String::ConstPtr& str)
-{
-    ROS_INFO("Right IK Plan : %s",str->data.c_str());
-    right_ik=true;
-    right_ik_ok = strcmp(str->data.c_str(),"error") != 0;
-}
-
-
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database)
 {
   this->database=database;
@@ -55,6 +38,8 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
       sphere_sampling.emplace_back(KDL::Rotation::Rot(KDL::Vector(i&1?-t:t, 0, i&2?-1:1),angle));
     }
   }
+  
+  ik_check_capability = new dual_manipulation::ik_control::ikCheckCapability();
 }
 
 bool semantic_to_cartesian_converter::getPreGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE) const
@@ -176,59 +161,66 @@ void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, s
         filtered_target_nodes.push_back(target_node);
 }
 
-bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector<double>& result_first, std::vector<double>& result_second) const
+bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< std::vector< double > >& results) const
 {
-    // assume at first everything went smoothly - TODO: something better
-    left_ik = true;
-    right_ik = true;
-    left_ik_ok = true;
-    right_ik_ok = true;
-
-    inverse_kinematics(current_ee_name,World_FirstEE);
-    inverse_kinematics(next_ee_name,World_SecondEE);
-    bool done=false;
-    while (!done)
-    {
-        ros::spinOnce();
-        usleep(200000);
-        if (left_ik && right_ik) done=left_ik_ok && right_ik_ok;
-    }
-    return done;
+  std::vector<geometry_msgs::Pose> ee_poses;
+  ee_poses.resize(2);
+  geometry_msgs::Pose &left_pose = ee_poses.at(0), &right_pose = ee_poses.at(1);
+  if(current_ee_name == "left_hand" && next_ee_name == "right_hand")
+  {
+    tf::poseKDLToMsg(World_FirstEE,left_pose);
+    tf::poseKDLToMsg(World_SecondEE,right_pose);
+  }
+  else if(current_ee_name == "right_hand" && next_ee_name == "left_hand")
+  {
+    tf::poseKDLToMsg(World_FirstEE,right_pose);
+    tf::poseKDLToMsg(World_SecondEE,left_pose);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("semantic_to_cartesian_converter::check_ik : unknown end-effector couple <" << current_ee_name << " | " << next_ee_name << ">");
+    ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
+    return false;
+  }
+  
+  std::cout << "check_ik: left_hand in " << ee_poses.at(0) << " and right_hand in " << ee_poses.at(1) << std::endl;
+  
+  ik_check_capability->reset_robot_state();
+  bool found_ik = ik_check_capability->find_group_ik("both_hands",ee_poses,results);
+  
+  return found_ik;
 }
 
 bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame World_EE) const
 {
-    // TODO: implement me!
-    return true;
+  std::vector<geometry_msgs::Pose> ee_poses;
+  ee_poses.resize(1);
+  geometry_msgs::Pose &ee_pose = ee_poses.at(0);
+  if(ee_name != "left_hand" && ee_name != "right_hand")
+  {
+    ROS_ERROR_STREAM("semantic_to_cartesian_converter::check_ik : unknown end-effector <" << ee_name << ">");
+    ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
+    return false;
+  }
+  tf::poseKDLToMsg(World_EE,ee_pose);
+  
+  std::cout << "check_ik: " << ee_name << " in " << ee_pose << std::endl;
+  
+  std::vector<std::vector<double>> results;
+  results.resize(1);
+  
+//   std::vector <double > initial_guess = std::vector<double>();
+//   bool check_collisions = false;
+//   bool return_approximate_solution = true;
+//   unsigned int attempts = 10;
+//   double timeout = 0.005;
+//   std::map <std::string, std::string > allowed_collisions = std::map< std::string, std::string >();
+  
+  ik_check_capability->reset_robot_state();
+  bool found_ik = ik_check_capability->find_group_ik(ee_name,ee_poses,results/*,initial_guess,check_collisions,return_approximate_solution,attempts,timeout,allowed_collisions*/);
+  
+  return found_ik;
 }
-
-bool semantic_to_cartesian_converter::inverse_kinematics(std::string ee_name, KDL::Frame cartesian) const
-{
-    static ros::NodeHandle n;
-    static ros::ServiceClient client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
-    static ros::Subscriber plan_lsub = n.subscribe("/ik_control/left_hand/check_done",0,plan_callback_l);
-    static ros::Subscriber plan_rsub = n.subscribe("/ik_control/right_hand/check_done",0,plan_callback_r);
-    dual_manipulation_shared::ik_service srv;
-    
-    geometry_msgs::Pose ee_pose;
-    tf::poseKDLToMsg(cartesian,ee_pose);
-    srv.request.command = "ik_check";
-    srv.request.ee_pose.clear();
-    srv.request.ee_pose.push_back(ee_pose);
-    srv.request.ee_name = ee_name;
-    
-    if (client.call(srv))
-    {
-        ROS_INFO("IK Request accepted: %d", (int)srv.response.ack);
-    }
-    else
-    {
-        ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service: %s %s",srv.request.ee_name.c_str(),srv.request.command.c_str());
-        return false;
-    }
-    return true;
-}
-
 
 bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, const node_info& node, object_id object, int aggiuntivo) const
 {
@@ -267,9 +259,11 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 	for (auto& rot: sphere_sampling)
 	{
 	    KDL::Frame World_Object(rot,World_centroid);
-	    std::vector<double> result_first, result_second;
-	    bool ik_ok=check_ik(current_ee_name,World_Object*Object_FirstEE,next_ee_name,World_Object*Object_SecondEE, result_first, result_second );
-    	    bool ik_ok1=check_ik(current_ee_name,World_Object*Object_FirstEE,next_ee_name,World_Object*Object_GraspSecondEE, result_first, result_second );
+	    std::vector<std::vector<double>> results;
+	    results.resize(2);
+	    std::vector<double> &result_first = results.at(0), &result_second = results.at(1);
+	    bool ik_ok=check_ik(current_ee_name,World_Object*Object_FirstEE,next_ee_name,World_Object*Object_SecondEE, results);
+    	    bool ik_ok1=check_ik(current_ee_name,World_Object*Object_FirstEE,next_ee_name,World_Object*Object_GraspSecondEE, results);
 	    if (!(ik_ok && ik_ok1)) 
 	    {
 	      joint_pose_norm.push_back(1000);
@@ -277,7 +271,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 	    }
 
 	    double norm=0;
-	    if (current_ee_name=="right_hand") result_first.swap(result_second);
+	    // NOTE: the first result when both hands are used is for left_hand, the second for the right one (lexical order)
 	    for (int j=0;j<left_arm_pos.size();j++)
 	      norm=norm+pow(result_first[j]-left_arm_pos.at(j),2);
 	    for (int j=0;j<right_arm_pos.size();j++)

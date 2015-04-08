@@ -35,8 +35,7 @@ private:
     bool getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE) const;
     bool getGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE) const;
     bool getPostGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE) const;
-    bool inverse_kinematics(std::string ee_name, KDL::Frame cartesian) const;
-    bool check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< double >& result_first, std::vector< double >& result_second) const;
+    bool check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< std::vector< double > >& results) const;
     bool check_ik(std::string ee_name, KDL::Frame World_EE) const;
     bool compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object,const node_info& node, object_id object,int aggiuntivo) const;
     void addNewFilteredArc(const node_info& node, std::vector<dual_manipulation_shared::planner_item>& filtered_source_nodes,std::vector<dual_manipulation_shared::planner_item>& filtered_target_nodes) const;
@@ -46,7 +45,7 @@ private:
      std::map<int,KDL::Frame> fine_tuning;
      std::vector<KDL::Rotation> sphere_sampling;
      
-     mutable dual_manipulation::ik_control::ikCheckCapability ik_check_capability;
+     mutable dual_manipulation::ik_control::ikCheckCapability *ik_check_capability;
 };
 
 #endif // SEMANTIC_TO_CARTESIAN_CONVERTER_H
