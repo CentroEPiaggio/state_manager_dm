@@ -162,6 +162,8 @@ void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, s
         target_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
         filtered_source_nodes.push_back(source_node);
         filtered_target_nodes.push_back(target_node);
+        filtered_source_nodes.push_back(target_node);
+        filtered_target_nodes.push_back(source_node);
 }
 
 bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< std::vector< double > >& results) const
