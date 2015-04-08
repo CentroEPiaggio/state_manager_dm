@@ -343,14 +343,40 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
         geometry_msgs::Quaternion centroid_orientation;
         KDL::Frame World_Object;
         KDL::Frame Object_FirstEE, Object_SecondEE;
+        KDL::Frame Object_GraspFirstEE, Object_GraspSecondEE;
         KDL::Frame World_GraspSecondEE;
-        
+	
         // 3.1) Getting preliminary info for the current node
         std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it=node_it;
         node_info node = find_node_properties(path,node_it,next_node_it);
         //---------------------------
         //From now on node is not the last in the path
 
+	bool ok=getPostGraspMatrix(data.obj_id,node.current_grasp_id,Object_FirstEE);
+	if (!ok) 
+	{
+	    std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" and ee "<<node.current_ee_id<<std::endl;
+	    abort();
+	}
+	ok = getPreGraspMatrix(data.obj_id,node.next_grasp_id,Object_SecondEE);
+	if (!ok) 
+	{
+	    std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" and ee "<<node.next_ee_id<<std::endl;
+	    abort();
+	}
+	ok = getGraspMatrix(data.obj_id,node.current_grasp_id,Object_GraspFirstEE);
+	if (!ok) 
+	{
+	    std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" and ee "<<node.next_ee_id<<std::endl;
+	    abort();
+	}
+	ok = getGraspMatrix(data.obj_id,node.next_grasp_id,Object_GraspSecondEE);
+	if (!ok) 
+	{
+	    std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" and ee "<<node.next_ee_id<<std::endl;
+	    abort();
+	}
+        
         // 3.4) Beginning of real actions, depending on the result of 3.1
         if (node.type==node_properties::LAST_EE_FIXED)
         {
@@ -382,13 +408,18 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
         }
         else if (node.type==node_properties::FIXED_TO_MOVABLE)
         {
+	    std::cout << "Semantic to cartesian: node.type==node_properties::FIXED_TO_MOVABLE" << std::endl;
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            bool intergrasp_ok = true;
+            bool intergrasp_ok = false;
             if (node_it == path.begin())
             {
                 std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
                 tf::poseMsgToKDL(data.source_position,World_Object);
+		auto next_ee_name=std::get<0>(database.EndEffectors.at(node.next_ee_id));
+		if(check_ik(next_ee_name,World_Object*Object_SecondEE))
+		  if(check_ik(next_ee_name,World_Object*Object_GraspSecondEE))
+		    intergrasp_ok = true;
             }
             else
                 intergrasp_ok = compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
@@ -396,7 +427,8 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
             {
                 addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
                 return false;
-            }            std::cout << "result.size() : " << result.size() << std::endl;
+            }
+            std::cout << "result.size() : " << result.size() << std::endl;
             bool ok = getPreGraspMatrix(data.obj_id,node.next_grasp_id,Object_SecondEE);
             if (!ok) 
             {
@@ -432,6 +464,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
         }
         else if (node.type==node_properties::MOVABLE_TO_FIXED)
         {
+	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_FIXED" << std::endl;
             cartesian_command move_command;
             move_command.command=cartesian_commands::MOVE;
             move_command.ee_grasp_id=node.current_ee_id;
@@ -439,11 +472,15 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
             move_command.seq_num=1;//do not parallelize with the fixed ee :)
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            bool intergrasp_ok =true;
+            bool intergrasp_ok =false;
             if ((next_node_it+1) == path.end())
             {
                 std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
                 tf::poseMsgToKDL(data.target_position,World_Object);
+		auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
+		if(check_ik(current_ee_name,World_Object*Object_FirstEE))
+		  if(check_ik(current_ee_name,World_Object*Object_GraspFirstEE))
+		    intergrasp_ok = true;
             }
             else
                 intergrasp_ok = compute_intergrasp_orientation(KDL::Vector(centroid_x,centroid_y,centroid_z),World_Object,node,data.obj_id,result.size());
@@ -472,6 +509,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
         }
         else if (node.type==node_properties::MOVABLE_TO_MOVABLE)
         {
+	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_MOVABLE" << std::endl;
             cartesian_command move_command;
             move_command.command=cartesian_commands::MOVE;
             move_command.ee_grasp_id=node.current_grasp_id;
