@@ -14,6 +14,9 @@
 #define LOW 0.06
 #define ANGLE_STEPS 6.0
 
+#define DEBUG 0 // if 1, print some more information
+
+// TODO: write here a good configuration!!!
 static std::vector<double> left_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 static std::vector<double> right_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 
@@ -252,6 +255,21 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 	std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
 	abort();
     }
+    
+#if DEBUG
+    std::cout << current_ee_name << " | " << next_ee_name << std::endl;
+    geometry_msgs::Pose ee_pose;
+    tf::poseKDLToMsg(World_Centroid_f,ee_pose);
+    std::cout << "World_Centroid_f: " << ee_pose << std::endl;
+    tf::poseKDLToMsg(Object_FirstEE,ee_pose);
+    std::cout << "Object_FirstEE: " << ee_pose << std::endl;
+    tf::poseKDLToMsg(Object_SecondEE,ee_pose);
+    std::cout << "Object_SecondEE: " << ee_pose << std::endl;
+    tf::poseKDLToMsg(Object_GraspFirstEE,ee_pose);
+    std::cout << "Object_GraspFirstEE: " << ee_pose << std::endl;
+    tf::poseKDLToMsg(Object_GraspSecondEE,ee_pose);
+    std::cout << "Object_GraspSecondEE: " << ee_pose << std::endl;
+#endif
     
     if (node.type==node_properties::MOVABLE_TO_MOVABLE)
     {
