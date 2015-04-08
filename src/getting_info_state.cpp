@@ -44,12 +44,10 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     
     KDL::Frame obj_frame,grasp_frame;
     tf::poseMsgToKDL(pose,obj_frame);
-    double r0,p0,y0,r1,p1,y1;
-    obj_frame.M.GetRPY(r0,p0,y0);
-    std::vector<geometry_msgs::Pose> grasp_traj;
+    double x,y,z,w;
     
     int best_grasp = -1;
-    double distance = -1.0;
+    double closeness = -1.0;
     
     for (auto item:db_mapper_.Grasps)
     {
@@ -70,13 +68,14 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
 	    else
 	      ROS_WARN_STREAM("Unable to deserialize grasp entry : object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
 	    
-	    // from final grasp pose, get RPY angles
-	    grasp_frame.Inverse().M.GetRPY(r1,p1,y1);
+	    // get residual rotation and its quaternion representation
+	    KDL::Rotation Rresidual = grasp_frame.M.Inverse()*(obj_frame.M);
+	    Rresidual.GetQuaternion(x,y,z,w);
 	  
-	    // check distance of the first two rotations (don't consider yaw, for which table grasps are invariant)
-	    if ((distance < 0) || ((r1-r0)*(r1-r0)+(p1-p0)*(p1-p0)) < distance)
+	    // the higher the w (in abs value) the better (smaller rotation angles around any axis)
+	    if((closeness < 0) || (std::abs(w) > closeness))
 	    {
-		distance = ((r1-r0)*(r1-r0)+(p1-p0)*(p1-p0));
+		closeness = std::abs(w);
 		best_grasp = item.first;
 	    }
 	}
@@ -84,8 +83,6 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     
     ROS_INFO_STREAM("Best grasp found: " << best_grasp);
     return best_grasp;
-
-    // return fake_get_grasp_id_from_database();
 }
 
 void getting_info_state::get_target_position_from_user()
