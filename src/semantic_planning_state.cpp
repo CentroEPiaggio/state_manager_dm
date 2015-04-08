@@ -122,6 +122,7 @@ void semantic_planning_state::run()
         for (auto i:result)
             std::cout<<i<<std::endl;
         std::cout << "=== end of cartesian plan print-out ===" << std::endl;
+	break;
     }
     //TODO parallelize movements between arms?!?
     internal_state.insert(std::make_pair(transition::good_plan,true));
