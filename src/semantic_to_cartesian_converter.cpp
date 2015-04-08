@@ -352,6 +352,11 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
         //---------------------------
         //From now on node is not the last in the path
 
+	if (node.type==node_properties::LAST_EE_FIXED)
+        {
+            break;
+        }
+        
 	bool ok=getPostGraspMatrix(data.obj_id,node.current_grasp_id,Object_FirstEE);
 	if (!ok) 
 	{
@@ -378,11 +383,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 	}
         
         // 3.4) Beginning of real actions, depending on the result of 3.1
-        if (node.type==node_properties::LAST_EE_FIXED)
-        {
-            break;
-        }
-        else if (node.type==node_properties::LAST_EE_MOVABLE)
+        if (node.type==node_properties::LAST_EE_MOVABLE)
         {
 	    // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
 	    cartesian_command move_command;
