@@ -4,6 +4,7 @@
 #include "shared_memory.h"
 #include <dual_manipulation_shared/planner_serviceResponse.h>
 #include <kdl/frames.hpp>
+#include <dual_manipulation_ik_control/ik_check_capability/ik_check_capability.h>
 
 enum class node_properties
 {
@@ -44,6 +45,8 @@ private:
      databaseMapper database;
      std::map<int,KDL::Frame> fine_tuning;
      std::vector<KDL::Rotation> sphere_sampling;
+     
+     mutable dual_manipulation::ik_control::ikCheckCapability ik_check_capability;
 };
 
 #endif // SEMANTIC_TO_CARTESIAN_CONVERTER_H
