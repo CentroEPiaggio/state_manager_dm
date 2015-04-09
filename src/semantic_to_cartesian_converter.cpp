@@ -312,7 +312,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
     }
     else if (node.type==node_properties::FIXED_TO_MOVABLE)
     {
-	World_Object = World_Centroid_f*(Object_FirstEE.Inverse());
+	World_Object = World_Centroid_f*(Object_GraspFirstEE.Inverse());
 	if(check_ik(next_ee_name,World_Object*Object_SecondEE))
 	  if(check_ik(next_ee_name,World_Object*Object_GraspSecondEE))
 	    return true;
@@ -320,7 +320,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
     }
     else if (node.type==node_properties::MOVABLE_TO_FIXED)
     {
-	World_Object = World_Centroid_f*(Object_SecondEE.Inverse());
+	World_Object = World_Centroid_f*(Object_GraspSecondEE.Inverse());
 	if(check_ik(current_ee_name,World_Object*Object_FirstEE))
 	  if(check_ik(current_ee_name,World_Object*Object_GraspFirstEE))
 	    return true;
@@ -400,6 +400,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 	    }
 	    tf::poseMsgToKDL(data.target_position,World_Object);
 	    tf::poseKDLToMsg(World_Object*Object_EE,move_command.cartesian_task);
+	    //TODO: what if this is not feasible? test other grasps? future work...
 	    result.push_back(std::make_pair(node.current_ee_id,move_command));
 	    break; //This break jumps to 4)
         }
@@ -451,7 +452,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
             #if SUPERHACK
             tf::poseKDLToMsg(World_GraspSecondEE_original,grasp.cartesian_task);
             #else
-            tf::poseKDLToMsg(World_GraspSecondEE,grasp.cartesian_task);
+            tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
             #endif
             result.push_back(std::make_pair(node.next_ee_id,grasp));
             //TODO: this following move_command can be a post-grasp waypoint, plan to it without collision checking (keeping it higher)
@@ -506,6 +507,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
             // consider the ungrasp trajectory as higher if ungrasping on a table
             ungrasp.cartesian_task.position.z = ungrasp.cartesian_task.position.z + 0.07;
             #endif
+	    tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
             cartesian_command move_away(cartesian_commands::HOME,1,-1);
             result.push_back(std::make_pair(node.current_ee_id,move_away));
