@@ -162,6 +162,7 @@ void ik_moving_substate::run()
 			else
 			{
 				srv.request.attObject.object.id = *data_.object_name;
+				srv.request.object_db_id = (int)*data_.obj_id;
 				srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
 				srv.request.command = command_map.at(item.second.command);
 			
@@ -191,6 +192,7 @@ void ik_moving_substate::run()
 			else
 			{
 				srv.request.attObject.object.id = *data_.object_name;
+				srv.request.object_db_id = (int)*data_.obj_id;
 				srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
 				srv.request.command = command_map.at(item.second.command);
 			

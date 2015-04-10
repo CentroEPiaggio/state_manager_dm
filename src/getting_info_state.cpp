@@ -32,7 +32,8 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
 
 void getting_info_state::get_start_position_from_vision(visualization_msgs::Marker& source_marker)
 {
-    fake_get_start_position_from_vision(data_,source_marker);
+    data_.object_name="Cylinder";  
+    //fake_get_start_position_from_vision(data_,source_marker);
 }
 
 int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id)
@@ -43,18 +44,20 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     
     KDL::Frame obj_frame,grasp_frame;
     tf::poseMsgToKDL(pose,obj_frame);
-    double r0,p0,y0,r1,p1,y1;
-    obj_frame.M.GetRPY(r0,p0,y0);
-    std::vector<geometry_msgs::Pose> grasp_traj;
+    double x,y,z,w;
     
     int best_grasp = -1;
-    double distance = -1.0;
+    double closeness = -1.0;
     
     for (auto item:db_mapper_.Grasps)
     {
 	auto ee_id_tmp = std::get<1>(item.second);
+	auto obj_id_tmp = std::get<0>(item.second);
+	//auto grasp_name = std::get<2>(item.second);
+	//std::cout << "grasp name : " << grasp_name << std::endl;
+	
 	// for each grasp, if the end-effector is the right one
-	if ((int)ee_id_tmp == ee_id)
+	if (((int)ee_id_tmp == ee_id) && ((int)obj_id_tmp == object_id))
 	{
 	    // deserialize grasp
 	    dual_manipulation_shared::ik_service srv;
@@ -65,13 +68,14 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
 	    else
 	      ROS_WARN_STREAM("Unable to deserialize grasp entry : object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
 	    
-	    // from final grasp pose, get RPY angles
-	    grasp_frame.Inverse().M.GetRPY(r1,p1,y1);
+	    // get residual rotation and its quaternion representation
+	    KDL::Rotation Rresidual = grasp_frame.M.Inverse()*(obj_frame.M);
+	    Rresidual.GetQuaternion(x,y,z,w);
 	  
-	    // check distance of the first two rotations (don't consider yaw, for which table grasps are invariant)
-	    if ((distance < 0) || ((r1-r0)*(r1-r0)+(p1-p0)*(p1-p0)) < distance)
+	    // the higher the w (in abs value) the better (smaller rotation angles around any axis)
+	    if((closeness < 0) || (std::abs(w) > closeness))
 	    {
-		distance = ((r1-r0)*(r1-r0)+(p1-p0)*(p1-p0));
+		closeness = std::abs(w);
 		best_grasp = item.first;
 	    }
 	}
@@ -79,8 +83,6 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     
     ROS_INFO_STREAM("Best grasp found: " << best_grasp);
     return best_grasp;
-
-    // return fake_get_grasp_id_from_database();
 }
 
 void getting_info_state::get_target_position_from_user()
@@ -97,6 +99,9 @@ void getting_info_state::get_target_position_from_user()
         
 	data_.source_position = srv.response.source_pose;
 	data_.target_position = srv.response.target_pose;
+	// TODO: take this from vision
+	data_.obj_id = srv.response.obj_id;
+	std::cout << "data_.obj_id = " << srv.response.obj_id << " | " << data_.obj_id << std::endl;
 	// TODO: ask for desired target end-effector; maybe even for desired final grasp?
 	data_.source_grasp=get_grasp_id_from_database(data_.obj_id,data_.source_position);
 	data_.target_grasp=get_grasp_id_from_database(data_.obj_id,data_.target_position);
@@ -150,12 +155,11 @@ void getting_info_state::run()
     // send information to the cartesian planner (for collision checking)
     dual_manipulation_shared::scene_object_service srv_obj;
     srv_obj.request.command = "add";
-    // NOTE: use the weight as the ID for retrieving object information
-    srv_obj.request.attObject.weight = data_.obj_id;
-    // NOTE: this should be unique, while we can have two objects with the same "weight"
+    srv_obj.request.object_db_id = data_.obj_id;
+    // NOTE: this should be unique, while we can have more objects with the same "object_db_id"
     srv_obj.request.attObject.object.id = data_.object_name;
-    srv_obj.request.attObject.object.mesh_poses.push_back( source_marker.pose );
-    srv_obj.request.attObject.object.header.frame_id = source_marker.header.frame_id;
+    srv_obj.request.attObject.object.mesh_poses.push_back( data_.source_position );
+    srv_obj.request.attObject.object.header.frame_id = "world";
     if (scene_object_client.call(srv_obj))
     {
 	ROS_INFO("IK_control:test_grasping : %s object %s request accepted: %d", srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str(), (int)srv_obj.response.ack);

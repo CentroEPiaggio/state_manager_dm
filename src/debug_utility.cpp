@@ -14,8 +14,8 @@ int fake_get_grasp_id_from_database()
 void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs::Marker& source_marker)
 {
     //NOTE: just a test
-    data.obj_id=1;
-    data.object_name="cylinder";
+//     data.obj_id=1;
+//     data.object_name="cylinder";
 
 //     data.source_position.position.x = -0.35;
 //     data.source_position.position.y = 0.3;
