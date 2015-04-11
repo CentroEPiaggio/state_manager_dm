@@ -23,8 +23,6 @@ static std::vector<double> right_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database)
 {
   this->database=database;
-  fine_tuning[4]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
-  fine_tuning[5]=KDL::Frame(KDL::Vector(-0.06,0.0,-0.02));
   double t=(1.0+sqrt(5.0))/2.0;
   for (double angle=-M_PI;angle<M_PI-0.001;angle=angle+2.0*M_PI/ANGLE_STEPS)
   {
