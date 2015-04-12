@@ -6,8 +6,10 @@
 #include "ros_server.h"
 #include "ros/ros.h"
 #include "dual_manipulation_shared/ik_service.h"
+#include "dual_manipulation_shared/ik_response.h"
 #include <dual_manipulation_shared/databasemapper.h>
 #include <std_msgs/String.h>
+#include <mutex>
 
 class ik_moving_substate : public abstract_state<ik_transition>
 {
@@ -28,11 +30,12 @@ private:
     ros::Subscriber lgraspsub;
     ros::Subscriber rgraspsub;
     bool initialized;
-    void callback_l(const std_msgs::String::ConstPtr& str);
-    void callback_r(const std_msgs::String::ConstPtr& str);
-    void callback_bimanual(const std_msgs::String::ConstPtr& str);
-    void callback_l_grasp(const std_msgs::String::ConstPtr& str);
-    void callback_r_grasp(const std_msgs::String::ConstPtr& str);
+    void callback(const dual_manipulation_shared::ik_response::ConstPtr& str, std::string type);
+    void callback_l(const dual_manipulation_shared::ik_response::ConstPtr& str);
+    void callback_r(const dual_manipulation_shared::ik_response::ConstPtr& str);
+    void callback_bimanual(const dual_manipulation_shared::ik_response::ConstPtr& str);
+    void callback_l_grasp(const dual_manipulation_shared::ik_response::ConstPtr& str);
+    void callback_r_grasp(const dual_manipulation_shared::ik_response::ConstPtr& str);
     
     
     void reset();
@@ -53,6 +56,9 @@ private:
     bool move_sent;
     int moving_executed;
     bool failed;
+    int sequence_counter;
+    std::set<int> pending_sequence_numbers;
+    std::mutex moving_executed_mutex;
 };
 
 #endif // ik_moving_substate_H
