@@ -81,9 +81,16 @@ void semantic_planning_state::run()
 
         if (client.call(srv))
         {
-            ROS_INFO("Planning Request accepted: %d", (int)srv.response.ack);
-            for (auto node:srv.response.path)
-                std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
+            ROS_INFO("Planning Request accepted, response: %d", (int)srv.response.ack);
+            if (srv.response.ack)
+            {
+                for (auto node:srv.response.path)
+                    std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
+            }
+            else
+            {
+                ROS_ERROR("Failed to plan, reason: %s",srv.response.status.c_str());
+            }
         }
         else
         {
