@@ -5,6 +5,7 @@
 #include "ros/ros.h"
 #include <visualization_msgs/Marker.h>
 #include <dual_manipulation_shared/databasemapper.h>
+#include <dual_manipulation_shared/estimate.h>
 
 class getting_info_state : public abstract_state<transition>
 {
@@ -20,10 +21,11 @@ private:
     ros::NodeHandle n;
     ros::Publisher pub;
     ros::ServiceClient planner_client, gui_target_client, scene_object_client;
+    ros::ServiceClient vision_client;
     
     databaseMapper db_mapper_;
 
-    void get_start_position_from_vision(visualization_msgs::Marker& source_marker);
+    void get_start_position_from_vision(dual_manipulation_shared::peArray& source_poses);
     
     /**
      * @brief given and object id and its pose, return the associated grasp id (checked from the database)
@@ -39,7 +41,7 @@ private:
      */
     int get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id = 3);
     
-    void get_target_position_from_user();
+    void get_target_position_from_user(dual_manipulation_shared::peArray source_poses);
     
     bool failed=false;
 };

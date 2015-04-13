@@ -6,8 +6,11 @@
 #include <kdl_conversions/kdl_msg.h>
 #include "dual_manipulation_shared/scene_object_service.h"
 #include "../../shared/include/dual_manipulation_shared/databasemapper.h"
+#include "../../shared/src/lemon/bits/path_dump.h"
 #include <dual_manipulation_shared/serialization_utils.h>
 #include <dual_manipulation_shared/ik_service.h>
+#include <dual_manipulation_shared/peArray.h>
+#include <dual_manipulation_shared/estimate.h>
 
 extern void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& source_marker,visualization_msgs::Marker& target_marker);
 extern void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs::Marker& source_marker);
@@ -26,14 +29,33 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
     planner_client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
     gui_target_client = n.serviceClient<dual_manipulation_shared::gui_target_service>("gui_target_service");
     scene_object_client = n.serviceClient<dual_manipulation_shared::scene_object_service>("scene_object_ros_service");
+    vision_client = n.serviceClient<dual_manipulation_shared::estimate>("estimate");
 
     fresh_data = false;
 }
 
-void getting_info_state::get_start_position_from_vision(visualization_msgs::Marker& source_marker)
+void getting_info_state::get_start_position_from_vision(dual_manipulation_shared::peArray& source_poses)
 {
     data_.object_name="Cylinder";  
     //fake_get_start_position_from_vision(data_,source_marker);
+
+    dual_manipulation_shared::estimate vision_srv;
+    vision_srv.request.visualize = false;
+
+    if (vision_client.call(vision_srv))
+    {
+	ROS_INFO("IK_control: dual_manipulation_shared::estimate service response: \n");
+
+	for(auto pose:vision_srv.response.estimated_poses.poses)
+	{
+	    ROS_INFO_STREAM("name: " << pose.name << "parent: " << pose.parent_frame << "\n" << pose.pose <<"\n------------\n");
+	    source_poses.poses.push_back(pose);
+	}
+    }
+    else
+    {
+	ROS_ERROR("IK_control: Failed to call service dual_manipulation_shared::estimate");
+    }
 }
 
 int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id)
@@ -85,12 +107,13 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     return best_grasp;
 }
 
-void getting_info_state::get_target_position_from_user()
+void getting_info_state::get_target_position_from_user(dual_manipulation_shared::peArray source_poses)
 {
     dual_manipulation_shared::gui_target_service srv;
-    
+
     srv.request.info = "waiting for target";
-    
+    srv.request.source_poses = source_poses;
+
     if (gui_target_client.call(srv))
     {
         ROS_INFO_STREAM("Answer: ("<<(bool)srv.response.ack<<")");
@@ -122,10 +145,10 @@ std::map< transition, bool > getting_info_state::getResults()
 
 void getting_info_state::run()
 {
-    visualization_msgs::Marker source_marker;
+    dual_manipulation_shared::peArray source_poses;
 
-    get_start_position_from_vision(source_marker);
-    get_target_position_from_user();
+    get_start_position_from_vision(source_poses);
+    get_target_position_from_user(source_poses);
     //fake_getting_info_run(data_,source_marker,target_marker);
     // pub.publish(source_marker);
     
