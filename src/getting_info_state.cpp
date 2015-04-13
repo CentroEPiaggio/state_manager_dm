@@ -30,6 +30,7 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
     gui_target_client = n.serviceClient<dual_manipulation_shared::gui_target_service>("gui_target_service");
     scene_object_client = n.serviceClient<dual_manipulation_shared::scene_object_service>("scene_object_ros_service");
     vision_client = n.serviceClient<dual_manipulation_shared::estimate>("estimate");
+    target_sub = n.subscribe("/gui_target_response",1,&getting_info_state::gui_target_set_callback,this);
 
     fresh_data = false;
 }
@@ -56,6 +57,8 @@ void getting_info_state::get_start_position_from_vision(dual_manipulation_shared
     {
 	ROS_ERROR("IK_control: Failed to call service dual_manipulation_shared::estimate");
     }
+    
+    source_set = true;
 }
 
 int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id)
@@ -107,6 +110,23 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     return best_grasp;
 }
 
+void getting_info_state::gui_target_set_callback(dual_manipulation_shared::gui_target_response msg)
+{
+    ROS_INFO_STREAM("Target set to "<<msg.target_pose.position.x<<' '<<msg.target_pose.position.y<<' '<<msg.target_pose.position.z<<' '<<msg.target_pose.orientation.x<<' '<<msg.target_pose.orientation.y<<' '<<msg.target_pose.orientation.z<<' '<<msg.target_pose.orientation.w);
+
+    data_.source_position = msg.source_pose; //user selects which detected object is the source from the gui
+    data_.target_position = msg.target_pose;
+    // TODO: take this from vision
+    data_.obj_id = msg.obj_id;
+    data_.object_name = msg.name;
+    std::cout << "data_.obj_id = " << msg.obj_id << " | " << data_.obj_id << std::endl;
+    // TODO: ask for desired target end-effector; maybe even for desired final grasp?
+    data_.source_grasp=get_grasp_id_from_database(data_.obj_id,data_.source_position);
+    data_.target_grasp=get_grasp_id_from_database(data_.obj_id,data_.target_position);
+
+    target_set = true;
+}
+
 void getting_info_state::get_target_position_from_user(dual_manipulation_shared::peArray source_poses)
 {
     dual_manipulation_shared::gui_target_service srv;
@@ -117,24 +137,15 @@ void getting_info_state::get_target_position_from_user(dual_manipulation_shared:
     if (gui_target_client.call(srv))
     {
         ROS_INFO_STREAM("Answer: ("<<(bool)srv.response.ack<<")");
-	if(srv.response.ack) ROS_INFO_STREAM("Target set to "<<srv.response.target_pose.position.x<<' '<<srv.response.target_pose.position.y<<' '<<srv.response.target_pose.position.z
-	  <<' '<<srv.response.target_pose.orientation.x<<' '<<srv.response.target_pose.orientation.y<<' '<<srv.response.target_pose.orientation.z<<' '<<srv.response.target_pose.orientation.w);
-        
-	data_.source_position = srv.response.source_pose; //user selects which detected object is the source from the gui
-	data_.target_position = srv.response.target_pose;
-	// TODO: take this from vision
-	data_.obj_id = srv.response.obj_id;
-	data_.object_name = srv.response.name;
-	std::cout << "data_.obj_id = " << srv.response.obj_id << " | " << data_.obj_id << std::endl;
-	// TODO: ask for desired target end-effector; maybe even for desired final grasp?
-	data_.source_grasp=get_grasp_id_from_database(data_.obj_id,data_.source_position);
-	data_.target_grasp=get_grasp_id_from_database(data_.obj_id,data_.target_position);
+	if(srv.response.ack) ROS_INFO_STREAM("Waiting for target from user");
     }
     else
     {
         ROS_ERROR("Failed to call service dual_manipulation_shared::gui_target_service");
         return;
     }
+    
+    target_request=true;
 }
 
 std::map< transition, bool > getting_info_state::getResults()
@@ -148,52 +159,55 @@ void getting_info_state::run()
 {
     dual_manipulation_shared::peArray source_poses;
 
-    get_start_position_from_vision(source_poses);
-    get_target_position_from_user(source_poses);
+    if(!source_set) get_start_position_from_vision(source_poses);
+    if(source_set && !target_request) get_target_position_from_user(source_poses);
     //fake_getting_info_run(data_,source_marker,target_marker);
     // pub.publish(source_marker);
     
-    dual_manipulation_shared::planner_service srv;
-    srv.request.command="set object";
-    srv.request.time = 2; //TODO
-    srv.request.object_id=data_.obj_id;
-    srv.request.object_name=data_.object_name;
-    if (!planner_client.exists())
+    if(target_set)
     {
-        ROS_ERROR("Service does not exist: dual_manipulation_shared::planner_service");
-        failed=true;
-        return;
-    }
-    if (planner_client.call(srv))
-    {
-        ROS_INFO("Object id set to %d, planner returned %d", (int)srv.request.object_id, (int)srv.response.ack);
-        data_.obj_id=srv.request.object_id;
-    }
-    else
-    {
-        ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service");
-        failed=true;
-        return;
-    }
-    
-    // send information to the cartesian planner (for collision checking)
-    dual_manipulation_shared::scene_object_service srv_obj;
-    srv_obj.request.command = "add";
-    srv_obj.request.object_db_id = data_.obj_id;
-    // NOTE: this should be unique, while we can have more objects with the same "object_db_id"
-    srv_obj.request.attObject.object.id = data_.object_name;
-    srv_obj.request.attObject.object.mesh_poses.push_back( data_.source_position );
-    srv_obj.request.attObject.object.header.frame_id = "world";
-    if (scene_object_client.call(srv_obj))
-    {
-	ROS_INFO("IK_control:test_grasping : %s object %s request accepted: %d", srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str(), (int)srv_obj.response.ack);
-    }
-    else
-    {
-	ROS_ERROR("IK_control:test_grasping : Failed to call service dual_manipulation_shared::scene_object_service: %s %s",srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str());
-    }
+	dual_manipulation_shared::planner_service srv;
+	srv.request.command="set object";
+	srv.request.time = 2; //TODO
+	srv.request.object_id=data_.obj_id;
+	srv.request.object_name=data_.object_name;
+	if (!planner_client.exists())
+	{
+	    ROS_ERROR("Service does not exist: dual_manipulation_shared::planner_service");
+	    failed=true;
+	    return;
+	}
+	if (planner_client.call(srv))
+	{
+	    ROS_INFO("Object id set to %d, planner returned %d", (int)srv.request.object_id, (int)srv.response.ack);
+	    data_.obj_id=srv.request.object_id;
+	}
+	else
+	{
+	    ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service");
+	    failed=true;
+	    return;
+	}
+	
+	// send information to the cartesian planner (for collision checking)
+	dual_manipulation_shared::scene_object_service srv_obj;
+	srv_obj.request.command = "add";
+	srv_obj.request.object_db_id = data_.obj_id;
+	// NOTE: this should be unique, while we can have more objects with the same "object_db_id"
+	srv_obj.request.attObject.object.id = data_.object_name;
+	srv_obj.request.attObject.object.mesh_poses.push_back( data_.source_position );
+	srv_obj.request.attObject.object.header.frame_id = "world";
+	if (scene_object_client.call(srv_obj))
+	{
+	    ROS_INFO("IK_control:test_grasping : %s object %s request accepted: %d", srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str(), (int)srv_obj.response.ack);
+	}
+	else
+	{
+	    ROS_ERROR("IK_control:test_grasping : Failed to call service dual_manipulation_shared::scene_object_service: %s %s",srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str());
+	}
 
-    fresh_data = true;
+	fresh_data = true;
+    }
 }
 
 bool getting_info_state::isComplete()

@@ -6,6 +6,7 @@
 #include <visualization_msgs/Marker.h>
 #include <dual_manipulation_shared/databasemapper.h>
 #include <dual_manipulation_shared/estimate.h>
+#include <dual_manipulation_shared/gui_target_response.h>
 
 class getting_info_state : public abstract_state<transition>
 {
@@ -42,8 +43,14 @@ private:
     int get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id = 3);
     
     void get_target_position_from_user(dual_manipulation_shared::peArray source_poses);
+
+    ros::Subscriber target_sub;
+    void gui_target_set_callback(dual_manipulation_shared::gui_target_response msg);
     
     bool failed=false;
+    bool target_set=false;
+    bool source_set=false;
+    bool target_request=false;
 };
 
 #endif // GETTING_INFO_STATE_H
