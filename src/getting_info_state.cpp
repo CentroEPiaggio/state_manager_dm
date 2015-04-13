@@ -207,6 +207,9 @@ void getting_info_state::run()
 	}
 
 	fresh_data = true;
+	source_set = false;
+	target_request = false;
+	target_set = false;
     }
 }
 
