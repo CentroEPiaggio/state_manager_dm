@@ -36,7 +36,7 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
 
 void getting_info_state::get_start_position_from_vision(dual_manipulation_shared::peArray& source_poses)
 {
-    data_.object_name="Cylinder";  
+    //data_.object_name="Cylinder";
     //fake_get_start_position_from_vision(data_,source_marker);
 
     dual_manipulation_shared::estimate vision_srv;
@@ -120,10 +120,11 @@ void getting_info_state::get_target_position_from_user(dual_manipulation_shared:
 	if(srv.response.ack) ROS_INFO_STREAM("Target set to "<<srv.response.target_pose.position.x<<' '<<srv.response.target_pose.position.y<<' '<<srv.response.target_pose.position.z
 	  <<' '<<srv.response.target_pose.orientation.x<<' '<<srv.response.target_pose.orientation.y<<' '<<srv.response.target_pose.orientation.z<<' '<<srv.response.target_pose.orientation.w);
         
-	data_.source_position = srv.response.source_pose;
+	data_.source_position = srv.response.source_pose; //user selects which detected object is the source from the gui
 	data_.target_position = srv.response.target_pose;
 	// TODO: take this from vision
 	data_.obj_id = srv.response.obj_id;
+	data_.object_name = srv.response.name;
 	std::cout << "data_.obj_id = " << srv.response.obj_id << " | " << data_.obj_id << std::endl;
 	// TODO: ask for desired target end-effector; maybe even for desired final grasp?
 	data_.source_grasp=get_grasp_id_from_database(data_.obj_id,data_.source_position);
