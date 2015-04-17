@@ -4,7 +4,7 @@
 #include "shared_memory.h"
 #include <dual_manipulation_shared/planner_serviceResponse.h>
 #include <kdl/frames.hpp>
-#include <dual_manipulation_ik_control/ik_check_capability/ik_check_capability.h>
+#include <ik_check_capability/ik_check_capability.h>
 
 enum class node_properties
 {
