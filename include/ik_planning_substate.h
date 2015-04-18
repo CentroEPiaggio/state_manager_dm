@@ -4,8 +4,10 @@
 #include <abstract_state.h>
 #include "ros/ros.h"
 #include "dual_manipulation_shared/ik_service.h"
+#include <dual_manipulation_shared/ik_response.h>
 #include <dual_manipulation_shared/databasemapper.h>
 #include <std_msgs/String.h>
+#include <mutex>
 
 class ik_planning_substate : public abstract_state<ik_transition>
 {
@@ -25,11 +27,13 @@ private:
     ros::Subscriber lsub;
     ros::Subscriber rsub;
     ros::Subscriber bimanualsub;
-    void callback_l(const std_msgs::String::ConstPtr& str);
-    void callback_r(const std_msgs::String::ConstPtr& str);
-    void callback_bimanual(const std_msgs::String::ConstPtr& str);
+    void callback_l(const dual_manipulation_shared::ik_response::ConstPtr& str);
+    void callback_r(const dual_manipulation_shared::ik_response::ConstPtr& str);
+    void callback_bimanual(const dual_manipulation_shared::ik_response::ConstPtr& str);
     void reset();
-    
+    int sequence_counter;
+    std::set<int> pending_sequence_numbers;
+    std::mutex moving_executed_mutex;
     databaseMapper db_mapper;
     bool plan_sent;
     bool failed;
