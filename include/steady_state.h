@@ -11,8 +11,10 @@ public:
     virtual void run();
     virtual bool isComplete();
     virtual std::string get_type();
+    virtual void reset();
     private:
     std::string type;
+    shared_memory& data_;
 };
 
 #endif // STEADY_STATE_H

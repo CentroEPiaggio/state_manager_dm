@@ -54,7 +54,7 @@ private:
     abstract_state<ik_transition>* current_state;
     std::map<ik_transition,bool> transition_map;
     ik_steady_substate* waiting;
-    shared_memory& data_;
+    const shared_memory& data_;
     ik_shared_memory subdata;
     void fake_plan();
     void print_plan();

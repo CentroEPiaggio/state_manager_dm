@@ -110,19 +110,18 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     return best_grasp;
 }
 
-void getting_info_state::gui_target_set_callback(dual_manipulation_shared::gui_target_response msg)
+void getting_info_state::gui_target_set_callback(const dual_manipulation_shared::gui_target_response::ConstPtr& msg)
 {
     ROS_INFO_STREAM("Target set to "<<msg.target_pose.position.x<<' '<<msg.target_pose.position.y<<' '<<msg.target_pose.position.z<<' '<<msg.target_pose.orientation.x<<' '<<msg.target_pose.orientation.y<<' '<<msg.target_pose.orientation.z<<' '<<msg.target_pose.orientation.w);
 
-    data_.source_position = msg.source_pose; //user selects which detected object is the source from the gui
-    data_.target_position = msg.target_pose;
+    temp_data.source_position = msg->source_pose; //user selects which detected object is the source from the gui
+    temp_data.target_position = msg->target_pose;
     // TODO: take this from vision
-    data_.obj_id = msg.obj_id;
-    data_.object_name = msg.name;
-    std::cout << "data_.obj_id = " << msg.obj_id << " | " << data_.obj_id << std::endl;
+    temp_data.obj_id = msg->obj_id;
+    temp_data.object_name = msg->name;
     // TODO: ask for desired target end-effector; maybe even for desired final grasp?
-    data_.source_grasp=get_grasp_id_from_database(data_.obj_id,data_.source_position);
-    data_.target_grasp=get_grasp_id_from_database(data_.obj_id,data_.target_position);
+    temp_data.source_grasp=get_grasp_id_from_database(temp_data.obj_id,temp_data.source_position);
+    temp_data.target_grasp=get_grasp_id_from_database(temp_data.obj_id,temp_data.target_position);
 
     target_set = true;
 }
@@ -166,6 +165,13 @@ void getting_info_state::run()
     
     if(target_set)
     {
+	data_.source_grasp = temp_data.source_grasp;
+	data_.target_grasp = temp_data.target_grasp;
+	data_.source_position = temp_data.source_position;
+	data_.target_position = temp_data.target_position;
+	data_.object_name = temp_data.object_name;
+	data_.obj_id = temp_data.obj_id;
+	
 	dual_manipulation_shared::planner_service srv;
 	srv.request.command="set object";
 	srv.request.time = 2; //TODO

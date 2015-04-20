@@ -54,8 +54,8 @@ class ik_shared_memory
 public:
   int next_plan;
   const std::vector<std::pair<endeffector_id,cartesian_command>>* cartesian_plan;
-  object_id* obj_id;
-  std::string* object_name;
+  const object_id* obj_id;
+  const std::string* object_name;
 };
 
 #endif // SHARED_MEMORY_H

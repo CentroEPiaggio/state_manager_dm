@@ -45,7 +45,8 @@ private:
     void get_target_position_from_user(dual_manipulation_shared::peArray source_poses);
 
     ros::Subscriber target_sub;
-    void gui_target_set_callback(dual_manipulation_shared::gui_target_response msg);
+    void gui_target_set_callback(const dual_manipulation_shared::gui_target_response::ConstPtr& msg);
+    shared_memory temp_data;
     
     bool failed=false;
     bool target_set=false;

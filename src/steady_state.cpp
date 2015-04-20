@@ -1,6 +1,6 @@
 #include "../include/steady_state.h"
 
-steady_state::steady_state(shared_memory& data,std::string type)
+steady_state::steady_state(shared_memory& data,std::string type):data_(data)
 {
 this->type=type;
 }
@@ -23,4 +23,11 @@ bool steady_state::isComplete()
 std::string steady_state::get_type()
 {
     return type;
+}
+
+void steady_state::reset()
+{
+    data_.filtered_source_nodes.clear();
+    data_.filtered_target_nodes.clear();
+    data_.cartesian_plan.clear();
 }
