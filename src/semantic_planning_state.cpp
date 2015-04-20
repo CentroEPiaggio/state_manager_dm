@@ -132,7 +132,10 @@ void semantic_planning_state::run()
 	break;
     }
     //TODO parallelize movements between arms?!?
-    internal_state.insert(std::make_pair(transition::good_plan,true));
+    if(max_counter > 0)
+      internal_state.insert(std::make_pair(transition::good_plan,true));
+    else
+      internal_state.insert(std::make_pair(transition::failed_plan,true));
     completed=true;
     return;
     
