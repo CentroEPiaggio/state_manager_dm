@@ -22,6 +22,7 @@ public:
     virtual void run();
     virtual bool isComplete();
     virtual std::string get_type();
+    virtual void reset();
 private:
 
     ros::NodeHandle n;

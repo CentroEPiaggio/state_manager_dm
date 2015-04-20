@@ -150,3 +150,10 @@ std::string semantic_planning_state::get_type()
 {
     return "semantic_planning_state";
 }
+
+void semantic_planning_state::reset()
+{
+  data.filtered_source_nodes.clear();
+  data.filtered_target_nodes.clear();
+  data.cartesian_plan.clear();
+}

@@ -27,7 +27,4 @@ std::string steady_state::get_type()
 
 void steady_state::reset()
 {
-    data_.filtered_source_nodes.clear();
-    data_.filtered_target_nodes.clear();
-    data_.cartesian_plan.clear();
 }
