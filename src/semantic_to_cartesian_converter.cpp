@@ -186,7 +186,7 @@ bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL:
     return false;
   }
   
-  std::cout << "check_ik: left_hand in " << ee_poses.at(0) << " and right_hand in " << ee_poses.at(1) << std::endl;
+  // std::cout << "check_ik: left_hand in " << ee_poses.at(0) << " and right_hand in " << ee_poses.at(1) << std::endl;
   
   ik_check_capability->reset_robot_state();
   bool found_ik = ik_check_capability->find_group_ik("both_hands",ee_poses,results);
