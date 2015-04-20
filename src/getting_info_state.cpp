@@ -29,7 +29,7 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
     planner_client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
     gui_target_client = n.serviceClient<dual_manipulation_shared::gui_target_service>("gui_target_service");
     scene_object_client = n.serviceClient<dual_manipulation_shared::scene_object_service>("scene_object_ros_service");
-    vision_client = n.serviceClient<dual_manipulation_shared::estimate>("estimate");
+    vision_client = n.serviceClient<dual_manipulation_shared::estimate>("/pose_estimation_online/estimate");
     target_sub = n.subscribe("/gui_target_response",1,&getting_info_state::gui_target_set_callback,this);
 
     fresh_data = false;
