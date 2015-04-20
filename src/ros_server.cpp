@@ -105,10 +105,17 @@ void ros_server::join()
 
 void ros_server::reset()
 {
+    std::map<abstract_state<transition>*,bool> deleted;
     data.reset();
     for (auto line:transition_table)
     {
-        delete (std::get<0>(line));
+	if(deleted.count(std::get<0>(line)))
+	  continue;
+	else
+	{
+	  delete (std::get<0>(line));
+	  deleted[std::get<0>(line)] = true;
+	}
     }
     init();
 }
