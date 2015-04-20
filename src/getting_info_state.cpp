@@ -112,7 +112,7 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
 
 void getting_info_state::gui_target_set_callback(const dual_manipulation_shared::gui_target_response::ConstPtr& msg)
 {
-    ROS_INFO_STREAM("Target set to "<<msg.target_pose.position.x<<' '<<msg.target_pose.position.y<<' '<<msg.target_pose.position.z<<' '<<msg.target_pose.orientation.x<<' '<<msg.target_pose.orientation.y<<' '<<msg.target_pose.orientation.z<<' '<<msg.target_pose.orientation.w);
+    ROS_INFO_STREAM("Target set to "<<msg->target_pose.position.x<<' '<<msg->target_pose.position.y<<' '<<msg->target_pose.position.z<<' '<<msg->target_pose.orientation.x<<' '<<msg->target_pose.orientation.y<<' '<<msg->target_pose.orientation.z<<' '<<msg->target_pose.orientation.w);
 
     temp_data.source_position = msg->source_pose; //user selects which detected object is the source from the gui
     temp_data.target_position = msg->target_pose;
