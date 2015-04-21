@@ -5,7 +5,6 @@
 #include <visualization_msgs/Marker.h>
 #include <kdl_conversions/kdl_msg.h>
 #include "dual_manipulation_shared/scene_object_service.h"
-#include "../../shared/include/dual_manipulation_shared/databasemapper.h"
 #include "../../shared/src/lemon/bits/path_dump.h"
 #include <dual_manipulation_shared/serialization_utils.h>
 #include <dual_manipulation_shared/ik_service.h>

@@ -1,5 +1,4 @@
 #include "ik_planning_substate.h"
-#include "../../shared/include/dual_manipulation_shared/databasemapper.h"
 #include <dual_manipulation_shared/ik_response.h>
 #include <mutex>
 

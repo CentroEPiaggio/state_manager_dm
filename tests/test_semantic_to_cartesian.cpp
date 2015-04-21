@@ -1,10 +1,13 @@
 #include "semantic_planning_state.h"
 #include <dual_manipulation_shared/stream_utils.h>
+
+#define DB_NAME "test.db"
+
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "conversion_test");
 //     sleep(10);
-    databaseMapper database;
+    databaseMapper database(DB_NAME);
     shared_memory data;
     data.source_position.position.x = 0.25;
     data.source_position.position.y = 0.3;
