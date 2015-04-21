@@ -186,7 +186,9 @@ bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL:
     return false;
   }
   
-  // std::cout << "check_ik: left_hand in " << ee_poses.at(0) << " and right_hand in " << ee_poses.at(1) << std::endl;
+#if DEBUG
+  std::cout << "check_ik: left_hand in " << ee_poses.at(0) << " and right_hand in " << ee_poses.at(1) << std::endl;
+#endif
   
   ik_check_capability->reset_robot_state();
   bool found_ik = ik_check_capability->find_group_ik("both_hands",ee_poses,results);
@@ -207,7 +209,9 @@ bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame W
   }
   tf::poseKDLToMsg(World_EE,ee_pose);
   
+#if DEBUG
   std::cout << "check_ik: " << ee_name << " in " << ee_pose << std::endl;
+#endif
   
   std::vector<std::vector<double>> results;
   results.resize(1);

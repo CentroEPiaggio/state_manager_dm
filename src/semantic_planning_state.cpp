@@ -120,8 +120,11 @@ void semantic_planning_state::run()
         bool converted=converter.convert(result,srv.response.path,data,data.filtered_source_nodes,data.filtered_target_nodes);
         if (!converted)
         {
-            std::cout<<"Error converting semantic to cartesian!, I will try again for "<<max_counter<<std::endl;
-            continue;
+	  if(max_counter > 0)
+            ROS_WARN_STREAM("Error converting semantic to cartesian!, I will try again for " << max_counter);
+	  else
+	    ROS_ERROR_STREAM("Error converting semantic to cartesian! Maximum number of attempts reached!");
+	  continue;
         }
         std::cout << "=== Cartesian plan print-out ===" << std::endl;
         std::cout << "( Note that grasp/ungrasp poses are the object poses, not the end-effector ones )" << std::endl;
