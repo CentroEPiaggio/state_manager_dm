@@ -31,11 +31,6 @@ private:
     ros::Subscriber rgraspsub;
     bool initialized;
     void callback(const dual_manipulation_shared::ik_response::ConstPtr& str, std::string type);
-    void callback_l(const dual_manipulation_shared::ik_response::ConstPtr& str);
-    void callback_r(const dual_manipulation_shared::ik_response::ConstPtr& str);
-    void callback_bimanual(const dual_manipulation_shared::ik_response::ConstPtr& str);
-    void callback_l_grasp(const dual_manipulation_shared::ik_response::ConstPtr& str);
-    void callback_r_grasp(const dual_manipulation_shared::ik_response::ConstPtr& str);
     
     
     void reset();

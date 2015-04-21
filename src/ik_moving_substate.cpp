@@ -12,20 +12,14 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     }
 
     client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
-#ifdef PLEASE_TEST_ME
+
     typedef const dual_manipulation_shared::ik_response::ConstPtr& msg_type;
     lsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Exec"));
-    rsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Exec"));
-    bimanualsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Both hands IK Exec"));
-    lgraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Grasp"));
-    rgraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Grasp"));
-#else
-    lsub = n.subscribe("/ik_control/left_hand/action_done",1,&ik_moving_substate::callback_l,this);
-    rsub = n.subscribe("/ik_control/right_hand/action_done",1,&ik_moving_substate::callback_r,this);
-    bimanualsub = n.subscribe("/ik_control/both_hands/action_done",1,&ik_moving_substate::callback_bimanual,this);
-    lgraspsub = n.subscribe("/ik_control/left_hand/grasp_done",1,&ik_moving_substate::callback_l_grasp,this);
-    rgraspsub = n.subscribe("/ik_control/right_hand/grasp_done",1,&ik_moving_substate::callback_r_grasp,this);
-#endif
+    rsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Exec"));
+    bimanualsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/both_hands/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Both hands IK Exec"));
+    lgraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Grasp"));
+    rgraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Grasp"));
+
     command_map[cartesian_commands::MOVE] = "execute";
     command_map[cartesian_commands::GRASP] = "grasp";
     command_map[cartesian_commands::UNGRASP] = "ungrasp";
@@ -42,10 +36,16 @@ void ik_moving_substate::reset()
     failed=false;
     pending_sequence_numbers.clear();
 }
-#ifdef PLEASE_TEST_ME
+
 void ik_moving_substate::callback(const dual_manipulation_shared::ik_response::ConstPtr& str, std::string type)
 {
     std::unique_lock<std::mutex> lck(moving_executed_mutex);
+
+    // discard refuse messages (from previous sessions)
+    if(moving_executed >= 9999)
+      return;
+    
+    
     ROS_INFO_STREAM(type.c_str()<<" " << str->data << " | moving_executed = " << moving_executed);
     if(str->data=="done")
     {
@@ -54,122 +54,16 @@ void ik_moving_substate::callback(const dual_manipulation_shared::ik_response::C
             moving_executed--;
         }
         else
-            ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+            ROS_WARN_STREAM("There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
     }
     else
     {
-        ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-        failed=true;
-        initialized=false;
-    }
-}
-#else
-
-void ik_moving_substate::callback_l(const dual_manipulation_shared::ik_response::ConstPtr& str)
-{
-    std::unique_lock<std::mutex> lck(moving_executed_mutex);
-    ROS_INFO_STREAM("Left IK Exec : " << str->data << " | moving_executed = " << moving_executed);
-    if(str->data=="done")
-    {
-        if (pending_sequence_numbers.count(str->seq))
-        {
-            moving_executed--;
-        }
-        else
-            ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-    }
-    else
-    {
-	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
+        ROS_WARN_STREAM("There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
         failed=true;
         initialized=false;
     }
 }
 
-void ik_moving_substate::callback_r(const dual_manipulation_shared::ik_response::ConstPtr& str)
-{
-    std::unique_lock<std::mutex> lck(moving_executed_mutex);
-    ROS_INFO_STREAM("Right IK Exec : " << str->data << " | moving_executed = " << moving_executed);
-    if(str->data=="done")
-    {
-        if (pending_sequence_numbers.count(str->seq))
-        {
-            moving_executed--;
-        }
-        else
-            ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-    }
-    else
-    {
-	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-        failed=true;
-        initialized=false;
-    }
-}
-
-void ik_moving_substate::callback_bimanual(const dual_manipulation_shared::ik_response::ConstPtr& str)
-{
-    std::unique_lock<std::mutex> lck(moving_executed_mutex);
-    ROS_INFO_STREAM("Both Hands IK Exec : " << str->data << " | moving_executed = " << moving_executed);
-    if(str->data=="done")
-    {
-        if (pending_sequence_numbers.count(str->seq))
-        {
-            moving_executed--;
-        }
-        else
-            ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-    }
-    else
-    {
-	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-        failed=true;
-        initialized=false;
-    }
-}
-
-void ik_moving_substate::callback_r_grasp(const dual_manipulation_shared::ik_response::ConstPtr& str)
-{
-    std::unique_lock<std::mutex> lck(moving_executed_mutex);
-    ROS_INFO_STREAM("Right IK Grasp : " << str->data << " | moving_executed = " << moving_executed);
-    if(str->data=="done")
-    {
-        if (pending_sequence_numbers.count(str->seq))
-        {
-            moving_executed--;
-        }
-        else
-            ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-    }
-    else
-    {
-	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-        failed=true;
-        initialized=false;
-    }
-}
-
-void ik_moving_substate::callback_l_grasp(const dual_manipulation_shared::ik_response::ConstPtr& str)
-{
-    std::unique_lock<std::mutex> lck(moving_executed_mutex);
-    ROS_INFO_STREAM("Left IK Grasp : " << str->data << " | moving_executed = " << moving_executed);
-    if(str->data=="done")
-    {
-        if (pending_sequence_numbers.count(str->seq))
-        {
-            moving_executed--;
-        }
-        else
-            ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-    }
-    else
-    {
-	ROS_WARN_STREAM("There was an error, ik_control returned msg.data : " << str->data);
-        failed=true;
-        initialized=false;
-    }
-}
-#endif
 std::map< ik_transition, bool > ik_moving_substate::getResults()
 {
     std::unique_lock<std::mutex> lck(moving_executed_mutex);
