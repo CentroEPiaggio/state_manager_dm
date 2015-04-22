@@ -11,7 +11,8 @@ enum class cartesian_commands
     MOVE,
     GRASP,
     UNGRASP,
-    HOME
+    HOME,
+    MOVE_NO_COLLISION_CHECK
 };
 
 struct cartesian_command

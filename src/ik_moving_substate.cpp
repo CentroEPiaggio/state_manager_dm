@@ -21,6 +21,7 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     rgraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Grasp"));
 
     command_map[cartesian_commands::MOVE] = "execute";
+    command_map[cartesian_commands::MOVE_NO_COLLISION_CHECK] = "execute";
     command_map[cartesian_commands::GRASP] = "grasp";
     command_map[cartesian_commands::UNGRASP] = "ungrasp";
     command_map[cartesian_commands::HOME] = "home";
@@ -118,7 +119,7 @@ void ik_moving_substate::run()
         auto item = data_.cartesian_plan->at(data_.next_plan+i);
 // 	ee_pose=item.second.cartesian_task;
 
-	if(item.second.command!=cartesian_commands::MOVE)
+	if((item.second.command!=cartesian_commands::MOVE) && (item.second.command!=cartesian_commands::MOVE_NO_COLLISION_CHECK))
 	{
 		if(item.second.command==cartesian_commands::GRASP)
 		{
