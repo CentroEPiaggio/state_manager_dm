@@ -48,7 +48,7 @@ void getting_info_state::get_start_position_from_vision(dual_manipulation_shared
 
 	for(auto pose:vision_srv.response.estimated_poses.poses)
 	{
-	    ROS_INFO_STREAM("name: " << pose.name << "parent: " << pose.parent_frame << "\n" << pose.pose <<"\n------------\n");
+	    ROS_INFO_STREAM("name: " << pose.name << " - parent: " << pose.parent_frame << "\n" << pose.pose <<"\n------------\n");
 	    source_poses.poses.push_back(pose);
 	}
     }
