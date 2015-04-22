@@ -13,8 +13,8 @@
 #define HIGH 0.5
 #define LOW 0.06
 #define ANGLE_STEPS 4.0 // 6.0
-#define BIMANUAL_IK_ATTEMPTS 5
-#define BIMANUAL_IK_TIMEOUT 0.002
+#define BIMANUAL_IK_ATTEMPTS 3
+#define BIMANUAL_IK_TIMEOUT 0.005
 
 #define DEBUG 0 // if 1, print some more information
 
