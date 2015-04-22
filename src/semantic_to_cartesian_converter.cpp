@@ -12,7 +12,9 @@
 #define SUPERHACK 0
 #define HIGH 0.5
 #define LOW 0.06
-#define ANGLE_STEPS 6.0
+#define ANGLE_STEPS 4.0 // 6.0
+#define BIMANUAL_IK_ATTEMPTS 5
+#define BIMANUAL_IK_TIMEOUT 0.002
 
 #define DEBUG 0 // if 1, print some more information
 
@@ -24,7 +26,7 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 {
   this->database=database;
   double t=(1.0+sqrt(5.0))/2.0;
-  for (double angle=-M_PI;angle<M_PI-0.001;angle=angle+2.0*M_PI/ANGLE_STEPS)
+  for (double angle=-M_PI+M_PI/ANGLE_STEPS;angle<M_PI-0.001;angle=angle+2.0*M_PI/ANGLE_STEPS)
   {
     for (int i=0;i<4;i++)
     {
@@ -190,8 +192,15 @@ bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL:
   std::cout << "check_ik: left_hand in " << ee_poses.at(0) << " and right_hand in " << ee_poses.at(1) << std::endl;
 #endif
   
+  std::vector <double > initial_guess = std::vector<double>();
+  bool check_collisions = true;
+  bool return_approximate_solution = false;
+  unsigned int attempts = BIMANUAL_IK_ATTEMPTS;
+  double timeout = BIMANUAL_IK_TIMEOUT;
+  // std::map <std::string, std::string > allowed_collisions = std::map< std::string, std::string >();
+  
   ik_check_capability->reset_robot_state();
-  bool found_ik = ik_check_capability->find_group_ik("both_hands",ee_poses,results);
+  bool found_ik = ik_check_capability->find_group_ik("both_hands",ee_poses,results,initial_guess,check_collisions,return_approximate_solution,attempts,timeout/*,allowed_collisions*/);
   
   return found_ik;
 }
@@ -278,6 +287,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
     if (node.type==node_properties::MOVABLE_TO_MOVABLE)
     {
         std::vector<double> joint_pose_norm;
+	//TODO: pre-align the grasp to a good configuration, then go through sphere_sampling in a spiral manner, and stop when you first find a feasible one
 	for (auto& rot: sphere_sampling)
 	{
 	    KDL::Frame World_Object(rot,World_centroid);
