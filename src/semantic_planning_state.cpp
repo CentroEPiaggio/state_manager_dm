@@ -123,7 +123,10 @@ void semantic_planning_state::run()
 	  if(max_counter > 0)
             ROS_WARN_STREAM("Error converting semantic to cartesian!, I will try again for " << max_counter);
 	  else
+	  {
+	    max_counter = -1;
 	    ROS_ERROR_STREAM("Error converting semantic to cartesian! Maximum number of attempts reached!");
+	  }
 	  continue;
         }
         std::cout << "=== Cartesian plan print-out ===" << std::endl;
@@ -134,8 +137,7 @@ void semantic_planning_state::run()
         std::cout << "=== end of cartesian plan print-out ===" << std::endl;
 	break;
     }
-    //TODO parallelize movements between arms?!?
-    if(max_counter > 0)
+    if(max_counter >= 0)
       internal_state.insert(std::make_pair(transition::good_plan,true));
     else
       internal_state.insert(std::make_pair(transition::failed_plan,true));
