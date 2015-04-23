@@ -36,9 +36,6 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
 
 void getting_info_state::get_start_position_from_vision(dual_manipulation_shared::peArray& source_poses)
 {
-    //data_.object_name="Cylinder";
-    //fake_get_start_position_from_vision(data_,source_marker);
-
     dual_manipulation_shared::estimate vision_srv;
     vision_srv.request.visualize = false;
 
@@ -50,11 +47,34 @@ void getting_info_state::get_start_position_from_vision(dual_manipulation_shared
 	{
 	    ROS_INFO_STREAM("name: " << pose.name << " - parent: " << pose.parent_frame << "\n" << pose.pose <<"\n------------\n");
 	    source_poses.poses.push_back(pose);
+	    
+	    // send information to the cartesian planner (for collision checking)
+	    dual_manipulation_shared::scene_object_service srv_obj;
+	    srv_obj.request.command = "add";
+	    if(get_object_id(pose.name) == -1)
+	    {
+	      ROS_WARN_STREAM("getting_info_state::get_start_position_from_vision : the object " << pose.name << " has no matches in the DB - not publishing as a collision object");
+	      continue;
+	    }
+	    srv_obj.request.object_db_id = get_object_id(pose.name);
+	    // NOTE: this should be unique, while we can have more objects with the same "object_db_id"
+	    srv_obj.request.attObject.object.id = pose.name;
+	    srv_obj.request.attObject.object.mesh_poses.clear();
+	    srv_obj.request.attObject.object.mesh_poses.push_back(pose.pose);
+	    srv_obj.request.attObject.object.header.frame_id = pose.parent_frame;
+	    if (scene_object_client.call(srv_obj))
+	    {
+		ROS_INFO("getting_info_state::get_start_position_from_vision : %s object %s request accepted: %d", srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str(), (int)srv_obj.response.ack);
+	    }
+	    else
+	    {
+		ROS_ERROR("getting_info_state::get_start_position_from_vision : Failed to call service dual_manipulation_shared::scene_object_service: %s %s",srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str());
+	    }
 	}
     }
     else
     {
-	ROS_ERROR("IK_control: Failed to call service dual_manipulation_shared::estimate");
+	ROS_ERROR("getting_info_state::get_start_position_from_vision : Failed to call service dual_manipulation_shared::estimate");
     }
     
     source_set = true;
@@ -205,6 +225,7 @@ void getting_info_state::run()
 	    return;
 	}
 	
+	//NOTE: the following is not necessary when using vision, nonetheless the new collision object will override the one previously set with the same attObject.object.id
 	// send information to the cartesian planner (for collision checking)
 	dual_manipulation_shared::scene_object_service srv_obj;
 	srv_obj.request.command = "add";
