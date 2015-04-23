@@ -71,6 +71,11 @@ void getting_info_state::get_start_position_from_vision(dual_manipulation_shared
 		ROS_ERROR("getting_info_state::get_start_position_from_vision : Failed to call service dual_manipulation_shared::scene_object_service: %s %s",srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str());
 	    }
 	}
+	if(vision_srv.response.estimated_poses.poses.empty())
+	{
+	  failed = true;
+	  return;
+	}
     }
     else
     {
@@ -171,6 +176,8 @@ void getting_info_state::get_target_position_from_user(dual_manipulation_shared:
     else
     {
         ROS_ERROR("Failed to call service dual_manipulation_shared::gui_target_service");
+	// whichever the error is, the source needs to be set again: instead of going through a loop of vision calls, fail and revert to steady
+	failed = true;
         return;
     }
     
