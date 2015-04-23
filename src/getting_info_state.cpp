@@ -109,6 +109,17 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     return best_grasp;
 }
 
+int getting_info_state::get_object_id(std::string obj_name)
+{
+  for(auto item:db_mapper_.Objects)
+  {
+    std::string db_obj_name(std::get<0>(item.second));
+    if(obj_name.compare(0,db_obj_name.length(),db_obj_name) == 0)
+      return item.first;
+  }
+  return -1;
+}
+
 void getting_info_state::gui_target_set_callback(const dual_manipulation_shared::gui_target_response::ConstPtr& msg)
 {
     ROS_INFO_STREAM("Target set to "<<msg->target_pose.position.x<<' '<<msg->target_pose.position.y<<' '<<msg->target_pose.position.z<<' '<<msg->target_pose.orientation.x<<' '<<msg->target_pose.orientation.y<<' '<<msg->target_pose.orientation.z<<' '<<msg->target_pose.orientation.w);

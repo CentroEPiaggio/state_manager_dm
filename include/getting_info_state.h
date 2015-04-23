@@ -42,6 +42,15 @@ private:
      */
     int get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id = 3);
     
+    /**
+     * @brief Given the name of an object, returns the associated id. The name may contain a suffix w.r.t. the database name, but not a prefix.
+     * 
+     * @param obj_name name of the object to look up in the database
+     * 
+     * @return the object id from the database; -1 if no corresponding entry has been found
+     */
+    int get_object_id(std::string obj_name);
+    
     void get_target_position_from_user(dual_manipulation_shared::peArray source_poses);
 
     ros::Subscriber target_sub;
