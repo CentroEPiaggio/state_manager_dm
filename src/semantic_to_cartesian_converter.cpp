@@ -294,41 +294,72 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame 
 
 bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& object_matrixes) const
 {
-    bool ok=getPostGraspMatrix(object,node.current_grasp_id,object_matrixes.PostGraspFirstEE);
-    if (!ok)
+    if (cache_matrixes.count(std::make_pair(object,node.current_grasp_id)))
     {
-        std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
-        return false;
+        Object_SingleGrasp temp = cache_matrixes[std::make_pair(object,node.current_grasp_id)];
+        object_matrixes.GraspFirstEE=temp.Grasp;
+        object_matrixes.PostGraspFirstEE = temp.PostGrasp;
+        object_matrixes.PreGraspFirstEE = temp.PreGrasp;
     }
-    ok=getPostGraspMatrix(object,node.next_grasp_id,object_matrixes.PostGraspSecondEE);
-    if (!ok)
+    else
     {
-        std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
-        return false;
+        bool ok=getPostGraspMatrix(object,node.current_grasp_id,object_matrixes.PostGraspFirstEE);
+        if (!ok)
+        {
+            std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
+            return false;
+        }
+        ok = getPreGraspMatrix(object,node.current_grasp_id,object_matrixes.PreGraspFirstEE);
+        if (!ok)
+        {
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
+            return false;
+        }
+        ok = getGraspMatrix(object,node.current_grasp_id,object_matrixes.GraspFirstEE);
+        if (!ok)
+        {
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
+            return false;
+        }
+        Object_SingleGrasp temp;
+        temp.Grasp=object_matrixes.GraspFirstEE;
+        temp.PostGrasp=object_matrixes.PostGraspFirstEE;
+        temp.PreGrasp=object_matrixes.PreGraspFirstEE;
+        cache_matrixes[std::make_pair(object,node.current_grasp_id)]=temp;
     }
-    ok = getPreGraspMatrix(object,node.current_grasp_id,object_matrixes.PreGraspFirstEE);
-    if (!ok)
+
+    if (cache_matrixes.count(std::make_pair(object,node.next_grasp_id)))
     {
-        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
-        return false;
+        Object_SingleGrasp temp = cache_matrixes[std::make_pair(object,node.next_grasp_id)];
+        object_matrixes.GraspSecondEE = temp.Grasp;
+        object_matrixes.PostGraspSecondEE = temp.PostGrasp;
+        object_matrixes.PreGraspSecondEE = temp.PreGrasp;
     }
-    ok = getPreGraspMatrix(object,node.next_grasp_id,object_matrixes.PreGraspSecondEE);
-    if (!ok)
+    else
     {
-        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
-        return false;
-    }
-    ok = getGraspMatrix(object,node.current_grasp_id,object_matrixes.GraspFirstEE);
-    if (!ok)
-    {
-        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
-        return false;
-    }
-    ok = getGraspMatrix(object,node.next_grasp_id,object_matrixes.GraspSecondEE);
-    if (!ok)
-    {
-        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
-        return false;
+        bool ok=getPostGraspMatrix(object,node.next_grasp_id,object_matrixes.PostGraspSecondEE);
+        if (!ok)
+        {
+            std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
+            return false;
+        }
+        ok = getPreGraspMatrix(object,node.next_grasp_id,object_matrixes.PreGraspSecondEE);
+        if (!ok)
+        {
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
+            return false;
+        }
+        ok = getGraspMatrix(object,node.next_grasp_id,object_matrixes.GraspSecondEE);
+        if (!ok)
+        {
+            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
+            return false;
+        }
+        Object_SingleGrasp temp;
+        temp.Grasp=object_matrixes.GraspSecondEE;
+        temp.PostGrasp=object_matrixes.PostGraspSecondEE;
+        temp.PreGrasp=object_matrixes.PreGraspSecondEE;
+        cache_matrixes[std::make_pair(object,node.next_grasp_id)]=temp;
     }
     return true;
 }

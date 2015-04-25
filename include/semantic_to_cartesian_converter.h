@@ -29,6 +29,13 @@ struct node_info
  * 
  */
 
+struct Object_SingleGrasp
+{
+    KDL::Frame PreGrasp;
+    KDL::Frame PostGrasp;
+    KDL::Frame Grasp;
+};
+
 struct Object_GraspMatrixes
 {
     KDL::Frame PreGraspFirstEE,PreGraspSecondEE;
@@ -57,7 +64,7 @@ private:
      databaseMapper database;
      std::map<int,KDL::Frame> fine_tuning;
      std::vector<KDL::Rotation> sphere_sampling;
-     
+     mutable std::map<std::pair<object_id,grasp_id>, Object_SingleGrasp> cache_matrixes;
      mutable dual_manipulation::ik_control::ikCheckCapability *ik_check_capability;
 };
 
