@@ -291,8 +291,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame 
       return false;
     }
 }
-  
-  bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
+
 bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& object_matrixes) const
 {
     bool ok=getPostGraspMatrix(object,node.current_grasp_id,object_matrixes.PostGraspFirstEE);
@@ -401,6 +400,7 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
     return true;
 }
 
+bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
 {
     // 1) Clearing result vector
     result.clear();
