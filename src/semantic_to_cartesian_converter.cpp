@@ -387,6 +387,73 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
     return true;
 }
 
+bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node, const shared_memory& data ,bool first_node, bool last_node, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes)
+{
+    double centroid_x=0, centroid_y=0, centroid_z=0;
+    Object_GraspMatrixes Object;
+    if (!getGraspMatrixes(data.obj_id, node, Object)) abort();
+    if (node.type==node_properties::FIXED_TO_MOVABLE)
+    {
+        std::cout << "Semantic to cartesian: node.type==node_properties::FIXED_TO_MOVABLE" << std::endl;
+        // 3.6) compute a rough position of the place where the change of grasp will happen
+        compute_centroid(centroid_x,centroid_y,centroid_z,node);
+        KDL::Frame World_Centroid_f(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
+        bool intergrasp_ok = false;
+        auto next_ee_name=std::get<0>(database.EndEffectors.at(node.next_ee_id));
+        
+        if (first_node)
+        {
+            std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
+            tf::poseMsgToKDL(data.source_position,World_Object);
+        }
+        else
+        {
+             World_Object = World_Centroid_f*(Object.PostGraspFirstEE.Inverse());
+        }
+        if(check_ik(next_ee_name,World_Object*Object.PreGraspSecondEE))
+            if(check_ik(next_ee_name,World_Object*Object.GraspSecondEE))
+                // TODO: remove the next check_ik once best-effort planning will be available...
+                if(check_ik(next_ee_name,World_Centroid_f*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE))
+                    intergrasp_ok = true;
+        if (!intergrasp_ok)
+        {
+            addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
+            return false;
+        }
+    }
+    else if (node.type==node_properties::MOVABLE_TO_FIXED)
+    {
+        std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_FIXED" << std::endl;
+        // 3.6) compute a rough position of the place where the change of grasp will happen
+        compute_centroid(centroid_x,centroid_y,centroid_z,node);
+        KDL::Frame World_Centroid_f(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
+        bool intergrasp_ok =false;
+        auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
+        if (last_node)
+        {
+            std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
+            tf::poseMsgToKDL(data.target_position,World_Object);
+            // NOTE: here there are two checks only cause ungrasp retreat is already best-effort!!
+
+        }
+        else
+        {
+            World_Object = World_Centroid_f*(Object.GraspSecondEE.Inverse());
+        }
+        if(check_ik(current_ee_name,World_Object*Object.PostGraspFirstEE))
+            // NOTE: this checks for World_preGraspSecondEE
+            if(check_ik(current_ee_name,World_Centroid_f*(Object.PreGraspSecondEE.Inverse())*Object.PostGraspFirstEE))
+                // if(check_ik(current_ee_name,World_Object*Object_GraspFirstEE))
+                intergrasp_ok = true;
+        if (!intergrasp_ok)
+        {
+            addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
+            return false;
+        }
+    }
+    return true;
+}
+
 {
     // 1) Clearing result vector
     result.clear();
