@@ -50,7 +50,7 @@ private:
     bool getPostGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE) const;
     bool check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< std::vector< double > >& results) const;
     bool check_ik(std::string ee_name, KDL::Frame World_EE) const;
-    bool compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object,const node_info& node, object_id object,int aggiuntivo) const;
+    bool compute_intergrasp_orientation(KDL::Frame World_centroid, KDL::Frame& World_Object, const node_info& node, object_id object) const;
     void addNewFilteredArc(const node_info& node, std::vector<dual_manipulation_shared::planner_item>& filtered_source_nodes,std::vector<dual_manipulation_shared::planner_item>& filtered_target_nodes) const;
     bool getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& Object) const;
 private:

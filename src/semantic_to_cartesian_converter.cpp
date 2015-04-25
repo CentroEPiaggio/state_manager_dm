@@ -238,7 +238,7 @@ bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame W
   return found_ik;
 }
 
-bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object, const node_info& node, object_id object, int aggiuntivo) const
+bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame World_centroid, KDL::Frame& World_Object, const node_info& node, object_id object) const
 {
     Object_GraspMatrixes Object;
     auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
@@ -250,7 +250,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 	//TODO: pre-align the grasp to a good configuration, then go through sphere_sampling in a spiral manner, and stop when you first find a feasible one
 	for (auto& rot: sphere_sampling)
 	{
-	    KDL::Frame World_Object(rot,World_centroid);
+            KDL::Frame World_Object(rot,World_centroid.p);
 	    std::vector<std::vector<double>> results;
 	    results.resize(2);
 	    std::vector<double> &result_first = results.at(0), &result_second = results.at(1);
@@ -274,7 +274,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 	if (*it==1000)
 	  return false;
 	auto best_rot=sphere_sampling.at(it-joint_pose_norm.begin());
-	World_Object=KDL::Frame(best_rot,World_centroid);
+	World_Object=KDL::Frame(best_rot,World_centroid.p);
 	return true;
     }
     else if (node.type==node_properties::FIXED_TO_MOVABLE)
