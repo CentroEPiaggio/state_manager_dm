@@ -283,20 +283,6 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 	abort();
     }
     
-#if DEBUG
-    std::cout << current_ee_name << " | " << next_ee_name << std::endl;
-    geometry_msgs::Pose ee_pose;
-    tf::poseKDLToMsg(World_Centroid_f,ee_pose);
-    std::cout << "World_Centroid_f: " << ee_pose << std::endl;
-    tf::poseKDLToMsg(Object_FirstEE,ee_pose);
-    std::cout << "Object_FirstEE: " << ee_pose << std::endl;
-    tf::poseKDLToMsg(Object_SecondEE,ee_pose);
-    std::cout << "Object_SecondEE: " << ee_pose << std::endl;
-    tf::poseKDLToMsg(Object_GraspFirstEE,ee_pose);
-    std::cout << "Object_GraspFirstEE: " << ee_pose << std::endl;
-    tf::poseKDLToMsg(Object_GraspSecondEE,ee_pose);
-    std::cout << "Object_GraspSecondEE: " << ee_pose << std::endl;
-#endif
     
     if (node.type==node_properties::MOVABLE_TO_MOVABLE)
     {
@@ -329,11 +315,6 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 	  return false;
 	auto best_rot=sphere_sampling.at(it-joint_pose_norm.begin());
 	World_Object=KDL::Frame(best_rot,World_centroid);
-#if SUPERHACK
-        World_Object.M = fine_tuning[aggiuntivo].M*World_Object.M;
-        World_Object.p = World_Object.p + fine_tuning[aggiuntivo].p;
-        // TODO: take the above code out
-#endif
 	return true;
     }
     else if (node.type==node_properties::FIXED_TO_MOVABLE)
@@ -521,25 +502,14 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
                 addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
                 return false;
             }
-	    #if SUPERHACK
-            std::cout << "result.size() : " << result.size() << std::endl;
-	    #endif
             World_GraspSecondEE = World_Object*Object_PreGraspSecondEE;
-            #if SUPERHACK //raise more the grasp to avoid collision : this *should* be fixed
-            KDL::Frame World_GraspSecondEE_original(World_GraspSecondEE);
-            World_GraspSecondEE.p.z(World_GraspSecondEE.p.z() + 0.05);
-            #endif
             cartesian_command move_command(cartesian_commands::MOVE, 1, node.next_grasp_id);
             tf::poseKDLToMsg(World_GraspSecondEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,move_command)); //move the next
             
             //From fixed to movable we will grasp the object
             cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id);
-            #if SUPERHACK
-            tf::poseKDLToMsg(World_GraspSecondEE_original,grasp.cartesian_task);
-            #else
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
-            #endif
             result.push_back(std::make_pair(node.next_ee_id,grasp));
 	    cartesian_command move_no_coll_command(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, node.next_grasp_id);
 	    KDL::Frame World_postGraspSecondEE;
@@ -587,10 +557,6 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
             tf::poseKDLToMsg(World_GraspSecondEE,move_no_coll_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_no_coll_command)); //move the first
             cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id);
-            #if SUPERHACK
-            // consider the ungrasp trajectory as higher if ungrasping on a table
-            ungrasp.cartesian_task.position.z = ungrasp.cartesian_task.position.z + 0.07;
-            #endif
 	    // TODO: check the following transformation, should be more precisely something like "World_Object*Object_PostGraspFirstEE*(Object_GraspFirstEE.Inverse())"
 	    tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
@@ -615,18 +581,6 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
             KDL::Frame World_GraspFirstEE = World_Object*Object_PostGraspFirstEE;
             tf::poseKDLToMsg(World_GraspFirstEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_command)); //move the first
-            #if SUPERHACK
-            //superhack - part 1 - copy
-            KDL::Frame Mirko(World_Object);
-            //superhack - part 2 - change the world!
-            World_Object.M = fine_tuning[result.size()].M*World_Object.M;
-            World_Object.p = World_Object.p + fine_tuning[result.size()].p;
-            #endif
-            ok = getPreGraspMatrix(data.obj_id,node.next_grasp_id,Object_PreGraspSecondEE);
-            if (!ok) 
-            {
-                std::cout<<"Error in getting pregrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.next_ee_id<<std::endl;
-            }
             cartesian_command second_move_command;
             second_move_command.command=cartesian_commands::MOVE;
             second_move_command.ee_grasp_id=node.next_ee_id;
@@ -640,10 +594,6 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,grasp));
             cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id);
-            #if SUPERHACK
-            //superhack - part 3 - go back
-            World_Object = Mirko;
-            #endif
             tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
             //TODO: make this next seq a 0 once home is implemented as any other location
