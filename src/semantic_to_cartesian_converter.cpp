@@ -365,6 +365,47 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Vector
 }
   
   bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
+bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& object_matrixes) const
+{
+    bool ok=getPostGraspMatrix(object,node.current_grasp_id,object_matrixes.PostGraspFirstEE);
+    if (!ok)
+    {
+        std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
+        return false;
+    }
+    ok=getPostGraspMatrix(object,node.next_grasp_id,object_matrixes.PostGraspSecondEE);
+    if (!ok)
+    {
+        std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
+        return false;
+    }
+    ok = getPreGraspMatrix(object,node.current_grasp_id,object_matrixes.PreGraspFirstEE);
+    if (!ok)
+    {
+        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
+        return false;
+    }
+    ok = getPreGraspMatrix(object,node.next_grasp_id,object_matrixes.PreGraspSecondEE);
+    if (!ok)
+    {
+        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
+        return false;
+    }
+    ok = getGraspMatrix(object,node.current_grasp_id,object_matrixes.GraspFirstEE);
+    if (!ok)
+    {
+        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
+        return false;
+    }
+    ok = getGraspMatrix(object,node.next_grasp_id,object_matrixes.GraspSecondEE);
+    if (!ok)
+    {
+        std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
+        return false;
+    }
+    return true;
+}
+
 {
     // 1) Clearing result vector
     result.clear();

@@ -24,6 +24,18 @@ struct node_info
     grasp_id current_grasp_id=-1, next_grasp_id=-1;
 };
 
+/**
+ * @brief All the matrixes in this structure are expressed in the notation Object_Matrix
+ * 
+ */
+
+struct Object_GraspMatrixes
+{
+    KDL::Frame PreGraspFirstEE,PreGraspSecondEE;
+    KDL::Frame PostGraspFirstEE,PostGraspSecondEE;
+    KDL::Frame GraspFirstEE,GraspSecondEE;
+};
+
 class semantic_to_cartesian_converter
 {
 public:
@@ -39,7 +51,7 @@ private:
     bool check_ik(std::string ee_name, KDL::Frame World_EE) const;
     bool compute_intergrasp_orientation(KDL::Vector World_centroid, KDL::Frame& World_Object,const node_info& node, object_id object,int aggiuntivo) const;
     void addNewFilteredArc(const node_info& node, std::vector<dual_manipulation_shared::planner_item>& filtered_source_nodes,std::vector<dual_manipulation_shared::planner_item>& filtered_target_nodes) const;
-
+    bool getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& Object) const;
 private:
      databaseMapper database;
      std::map<int,KDL::Frame> fine_tuning;
