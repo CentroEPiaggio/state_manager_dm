@@ -66,6 +66,36 @@ void semantic_planning_state::run()
         completed=true;
         return;
     }
+    //Filtering source and target grasps in order to reduce the graph size during planning
+    KDL::Frame fake;
+    
+    node_info temp;
+    temp.current_ee_id = std::get<1>(database.Grasps[data.source_grasp]);
+    temp.current_grasp_id = data.source_grasp;
+    temp.current_workspace_id = source;
+    temp.next_workspace_id = source;
+    temp.type=node_properties::FIXED_TO_MOVABLE;
+    for (auto next_grasp_id :database.Grasp_transitions.at(data.source_grasp))
+    {
+        temp.next_grasp_id = next_grasp_id;
+        temp.next_ee_id = std::get<1>(database.Grasps[next_grasp_id]);
+        if (database.Reachability.at(temp.next_ee_id).count(source))
+            converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes);
+    }
+
+    temp.next_ee_id = std::get<1>(database.Grasps[data.target_grasp]);
+    temp.next_grasp_id = data.target_grasp;
+    temp.current_workspace_id = target;
+    temp.next_workspace_id = target;
+    temp.type=node_properties::MOVABLE_TO_FIXED;
+    for (auto current_grasp_id :database.Grasp_transitions.at(data.target_grasp))
+    {
+        temp.current_grasp_id = current_grasp_id;
+        temp.current_ee_id = std::get<1>(database.Grasps[current_grasp_id]);
+        if (database.Reachability.at(temp.current_ee_id).count(target))
+            converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes);
+    }
+
     int max_counter=25;
     while(max_counter>0)
     {
