@@ -226,6 +226,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame 
 	for (auto& rot: sphere_sampling)
 	{
             KDL::Frame World_Object(rot,World_centroid.p);
+	    World_Object = World_Object*(std::get<2>(database.Objects.at(object)).Inverse());
 	    std::vector<std::vector<double>> results;
 	    results.resize(2);
 	    std::vector<double> &result_first = results.at(0), &result_second = results.at(1);
