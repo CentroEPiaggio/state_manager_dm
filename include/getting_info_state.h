@@ -17,6 +17,7 @@ public:
     virtual void run();
     virtual bool isComplete();
     virtual std::string get_type();
+    virtual void reset();
 private:
     shared_memory& data_;
     bool fresh_data;

@@ -282,3 +282,12 @@ std::string getting_info_state::get_type()
 {
     return "getting_info_state";
 }
+
+void getting_info_state::reset()
+{
+    fresh_data = false;
+    source_set = false;
+    target_request = false;
+    target_set = false;
+    failed = false;
+}
