@@ -14,6 +14,7 @@
 #define ANGLE_STEPS 4.0 // 6.0
 #define BIMANUAL_IK_ATTEMPTS 3
 #define BIMANUAL_IK_TIMEOUT 0.005
+#define OBJ_GRASP_FACTOR 1000
 
 #define DEBUG 0 // if 1, print some more information
 
@@ -48,6 +49,7 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, grasp_id grasp, Object_SingleGrasp& Matrixes) const
 {
   dual_manipulation_shared::ik_service srv;
+  while(grasp > OBJ_GRASP_FACTOR) grasp-=OBJ_GRASP_FACTOR;
   bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
   if (ok)
   {

@@ -12,6 +12,8 @@
 #include <dual_manipulation_shared/estimate.h>
 #include <dual_manipulation_shared/parsing_utils.h>
 
+#define OBJ_GRASP_FACTOR 1000
+
 extern void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& source_marker,visualization_msgs::Marker& target_marker);
 extern void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs::Marker& source_marker);
 extern int fake_get_grasp_id_from_database();
@@ -122,8 +124,10 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
 	{
 	    // deserialize grasp
 	    dual_manipulation_shared::ik_service srv;
-	    // ROS_INFO_STREAM("Deserializing object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
-	    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
+	    int grasp = (int)item.first;
+	    while (grasp > OBJ_GRASP_FACTOR) grasp -= OBJ_GRASP_FACTOR;
+	    // ROS_INFO_STREAM("Deserializing object" + std::to_string(object_id) + "/grasp" + std::to_string(grasp));
+	    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object_id) + "/grasp" + std::to_string(grasp));
 	    if (ok)
 	      tf::poseMsgToKDL(srv.request.ee_pose.back(),grasp_frame);
 	    else
