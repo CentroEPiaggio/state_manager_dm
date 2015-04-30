@@ -19,6 +19,7 @@
 #define DEBUG 0 // if 1, print some more information
 
 // TODO: write here a good configuration!!!
+static bool use_best_ik_ = false;
 static std::vector<double> left_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 static std::vector<double> right_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 
@@ -234,6 +235,8 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame 
 	      joint_pose_norm.push_back(1000);
 	      continue;
 	    }
+	    if(!use_best_ik_)
+	      break;
 
 	    double norm=0;
 	    // NOTE: the first result when both hands are used is for left_hand, the second for the right one (lexical order)
