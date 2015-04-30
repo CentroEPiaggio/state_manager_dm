@@ -96,7 +96,7 @@ void semantic_planning_state::run()
             converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes);
     }
 
-    int max_counter=25;
+    int max_counter=1000;
     while(max_counter>0)
     {
         max_counter--;
@@ -151,7 +151,7 @@ void semantic_planning_state::run()
         if (!converted)
         {
 	  if(max_counter > 0)
-            ROS_WARN_STREAM("Error converting semantic to cartesian!, I will try again for " << max_counter);
+            ROS_WARN_STREAM("Error converting semantic to cartesian! I will try again for " << max_counter << " times");
 	  else
 	  {
 	    max_counter = -1;
