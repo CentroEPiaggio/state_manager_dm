@@ -9,7 +9,6 @@
 #include <algorithm>    // std::min_element, std::max_element
 #include <std_msgs/String.h>
 
-#define SUPERHACK 0
 #define HIGH 0.5
 #define LOW 0.06
 #define ANGLE_STEPS 4.0 // 6.0
