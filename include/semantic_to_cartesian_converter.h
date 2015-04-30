@@ -52,9 +52,7 @@ public:
 private:
     node_info find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node) const;
     void compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node) const;
-    bool getPreGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE) const;
-    bool getGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE) const;
-    bool getPostGraspMatrix(object_id object,grasp_id grasp, KDL::Frame & Object_EE) const;
+    bool getGraspMatrixes(object_id object, grasp_id grasp, Object_SingleGrasp& Matrixes) const;
     bool check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< std::vector< double > >& results) const;
     bool check_ik(std::string ee_name, KDL::Frame World_EE) const;
     bool compute_intergrasp_orientation(KDL::Frame World_centroid, KDL::Frame& World_Object, const node_info& node, object_id object) const;

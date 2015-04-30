@@ -45,46 +45,19 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
   ik_check_capability = new dual_manipulation::ik_control::ikCheckCapability();
 }
 
-bool semantic_to_cartesian_converter::getPreGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE) const
+bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, grasp_id grasp, Object_SingleGrasp& Matrixes) const
 {
-    //TODO CACHE VALUES
-    dual_manipulation_shared::ik_service srv;
-    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
-    if (ok)
-        tf::poseMsgToKDL(srv.request.ee_pose.front(),Object_EE);
-    
-#if SUPERHACK
-    // get away a little more
-    Object_EE.p = Object_EE.p * 1.3;
-#endif
-    
-    return ok;
+  dual_manipulation_shared::ik_service srv;
+  bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
+  if (ok)
+  {
+    tf::poseMsgToKDL(srv.request.ee_pose.front(),Matrixes.PreGrasp);
+    tf::poseMsgToKDL(srv.request.ee_pose.back(),Matrixes.Grasp);
+    tf::poseMsgToKDL(srv.request.attObject.object.mesh_poses.front(),Matrixes.PostGrasp);
+    Matrixes.PostGrasp = Matrixes.PostGrasp.Inverse();
+  }
+  return ok;
 }
-
-bool semantic_to_cartesian_converter::getGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE) const
-{
-    //TODO CACHE VALUES
-    dual_manipulation_shared::ik_service srv;
-    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
-    if (ok)
-        tf::poseMsgToKDL(srv.request.ee_pose.back(),Object_EE);
-    
-    return ok;
-}
-
-bool semantic_to_cartesian_converter::getPostGraspMatrix(object_id object, grasp_id grasp, KDL::Frame& Object_EE) const
-{
-    //TODO CACHE VALUES
-    dual_manipulation_shared::ik_service srv;
-    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
-    if (ok)
-    {
-        tf::poseMsgToKDL(srv.request.attObject.object.mesh_poses.front(),Object_EE);
-        Object_EE = Object_EE.Inverse();
-    }
-    return ok;
-}
-
 
 void semantic_to_cartesian_converter::compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node) const
 {
@@ -294,73 +267,44 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame 
 
 bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& object_matrixes) const
 {
+    Object_SingleGrasp temp;
+    
     if (cache_matrixes.count(std::make_pair(object,node.current_grasp_id)))
     {
-        Object_SingleGrasp temp = cache_matrixes[std::make_pair(object,node.current_grasp_id)];
-        object_matrixes.GraspFirstEE=temp.Grasp;
-        object_matrixes.PostGraspFirstEE = temp.PostGrasp;
-        object_matrixes.PreGraspFirstEE = temp.PreGrasp;
+        temp = cache_matrixes[std::make_pair(object,node.current_grasp_id)];
     }
     else
     {
-        bool ok=getPostGraspMatrix(object,node.current_grasp_id,object_matrixes.PostGraspFirstEE);
-        if (!ok)
-        {
-            std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
-            return false;
-        }
-        ok = getPreGraspMatrix(object,node.current_grasp_id,object_matrixes.PreGraspFirstEE);
-        if (!ok)
-        {
-            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
-            return false;
-        }
-        ok = getGraspMatrix(object,node.current_grasp_id,object_matrixes.GraspFirstEE);
-        if (!ok)
-        {
-            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
-            return false;
-        }
-        Object_SingleGrasp temp;
-        temp.Grasp=object_matrixes.GraspFirstEE;
-        temp.PostGrasp=object_matrixes.PostGraspFirstEE;
-        temp.PreGrasp=object_matrixes.PreGraspFirstEE;
-        cache_matrixes[std::make_pair(object,node.current_grasp_id)]=temp;
+      bool ok = getGraspMatrixes(object,node.current_grasp_id,temp);
+      if (!ok)
+      {
+	  std::cout<<"Error in getting grasp #" << node.current_grasp_id << " matrixes for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
+	  return false;
+      }
+      cache_matrixes[std::make_pair(object,node.current_grasp_id)]=temp;
     }
+    object_matrixes.GraspFirstEE = temp.Grasp;
+    object_matrixes.PostGraspFirstEE = temp.PostGrasp;
+    object_matrixes.PreGraspFirstEE = temp.PreGrasp;
 
     if (cache_matrixes.count(std::make_pair(object,node.next_grasp_id)))
     {
-        Object_SingleGrasp temp = cache_matrixes[std::make_pair(object,node.next_grasp_id)];
-        object_matrixes.GraspSecondEE = temp.Grasp;
-        object_matrixes.PostGraspSecondEE = temp.PostGrasp;
-        object_matrixes.PreGraspSecondEE = temp.PreGrasp;
+        temp = cache_matrixes[std::make_pair(object,node.next_grasp_id)];
     }
     else
     {
-        bool ok=getPostGraspMatrix(object,node.next_grasp_id,object_matrixes.PostGraspSecondEE);
-        if (!ok)
-        {
-            std::cout<<"Error in getting postgrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
-            return false;
-        }
-        ok = getPreGraspMatrix(object,node.next_grasp_id,object_matrixes.PreGraspSecondEE);
-        if (!ok)
-        {
-            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
-            return false;
-        }
-        ok = getGraspMatrix(object,node.next_grasp_id,object_matrixes.GraspSecondEE);
-        if (!ok)
-        {
-            std::cout<<"Error in getting pregrasp matrix for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
-            return false;
-        }
-        Object_SingleGrasp temp;
-        temp.Grasp=object_matrixes.GraspSecondEE;
-        temp.PostGrasp=object_matrixes.PostGraspSecondEE;
-        temp.PreGrasp=object_matrixes.PreGraspSecondEE;
-        cache_matrixes[std::make_pair(object,node.next_grasp_id)]=temp;
+      bool ok = getGraspMatrixes(object,node.next_grasp_id,temp);
+      if (!ok)
+      {
+	  std::cout<<"Error in getting grasp #" << node.next_grasp_id << " matrixes for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
+	  return false;
+      }
+      cache_matrixes[std::make_pair(object,node.next_grasp_id)]=temp;
     }
+    object_matrixes.GraspSecondEE = temp.Grasp;
+    object_matrixes.PostGraspSecondEE = temp.PostGrasp;
+    object_matrixes.PreGraspSecondEE = temp.PreGrasp;
+    
     return true;
 }
 
@@ -469,14 +413,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
 	    move_command.command=cartesian_commands::MOVE;
 	    move_command.seq_num = 1;
 	    move_command.ee_grasp_id=node.current_grasp_id;
-	    KDL::Frame Object_EE,World_Object;
-	    bool ok=getPostGraspMatrix(data.obj_id,node.current_grasp_id,Object_EE);
-	    if (!ok) 
-	    {
-		std::cout<<"Error in getting postgrasp matrix for object "<<data.obj_id<<" "<<data.object_name<<" and ee "<<node.current_ee_id<<std::endl;
-	    }
+	    KDL::Frame World_Object;
 	    tf::poseMsgToKDL(data.target_position,World_Object);
-	    tf::poseKDLToMsg(World_Object*Object_EE,move_command.cartesian_task);
+	    tf::poseKDLToMsg(World_Object*Object.PostGraspFirstEE,move_command.cartesian_task);
 	    //TODO: what if this is not feasible? test other grasps? future work...
 	    result.push_back(std::make_pair(node.current_ee_id,move_command));
 	    break; //This break jumps to 4)
