@@ -10,6 +10,7 @@
 #include <dual_manipulation_shared/ik_service.h>
 #include <dual_manipulation_shared/peArray.h>
 #include <dual_manipulation_shared/estimate.h>
+#include <dual_manipulation_shared/parsing_utils.h>
 
 extern void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& source_marker,visualization_msgs::Marker& target_marker);
 extern void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs::Marker& source_marker);
@@ -23,6 +24,9 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
 	char** argv;
 	ros::init( argc, argv, "state_manager", ros::init_options::AnonymousName );
     }
+    
+    XmlRpc::XmlRpcValue get_info_params;
+    if (n.getParam("dual_manipulation_parameters", get_info_params)) parseParameters(get_info_params);
 
     pub = n.advertise<visualization_msgs::Marker>( "/object_marker", 1000 );
     planner_client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
@@ -32,6 +36,13 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
     target_sub = n.subscribe("/gui_target_response",1,&getting_info_state::gui_target_set_callback,this);
 
     fresh_data = false;
+}
+
+void getting_info_state::parseParameters(XmlRpc::XmlRpcValue& params)
+{
+    ROS_ASSERT(params.getType() == XmlRpc::XmlRpcValue::TypeStruct);
+    
+    parseSingleParameter(params,use_vision,"use_vision");
 }
 
 void getting_info_state::get_start_position_from_vision(dual_manipulation_shared::peArray& source_poses)
@@ -74,15 +85,16 @@ void getting_info_state::get_start_position_from_vision(dual_manipulation_shared
 	if(vision_srv.response.estimated_poses.poses.empty())
 	{
 	  failed = true;
-	  return;
 	}
     }
     else
     {
 	ROS_ERROR("getting_info_state::get_start_position_from_vision : Failed to call service dual_manipulation_shared::estimate");
+	if(use_vision)
+	  failed = true;
     }
     
-    source_set = true;
+    source_set = !failed;
 }
 
 int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id)

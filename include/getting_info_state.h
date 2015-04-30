@@ -7,6 +7,7 @@
 #include <dual_manipulation_shared/databasemapper.h>
 #include <dual_manipulation_shared/estimate.h>
 #include <dual_manipulation_shared/gui_target_response.h>
+#include <XmlRpcValue.h>
 
 class getting_info_state : public abstract_state<transition>
 {
@@ -52,6 +53,8 @@ private:
     int get_object_id(std::string obj_name);
     
     void get_target_position_from_user(dual_manipulation_shared::peArray source_poses);
+    
+    void parseParameters(XmlRpc::XmlRpcValue& params);
 
     ros::Subscriber target_sub;
     void gui_target_set_callback(const dual_manipulation_shared::gui_target_response::ConstPtr& msg);
@@ -61,6 +64,7 @@ private:
     bool target_set=false;
     bool source_set=false;
     bool target_request=false;
+    bool use_vision=true;
 };
 
 #endif // GETTING_INFO_STATE_H
