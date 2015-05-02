@@ -14,10 +14,6 @@
 
 #define OBJ_GRASP_FACTOR 1000
 
-extern void fake_getting_info_run(shared_memory& data,visualization_msgs::Marker& source_marker,visualization_msgs::Marker& target_marker);
-extern void fake_get_start_position_from_vision(shared_memory& data,visualization_msgs::Marker& source_marker);
-extern int fake_get_grasp_id_from_database();
-
 getting_info_state::getting_info_state(shared_memory& data):data_(data)
 {
     if( !ros::isInitialized() )
@@ -125,7 +121,7 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
 	    // deserialize grasp
 	    dual_manipulation_shared::ik_service srv;
 	    int grasp = (int)item.first;
-	    while (grasp > OBJ_GRASP_FACTOR) grasp -= OBJ_GRASP_FACTOR;
+	    grasp = grasp % OBJ_GRASP_FACTOR;
 	    // ROS_INFO_STREAM("Deserializing object" + std::to_string(object_id) + "/grasp" + std::to_string(grasp));
 	    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object_id) + "/grasp" + std::to_string(grasp));
 	    if (ok)
@@ -213,8 +209,6 @@ void getting_info_state::run()
 
     if(!source_set) get_start_position_from_vision(source_poses);
     if(source_set && !target_request) get_target_position_from_user(source_poses);
-    //fake_getting_info_run(data_,source_marker,target_marker);
-    // pub.publish(source_marker);
     
     if(target_set)
     {
