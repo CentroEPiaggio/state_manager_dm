@@ -48,6 +48,13 @@ void getting_info_state::get_start_position_from_vision(dual_manipulation_shared
     dual_manipulation_shared::estimate vision_srv;
     vision_srv.request.visualize = false;
 
+    dual_manipulation_shared::scene_object_service srv_obj0;
+    srv_obj0.request.command = "remove_all";
+    if (!scene_object_client.call(srv_obj0))
+    {
+      ROS_ERROR_STREAM("getting_info_state::get_start_position_from_vision : Failed to call service dual_manipulation_shared::scene_object_service : " << srv_obj0.request.command);
+    }
+    
     if (vision_client.call(vision_srv))
     {
 	ROS_INFO("IK_control: dual_manipulation_shared::estimate service response: \n");
