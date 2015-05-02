@@ -35,6 +35,7 @@ private:
     databaseMapper db_mapper;
     bool plan_sent;
     bool failed;
+    bool checking_grasp;
 };
 
 #endif // ik_planning_substate_H

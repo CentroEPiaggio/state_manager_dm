@@ -31,6 +31,7 @@ void ik_planning_substate::reset()
     initialized = false;
     plan_sent = false;
     failed=false;
+    checking_grasp = false;
     pending_sequence_numbers.clear();
 }
 
@@ -142,6 +143,7 @@ void ik_planning_substate::run()
     {
         pending_sequence_numbers.insert(sequence_counter);
 	ROS_INFO_STREAM("IK Plan Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
+	plan_sent = true;
     }
     else
     {
@@ -149,12 +151,11 @@ void ik_planning_substate::run()
             failed=true;
             initialized=false;
     }
-    plan_sent=true;
 }
 
 bool ik_planning_substate::isComplete()
 {
-    return (plan_executed==0  || failed);
+    return (plan_executed==0  || failed || checking_grasp);
 }
 
 std::string ik_planning_substate::get_type()
