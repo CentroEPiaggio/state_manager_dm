@@ -23,8 +23,9 @@ enum class ik_transition {
     move,
     grasp,
     done,
-    checkgrasp,
+    check_grasp,
     check_done,
+    soft_fail,
     fail
 };
 
