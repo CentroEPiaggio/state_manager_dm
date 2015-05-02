@@ -213,8 +213,12 @@ bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame W
   return found_ik;
 }
 
-bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame World_centroid, KDL::Frame& World_Object, const node_info& node, object_id object) const
+bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object) const
 {
+    double centroid_x,centroid_y,centroid_z;
+    compute_centroid(centroid_x,centroid_y,centroid_z,node);
+    KDL::Frame World_centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
+    
     Object_GraspMatrixes Object;
     auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
     auto next_ee_name=std::get<0>(database.EndEffectors.at(node.next_ee_id));
@@ -488,8 +492,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             move_command.ee_grasp_id=node.current_grasp_id;
             move_command.seq_num=0;//Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
-            compute_centroid(centroid_x,centroid_y,centroid_z,node);
-            bool intergrasp_ok = compute_intergrasp_orientation(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)),World_Object,node,data.obj_id);
+            bool intergrasp_ok = compute_intergrasp_orientation(World_Object,node,data.obj_id);
             if (!intergrasp_ok)
             {
                 addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
