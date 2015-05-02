@@ -170,7 +170,7 @@ bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL:
 #endif
   
   std::vector <double > initial_guess = std::vector<double>();
-  bool check_collisions = true;
+  bool check_collisions = false;
   bool return_approximate_solution = false;
   unsigned int attempts = BIMANUAL_IK_ATTEMPTS;
   double timeout = BIMANUAL_IK_TIMEOUT;
@@ -202,15 +202,15 @@ bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame W
   std::vector<std::vector<double>> results;
   results.resize(1);
   
-//   std::vector <double > initial_guess = std::vector<double>();
-//   bool check_collisions = false;
+  std::vector <double > initial_guess = std::vector<double>();
+  bool check_collisions = false;
 //   bool return_approximate_solution = true;
 //   unsigned int attempts = 10;
 //   double timeout = 0.005;
 //   std::map <std::string, std::string > allowed_collisions = std::map< std::string, std::string >();
   
   ik_check_capability->reset_robot_state();
-  bool found_ik = ik_check_capability->find_group_ik(ee_name,ee_poses,results/*,initial_guess,check_collisions,return_approximate_solution,attempts,timeout,allowed_collisions*/);
+  bool found_ik = ik_check_capability->find_group_ik(ee_name,ee_poses,results,initial_guess,check_collisions/*,return_approximate_solution,attempts,timeout,allowed_collisions*/);
   
   return found_ik;
 }
