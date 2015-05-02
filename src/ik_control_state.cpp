@@ -23,6 +23,7 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     subdata.object_name = &data.object_name;
 
     auto ik_planning = new ik_planning_substate(subdata);
+    auto ik_checking_grasp = new ik_checking_grasp_substate(subdata);
     auto ik_moving = new ik_moving_substate(subdata);
     waiting = new ik_steady_substate(subdata);
     auto exiting = new ik_exiting_substate(subdata);
@@ -33,16 +34,20 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
         std::make_tuple( waiting            , std::make_pair(ik_transition::plan,true)                ,   ik_planning       ),
         //----------------------------------+---------------------------------------------------------+-------------------- +
         std::make_tuple( ik_planning        , std::make_pair(ik_transition::move,true)                ,   ik_moving         ),
+        std::make_tuple( ik_planning        , std::make_pair(ik_transition::check_grasp,true)         ,   ik_checking_grasp ),
         //----------------------------------+---------------------------------------------------------+-------------------- +
         std::make_tuple( ik_moving          , std::make_pair(ik_transition::plan,true)                ,   ik_planning       ),
-//         std::make_tuple( ik_moving          , std::make_pair(ik_transition::grasp,true)               ,   ik_grasping       ),
         std::make_tuple( ik_moving          , std::make_pair(ik_transition::done,true)                ,   exiting           ),
         //----------------------------------+---------------------------------------------------------+-------------------- +
 //         std::make_tuple( ik_grasping        , std::make_pair(ik_transition::done,true)                ,   exiting           ),
 //         std::make_tuple( ik_grasping        , std::make_pair(ik_transition::checkgrasp,true)          ,   ik_checking_grasp ),
 // 	std::make_tuple( ik_grasping        , std::make_pair(ik_transition::plan,true)                ,   ik_planning       ),
 // 	//----------------------------------+---------------------------------------------------------+-------------------- +
-// 	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::check_done,true)          ,   ik_grasping       )
+	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::check_done,true)          ,   ik_moving         ),
+	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::soft_fail,true)           ,   ik_moving         ),
+	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::plan,true)                ,   ik_planning       ),
+	//----------------------------------+---------------------------------------------------------+-------------------- +
+	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::fail,true)                ,   failing           ),
         std::make_tuple( ik_moving          , std::make_pair(ik_transition::fail,true)                ,   failing           ),
         std::make_tuple( ik_planning        , std::make_pair(ik_transition::fail,true)                ,   failing           ),
     };

@@ -64,7 +64,8 @@ void ik_planning_substate::callback(const dual_manipulation_shared::ik_response:
 std::map< ik_transition, bool > ik_planning_substate::getResults()
 {
     std::map< ik_transition, bool > results;
-    results[ik_transition::move]=(plan_executed==0);
+    results[ik_transition::move]=(plan_executed==0 && plan_sent);
+    results[ik_transition::check_grasp]=checking_grasp;
     results[ik_transition::fail]=failed;
     
     return results;
@@ -110,8 +111,14 @@ void ik_planning_substate::run()
                     ROS_ERROR("I found two MOVE commands with same sequence number, but there was some different command in the middle!!");
                 }
             }
-	    ROS_INFO_STREAM("Command was not MOVE: returning to ik_moving_substate");
-	    plan_sent = true;
+	    
+	    if(item.second.command==cartesian_commands::GRASP)
+	      checking_grasp = true;
+	    else
+	    {
+	      ROS_INFO_STREAM("Command was not MOVE: returning to ik_moving_substate");
+	      plan_sent = true;
+	    }
 	    return;
 	}
 	
