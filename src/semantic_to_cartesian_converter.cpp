@@ -23,6 +23,8 @@ static bool use_best_ik_ = false;
 static std::vector<double> left_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 static std::vector<double> right_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 
+std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
+
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database)
 {
   this->database=database;
@@ -46,10 +48,10 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
   ik_check_capability = new dual_manipulation::ik_control::ikCheckCapability();
 }
 
-bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, grasp_id grasp, Object_SingleGrasp& Matrixes) const
+bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, grasp_id grasp, Object_SingleGrasp& Matrixes)
 {
   dual_manipulation_shared::ik_service srv;
-  while(grasp > OBJ_GRASP_FACTOR) grasp-=OBJ_GRASP_FACTOR;
+  grasp = grasp%OBJ_GRASP_FACTOR;
   bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
   if (ok)
   {
@@ -274,7 +276,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
     }
 }
 
-bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& object_matrixes) const
+bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& Object)
 {
     Object_SingleGrasp temp;
     
@@ -292,9 +294,9 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
       }
       cache_matrixes[std::make_pair(object,node.current_grasp_id)]=temp;
     }
-    object_matrixes.GraspFirstEE = temp.Grasp;
-    object_matrixes.PostGraspFirstEE = temp.PostGrasp;
-    object_matrixes.PreGraspFirstEE = temp.PreGrasp;
+    Object.GraspFirstEE = temp.Grasp;
+    Object.PostGraspFirstEE = temp.PostGrasp;
+    Object.PreGraspFirstEE = temp.PreGrasp;
 
     if (cache_matrixes.count(std::make_pair(object,node.next_grasp_id)))
     {
@@ -310,9 +312,9 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
       }
       cache_matrixes[std::make_pair(object,node.next_grasp_id)]=temp;
     }
-    object_matrixes.GraspSecondEE = temp.Grasp;
-    object_matrixes.PostGraspSecondEE = temp.PostGrasp;
-    object_matrixes.PreGraspSecondEE = temp.PreGrasp;
+    Object.GraspSecondEE = temp.Grasp;
+    Object.PostGraspSecondEE = temp.PostGrasp;
+    Object.PreGraspSecondEE = temp.PreGrasp;
     
     return true;
 }
