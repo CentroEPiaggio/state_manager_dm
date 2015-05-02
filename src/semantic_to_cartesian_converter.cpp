@@ -489,10 +489,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         else if (node.type==node_properties::MOVABLE_TO_MOVABLE)
         {
 	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_MOVABLE" << std::endl;
-            cartesian_command move_command;
-            move_command.command=cartesian_commands::MOVE;
-            move_command.ee_grasp_id=node.current_grasp_id;
-            move_command.seq_num=0;//Care, we are parallelizing here!
+            cartesian_command move_command(cartesian_commands::MOVE,0,-1); // Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
             bool intergrasp_ok = compute_intergrasp_orientation(World_Object,node,data.obj_id);
             if (!intergrasp_ok)
@@ -503,10 +500,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             KDL::Frame World_GraspFirstEE = World_Object*Object.PostGraspFirstEE;
             tf::poseKDLToMsg(World_GraspFirstEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_command)); //move the first
-            cartesian_command second_move_command;
-            second_move_command.command=cartesian_commands::MOVE;
-            second_move_command.ee_grasp_id=node.next_ee_id;
-            second_move_command.seq_num=1;//Do not parallelize
+            cartesian_command second_move_command(cartesian_commands::MOVE,1,-1); // do NOT parallelize;
             World_GraspSecondEE = World_Object*Object.PreGraspSecondEE;
             tf::poseKDLToMsg(World_GraspSecondEE,second_move_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,second_move_command)); //move the next
