@@ -106,7 +106,7 @@ void ik_moving_substate::run()
     
     int i=-1;
     int move_num=0;
-    std::string ee_name;
+    std::string ee_name("");
     
     if(data_.cartesian_plan->size()==0)
     {
@@ -221,7 +221,10 @@ void ik_moving_substate::run()
 	else
 	{
 	        move_num++;
-		ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+		if(!ee_name.empty() && ee_name != std::get<0>(db_mapper.EndEffectors.at(item.first)))
+		  ee_name = "both_hands";
+		else
+		  ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
 	}
     }
     while(data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0);
@@ -229,8 +232,7 @@ void ik_moving_substate::run()
     if(move_num>0)
     {
         srv.request.command = command_map.at(cartesian_commands::MOVE);
-	if(move_num>1) srv.request.ee_name="both_hands";
-	else srv.request.ee_name = ee_name;
+	srv.request.ee_name = ee_name;
         std::unique_lock<std::mutex> lck(moving_executed_mutex);
         srv.request.seq=sequence_counter;
         
