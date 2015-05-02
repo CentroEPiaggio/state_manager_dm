@@ -126,7 +126,7 @@ void ik_moving_substate::run()
 		if(item.second.command==cartesian_commands::GRASP)
 		{
 			int grasp = (int)item.second.ee_grasp_id;
-			while (grasp > OBJ_GRASP_FACTOR) grasp -= OBJ_GRASP_FACTOR;
+			grasp = grasp % OBJ_GRASP_FACTOR;
 			if(!deserialize_ik(srv.request,"object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp)))
 			{
 			    ROS_ERROR_STREAM("Failed to deserialize object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp));
@@ -161,7 +161,7 @@ void ik_moving_substate::run()
 		if(item.second.command==cartesian_commands::UNGRASP) //same ad graso, just changing the ee_pose order
 		{
 			int grasp = (int)item.second.ee_grasp_id;
-			while (grasp > OBJ_GRASP_FACTOR) grasp -= OBJ_GRASP_FACTOR;
+			grasp = grasp % OBJ_GRASP_FACTOR;
 			if(!deserialize_ik(srv.request,"object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp)))
 			{
 			    ROS_ERROR_STREAM("Failed to deserialize object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp));
