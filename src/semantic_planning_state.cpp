@@ -4,6 +4,7 @@
 #include <dual_manipulation_shared/stream_utils.h>
 #include "dual_manipulation_shared/ik_service.h"
 #include "dual_manipulation_shared/serialization_utils.h"
+#include "dual_manipulation_shared/good_grasp_msg.h"
 #include <kdl_conversions/kdl_msg.h>
 #include <std_msgs/String.h>
 
@@ -17,6 +18,7 @@ semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
         ros::init( argc, argv, "state_manager", ros::init_options::AnonymousName );
     }
     client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
+    good_grasps_pub = n.advertise<dual_manipulation_shared::good_grasp_msg>( "/good_grasp_topic", 1000 );
     completed=false;
 }
 
@@ -68,7 +70,8 @@ void semantic_planning_state::run()
     }
     //Filtering source and target grasps in order to reduce the graph size during planning
     KDL::Frame fake;
-    
+    dual_manipulation_shared::good_grasp_msg msg;
+
     node_info temp;
     temp.current_ee_id = std::get<1>(database.Grasps[data.source_grasp]);
     temp.current_grasp_id = data.source_grasp;
@@ -80,7 +83,10 @@ void semantic_planning_state::run()
         temp.next_grasp_id = next_grasp_id;
         temp.next_ee_id = std::get<1>(database.Grasps[next_grasp_id]);
         if (database.Reachability.at(temp.next_ee_id).count(source))
+	{
             converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes);
+	    msg.good_source_grasps.push_back(temp.current_grasp_id);
+	}
     }
 
     temp.next_ee_id = std::get<1>(database.Grasps[data.target_grasp]);
@@ -93,8 +99,13 @@ void semantic_planning_state::run()
         temp.current_grasp_id = current_grasp_id;
         temp.current_ee_id = std::get<1>(database.Grasps[current_grasp_id]);
         if (database.Reachability.at(temp.current_ee_id).count(target))
+	{
             converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes);
+	    msg.good_target_grasps.push_back(temp.current_grasp_id);
+	}
     }
+
+    good_grasps_pub.publish(msg);
 
     int max_counter=1000;
     while(max_counter>0)
