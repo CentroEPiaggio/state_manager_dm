@@ -2,6 +2,8 @@
 #include <dual_manipulation_shared/ik_response.h>
 #include <mutex>
 
+#define CLASS_NAMESPACE "ik_planning_substate::"
+
 ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
 {
     if( !ros::isInitialized() )
@@ -101,6 +103,8 @@ void ik_planning_substate::run()
 
 	if((item.second.command!=cartesian_commands::MOVE) && (item.second.command!=cartesian_commands::MOVE_NO_COLLISION_CHECK))
 	{
+	    if(i!=0)
+	      ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : I found a command not to be planned after " << i+1 << " other(s) to be planned, but those will be IGNORED!!!");
             int j=i;
             while(data_.cartesian_plan->at(data_.next_plan+j).second.seq_num==0)
             {
