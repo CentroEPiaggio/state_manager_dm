@@ -36,6 +36,7 @@ private:
     bool plan_sent;
     bool failed;
     bool checking_grasp;
+    planning_cmd commands;
 };
 
 #endif // ik_planning_substate_H

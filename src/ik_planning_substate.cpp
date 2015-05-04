@@ -101,7 +101,7 @@ void ik_planning_substate::run()
         i++;
 	auto item = data_.cartesian_plan->at(data_.next_plan+i);
 
-	if((item.second.command!=cartesian_commands::MOVE) && (item.second.command!=cartesian_commands::MOVE_NO_COLLISION_CHECK))
+	if(!commands.is_to_be_planned.count(item.second.command))
 	{
 	    if(i!=0)
 	      ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : I found a command not to be planned after " << i+1 << " other(s) to be planned, but those will be IGNORED!!!");
@@ -109,14 +109,13 @@ void ik_planning_substate::run()
             while(data_.cartesian_plan->at(data_.next_plan+j).second.seq_num==0)
             {
                 j++;
-                if ((data_.cartesian_plan->at(data_.next_plan+j).second.command==cartesian_commands::MOVE) ||
-		  (data_.cartesian_plan->at(data_.next_plan+j).second.command==cartesian_commands::MOVE_NO_COLLISION_CHECK))
+		if(commands.is_to_be_planned.count(data_.cartesian_plan->at(data_.next_plan+j).second.command))
                 {
                     ROS_ERROR("I found two MOVE commands with same sequence number, but there was some different command in the middle!!");
                 }
             }
 	    
-	    if(item.second.command==cartesian_commands::GRASP)
+	    if(commands.is_to_be_checked.count(item.second.command))
 	      checking_grasp = true;
 	    else
 	    {
@@ -128,7 +127,7 @@ void ik_planning_substate::run()
 	
 	ee_pose=item.second.cartesian_task;
 
-	srv.request.command = "plan";
+	srv.request.command = commands.plan_command[item.second.command];
 	srv.request.ee_pose.push_back(ee_pose);
 	if(i>0)
 	{
