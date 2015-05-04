@@ -21,6 +21,8 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     bimanualsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/both_hands/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Both hands IK Exec"));
     lgraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Grasp"));
     rgraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Grasp"));
+    lungraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Ungrasp"));
+    rungraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Ungrasp"));
 
     command_map[cartesian_commands::MOVE] = "execute";
     command_map[cartesian_commands::MOVE_NO_COLLISION_CHECK] = "execute";

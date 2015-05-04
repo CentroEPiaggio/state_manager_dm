@@ -29,6 +29,8 @@ private:
     ros::Subscriber bimanualsub;
     ros::Subscriber lgraspsub;
     ros::Subscriber rgraspsub;
+    ros::Subscriber lungraspsub;
+    ros::Subscriber rungraspsub;
     bool initialized;
     void callback(const dual_manipulation_shared::ik_response::ConstPtr& str, std::string type);
     
