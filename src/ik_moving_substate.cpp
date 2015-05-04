@@ -24,11 +24,6 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     lungraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Ungrasp"));
     rungraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Ungrasp"));
 
-    command_map[cartesian_commands::MOVE] = "execute";
-    command_map[cartesian_commands::MOVE_NO_COLLISION_CHECK] = "execute";
-    command_map[cartesian_commands::GRASP] = "grasp";
-    command_map[cartesian_commands::UNGRASP] = "ungrasp";
-    command_map[cartesian_commands::HOME] = "home";
     reset();
 }
 
@@ -138,7 +133,7 @@ void ik_moving_substate::run()
 				srv.request.attObject.object.id = *data_.object_name;
 				srv.request.object_db_id = (int)*data_.obj_id;
 				srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-				srv.request.command = command_map.at(item.second.command);
+				srv.request.command = commands.command[item.second.command];
 			
 				// change frame of reference of the grasp trajectory to the current object frame
 				change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
@@ -173,7 +168,7 @@ void ik_moving_substate::run()
 				srv.request.attObject.object.id = *data_.object_name;
 				srv.request.object_db_id = (int)*data_.obj_id;
 				srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-				srv.request.command = command_map.at(item.second.command);
+				srv.request.command = commands.command[item.second.command];
                                 std::unique_lock<std::mutex> lck(moving_executed_mutex);
                                 srv.request.seq=sequence_counter;
 
@@ -201,7 +196,7 @@ void ik_moving_substate::run()
 		if(item.second.command==cartesian_commands::HOME)
                 {
                     srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-                    srv.request.command = command_map.at(item.second.command);
+                    srv.request.command = commands.command[item.second.command];
                     std::unique_lock<std::mutex> lck(moving_executed_mutex);
                     srv.request.seq=sequence_counter;
 
@@ -233,7 +228,7 @@ void ik_moving_substate::run()
     
     if(move_num>0)
     {
-        srv.request.command = command_map.at(cartesian_commands::MOVE);
+        srv.request.command = commands.command[data_.cartesian_plan->at(data_.next_plan+i).second.command];
 	srv.request.ee_name = ee_name;
         std::unique_lock<std::mutex> lck(moving_executed_mutex);
         srv.request.seq=sequence_counter;

@@ -48,7 +48,6 @@ private:
      */
     void change_frame_to_pose_vector(geometry_msgs::Pose object_pose_msg, std::vector<geometry_msgs::Pose>& ee_pose);
 
-    std::map<cartesian_commands,std::string> command_map;
     databaseMapper db_mapper;
     bool move_sent;
     int moving_executed;
@@ -56,6 +55,7 @@ private:
     int sequence_counter;
     std::set<int> pending_sequence_numbers;
     std::mutex moving_executed_mutex;
+    moving_cmd commands;
 };
 
 #endif // ik_moving_substate_H
