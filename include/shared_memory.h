@@ -5,14 +5,64 @@
 #include <kdl/frames.hpp>
 #include <dual_manipulation_shared/databasemapper.h>
 #include <dual_manipulation_shared/planner_item.h>
+#include <dual_manipulation_shared/ik_control_capabilities.h>
 
 enum class cartesian_commands
 {
     MOVE,
+    MOVE_NO_COLLISION_CHECK,
+    MOVE_BEST_EFFORT,
+    MOVE_BEST_EFFORT_NO_COLLISION_CHECK,
     GRASP,
     UNGRASP,
-    HOME,
-    MOVE_NO_COLLISION_CHECK
+    HOME
+};
+
+class planning_cmd
+{
+public:
+  planning_cmd()
+  {
+    plan_command[cartesian_commands::MOVE] = capabilities.name[ik_control_capabilities::PLAN];
+    plan_command[cartesian_commands::MOVE_NO_COLLISION_CHECK] = capabilities.name[ik_control_capabilities::PLAN_NO_COLLISION];
+    plan_command[cartesian_commands::MOVE_BEST_EFFORT] = capabilities.name[ik_control_capabilities::PLAN_BEST_EFFORT];
+    plan_command[cartesian_commands::MOVE_BEST_EFFORT_NO_COLLISION_CHECK] = capabilities.name[ik_control_capabilities::PLAN_BEST_EFFORT_NO_COLLISION];
+    
+    is_to_be_checked.insert(cartesian_commands::GRASP);
+    
+    is_to_be_planned.insert(cartesian_commands::MOVE);
+    is_to_be_planned.insert(cartesian_commands::MOVE_NO_COLLISION_CHECK);
+    is_to_be_planned.insert(cartesian_commands::MOVE_BEST_EFFORT);
+    is_to_be_planned.insert(cartesian_commands::MOVE_BEST_EFFORT_NO_COLLISION_CHECK);
+  };
+  ~planning_cmd(){};
+  
+  ik_control_capability capabilities;
+  std::map<cartesian_commands,std::string> plan_command;
+  // says whether a command has to be planned
+  std::set<cartesian_commands> is_to_be_planned;
+  // says whether a command has to be checked
+  std::set<cartesian_commands> is_to_be_checked;
+};
+
+class moving_cmd
+{
+public:
+  moving_cmd()
+  {
+    command[cartesian_commands::MOVE] = capabilities.name[ik_control_capabilities::MOVE];
+    command[cartesian_commands::MOVE_NO_COLLISION_CHECK] = capabilities.name[ik_control_capabilities::MOVE];
+    command[cartesian_commands::MOVE_BEST_EFFORT] = capabilities.name[ik_control_capabilities::MOVE];
+    command[cartesian_commands::MOVE_BEST_EFFORT_NO_COLLISION_CHECK] = capabilities.name[ik_control_capabilities::MOVE];
+    command[cartesian_commands::GRASP] = capabilities.name[ik_control_capabilities::GRASP];
+    command[cartesian_commands::UNGRASP] = capabilities.name[ik_control_capabilities::UNGRASP];
+    command[cartesian_commands::HOME] = capabilities.name[ik_control_capabilities::HOME];
+    //command[cartesian_commands::HOME] = capabilities.name[ik_control_capabilities::MOVE];
+  };
+  ~moving_cmd(){};
+  
+  ik_control_capability capabilities;
+  std::map<cartesian_commands,std::string> command;
 };
 
 struct cartesian_command
