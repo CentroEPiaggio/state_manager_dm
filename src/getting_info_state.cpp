@@ -8,8 +8,6 @@
 #include "../../shared/src/lemon/bits/path_dump.h"
 #include <dual_manipulation_shared/serialization_utils.h>
 #include <dual_manipulation_shared/ik_service.h>
-#include <dual_manipulation_shared/peArray.h>
-#include <dual_manipulation_shared/estimate.h>
 #include <dual_manipulation_shared/parsing_utils.h>
 
 #define OBJ_GRASP_FACTOR 1000
@@ -30,7 +28,7 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
     planner_client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
     gui_target_client = n.serviceClient<dual_manipulation_shared::gui_target_service>("gui_target_service");
     scene_object_client = n.serviceClient<dual_manipulation_shared::scene_object_service>("scene_object_ros_service");
-    vision_client = n.serviceClient<dual_manipulation_shared::estimate>("/pose_estimation_online/estimate");
+    vision_client = n.serviceClient<pacman_vision_comm::estimate>("/pacman_vision/estimator/estimate");
     target_sub = n.subscribe("/gui_target_response",1,&getting_info_state::gui_target_set_callback,this);
 
     fresh_data = false;
@@ -43,10 +41,9 @@ void getting_info_state::parseParameters(XmlRpc::XmlRpcValue& params)
     parseSingleParameter(params,use_vision,"use_vision");
 }
 
-void getting_info_state::get_start_position_from_vision(dual_manipulation_shared::peArray& source_poses)
+void getting_info_state::get_start_position_from_vision(pacman_vision_comm::peArray& source_poses)
 {
-    dual_manipulation_shared::estimate vision_srv;
-    vision_srv.request.visualize = false;
+    pacman_vision_comm::estimate vision_srv;
 
     dual_manipulation_shared::scene_object_service srv_obj0;
     srv_obj0.request.command = "remove_all";
@@ -57,9 +54,9 @@ void getting_info_state::get_start_position_from_vision(dual_manipulation_shared
     
     if (vision_client.call(vision_srv))
     {
-	ROS_INFO("IK_control: dual_manipulation_shared::estimate service response: \n");
+	ROS_INFO("IK_control: pacman_vision_comm::estimate service response: \n");
 
-	for(auto pose:vision_srv.response.estimated_poses.poses)
+	for(auto pose:vision_srv.response.estimated.poses)
 	{
 	    ROS_INFO_STREAM("name: " << pose.name << " - parent: " << pose.parent_frame << "\n" << pose.pose <<"\n------------\n");
 	    source_poses.poses.push_back(pose);
@@ -67,12 +64,12 @@ void getting_info_state::get_start_position_from_vision(dual_manipulation_shared
 	    // send information to the cartesian planner (for collision checking)
 	    dual_manipulation_shared::scene_object_service srv_obj;
 	    srv_obj.request.command = "add";
-	    if(get_object_id(pose.name) == -1)
+	    if(get_object_id(pose.id) == -1)
 	    {
 	      ROS_WARN_STREAM("getting_info_state::get_start_position_from_vision : the object " << pose.name << " has no matches in the DB - not publishing as a collision object");
 	      continue;
 	    }
-	    srv_obj.request.object_db_id = get_object_id(pose.name);
+	    srv_obj.request.object_db_id = get_object_id(pose.id);
 	    // NOTE: this should be unique, while we can have more objects with the same "object_db_id"
 	    srv_obj.request.attObject.object.id = pose.name;
 	    srv_obj.request.attObject.object.mesh_poses.clear();
@@ -87,14 +84,14 @@ void getting_info_state::get_start_position_from_vision(dual_manipulation_shared
 		ROS_ERROR("getting_info_state::get_start_position_from_vision : Failed to call service dual_manipulation_shared::scene_object_service: %s %s",srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str());
 	    }
 	}
-	if(vision_srv.response.estimated_poses.poses.empty())
+	if(vision_srv.response.estimated.poses.empty())
 	{
 	  failed = true;
 	}
     }
     else
     {
-	ROS_ERROR("getting_info_state::get_start_position_from_vision : Failed to call service dual_manipulation_shared::estimate");
+	ROS_ERROR("getting_info_state::get_start_position_from_vision : Failed to call service pacman_vision_comm::estimate");
 	if(use_vision)
 	  failed = true;
     }
@@ -158,7 +155,7 @@ int getting_info_state::get_object_id(std::string obj_name)
   for(auto item:db_mapper_.Objects)
   {
     std::string db_obj_name(std::get<0>(item.second));
-    if(obj_name.compare(0,db_obj_name.length(),db_obj_name) == 0)
+    if(obj_name.compare(db_obj_name) == 0)
       return item.first;
   }
   return -1;
@@ -180,7 +177,7 @@ void getting_info_state::gui_target_set_callback(const dual_manipulation_shared:
     target_set = true;
 }
 
-void getting_info_state::get_target_position_from_user(dual_manipulation_shared::peArray source_poses)
+void getting_info_state::get_target_position_from_user(pacman_vision_comm::peArray source_poses)
 {
     dual_manipulation_shared::gui_target_service srv;
 
@@ -212,7 +209,7 @@ std::map< transition, bool > getting_info_state::getResults()
 
 void getting_info_state::run()
 {
-    dual_manipulation_shared::peArray source_poses;
+    pacman_vision_comm::peArray source_poses;
 
     if(!source_set) get_start_position_from_vision(source_poses);
     if(source_set && !target_request) get_target_position_from_user(source_poses);

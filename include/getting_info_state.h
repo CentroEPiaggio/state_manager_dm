@@ -8,6 +8,8 @@
 #include <dual_manipulation_shared/estimate.h>
 #include <dual_manipulation_shared/gui_target_response.h>
 #include <XmlRpcValue.h>
+#include <pacman_vision_comm/estimate.h>
+#include <pacman_vision_comm/peArray.h>
 
 class getting_info_state : public abstract_state<transition>
 {
@@ -28,7 +30,7 @@ private:
     
     databaseMapper db_mapper_;
 
-    void get_start_position_from_vision(dual_manipulation_shared::peArray& source_poses);
+    void get_start_position_from_vision(pacman_vision_comm::peArray& source_poses);
     
     /**
      * @brief given and object id and its pose, return the associated grasp id (checked from the database)
@@ -53,7 +55,7 @@ private:
      */
     int get_object_id(std::string obj_name);
     
-    void get_target_position_from_user(dual_manipulation_shared::peArray source_poses);
+    void get_target_position_from_user(pacman_vision_comm::peArray source_poses);
     
     void parseParameters(XmlRpc::XmlRpcValue& params);
 
