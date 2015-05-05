@@ -224,7 +224,7 @@ void ik_moving_substate::run()
 		  ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
 	}
     }
-    while(data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0);
+    while((data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0) && (data_.cartesian_plan->size() > data_.next_plan+i+1));
     
     if(move_num>0)
     {

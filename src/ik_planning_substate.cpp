@@ -211,7 +211,7 @@ void ik_planning_substate::run()
 	  srv.request.ee_pose.clear();
 	}
 
-    } while(data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0);
+    } while((data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0) && (data_.cartesian_plan->size() > data_.next_plan+i+1));
 
     // if the service had to be called (!empty), but I couldn't: ERROR
     if(!srv.request.command.empty() && !client.call(srv))
