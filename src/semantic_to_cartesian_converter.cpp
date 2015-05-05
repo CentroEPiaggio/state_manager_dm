@@ -243,8 +243,6 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
 	      joint_pose_norm.push_back(1000);
 	      continue;
 	    }
-	    if(!use_best_ik_)
-	      break;
 
 	    double norm=0;
 	    // NOTE: the first result when both hands are used is for left_hand, the second for the right one (lexical order)
@@ -253,6 +251,9 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
 	    for (int j=0;j<right_arm_pos.size();j++)
 	      norm=norm+pow(result_second[j]-right_arm_pos.at(j),2);
 	    joint_pose_norm.push_back(norm);
+	    
+	    if(!use_best_ik_)
+	      break;
 	}
 	auto it=std::min_element(joint_pose_norm.begin(),joint_pose_norm.end());
 	if (*it==1000)
