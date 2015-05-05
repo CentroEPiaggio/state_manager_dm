@@ -25,7 +25,7 @@ std::ostream& operator<<(std::ostream& output, const cartesian_commands& command
 
 std::ostream& operator<<(std::ostream &output, const cartesian_command &o) {
     output<<std::endl;
-    output<<o.cartesian_task<<"\n"<<o.command<<(o.command==cartesian_commands::GRASP?(" #" + std::to_string(o.ee_grasp_id)):o.command==cartesian_commands::UNGRASP?(" #" + std::to_string(o.ee_grasp_id)):"")<<"\nseq_num: "<<o.seq_num<<std::endl;
+    output<<o.cartesian_task<<o.command<<(o.command==cartesian_commands::GRASP?(" #" + std::to_string(o.ee_grasp_id)):o.command==cartesian_commands::UNGRASP?(" #" + std::to_string(o.ee_grasp_id)):"")<<"\nseq_num: "<<o.seq_num<<std::endl;
     return output;
 }
 
