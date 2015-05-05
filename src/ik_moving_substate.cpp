@@ -4,6 +4,8 @@
 
 #define OBJ_GRASP_FACTOR 1000
 
+#define CLASS_NAMESPACE "ik_moving_substate::"
+
 ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
 {
     if( !ros::isInitialized() )
@@ -129,100 +131,41 @@ void ik_moving_substate::run()
 
 	if(commands.is_exec_alone.count(item.second.command))
 	{
-		if(item.second.command==cartesian_commands::GRASP)
+		if(item.second.seq_num == 0)
 		{
-			int grasp = (int)item.second.ee_grasp_id;
-			grasp = grasp % OBJ_GRASP_FACTOR;
-			if(!deserialize_ik(srv.request,"object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp)))
-			{
-			    ROS_ERROR_STREAM("Failed to deserialize object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp));
-			}
-			else
-			{
-				srv.request.attObject.object.id = *data_.object_name;
-				srv.request.object_db_id = (int)*data_.obj_id;
-				srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-				srv.request.command = commands.command[item.second.command];
-			
-				// change frame of reference of the grasp trajectory to the current object frame
-				change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
-                                std::unique_lock<std::mutex> lck(moving_executed_mutex);
-                                srv.request.seq=sequence_counter;
-
-				if (client.call(srv))
-				{
-				    ROS_INFO_STREAM("IK Grasp Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
-                                    pending_sequence_numbers.insert(sequence_counter);
-                                }
-				else
-				{
-                                    failed=true;
-                                    initialized=false;
-				    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
-				}
-                                sequence_counter++;
-                                moving_executed++;
-			}
+		    ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : a command to be executed alone (" << item.second.command << ") has seq_num==0! This is NOT allowed!");
+		    failed = true;
+		    initialized = false;
 		}
-		if(item.second.command==cartesian_commands::UNGRASP) //same ad graso, just changing the ee_pose order
+		if(item.second.command==cartesian_commands::GRASP || item.second.command==cartesian_commands::UNGRASP)
 		{
 			int grasp = (int)item.second.ee_grasp_id;
 			grasp = grasp % OBJ_GRASP_FACTOR;
 			if(!deserialize_ik(srv.request,"object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp)))
 			{
-			    ROS_ERROR_STREAM("Failed to deserialize object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp));
+			    ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : failed to deserialize object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp));
+			    failed = true;
+			    initialized = false;
 			}
 			else
 			{
-				srv.request.attObject.object.id = *data_.object_name;
-				srv.request.object_db_id = (int)*data_.obj_id;
-				srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-				srv.request.command = commands.command[item.second.command];
-                                std::unique_lock<std::mutex> lck(moving_executed_mutex);
-                                srv.request.seq=sequence_counter;
-
-                                // change frame of reference of the grasp trajectory to the current object frame
-				change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
+			    srv.request.attObject.object.id = *data_.object_name;
+			    srv.request.object_db_id = (int)*data_.obj_id;
+			    ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+			
+			    // change frame of reference of the grasp trajectory to the current object frame
+			    change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
+			    if(item.second.command == cartesian_commands::UNGRASP)
+			    {
 				// invert the order to generate an ungrasp
 				std::reverse(srv.request.ee_pose.begin(),srv.request.ee_pose.end());
 				std::reverse(srv.request.grasp_trajectory.points.begin(),srv.request.grasp_trajectory.points.end());
-
-				if (client.call(srv))
-				{
-				    ROS_INFO_STREAM("IK Grasp Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
-                                    pending_sequence_numbers.insert(sequence_counter);
-				}
-				else
-				{
-                                    failed=true;
-                                    initialized=false;
-				    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
-				}
-				moving_executed++;
-                                sequence_counter++;
+			    }
 			}
 		}
-		if(item.second.command==cartesian_commands::HOME)
-                {
-                    srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-                    srv.request.command = commands.command[item.second.command];
-                    std::unique_lock<std::mutex> lck(moving_executed_mutex);
-                    srv.request.seq=sequence_counter;
-
-                    if (client.call(srv))
-                    {
-                        ROS_INFO_STREAM("IK Home Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
-                        pending_sequence_numbers.insert(sequence_counter);
-                    }
-                    else
-                    {
-                        ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
-                        initialized=false;
-                        failed=true;
-                    }
-                    moving_executed++;
-                    sequence_counter++;
-                }
+		
+		// NOTE: this has to be executed ALONE!
+		break;
 	}
 	else
 	{
@@ -235,7 +178,7 @@ void ik_moving_substate::run()
     }
     while((data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0) && (data_.cartesian_plan->size() > data_.next_plan+i+1));
     
-    if(move_num>0)
+    if(!failed)
     {
         srv.request.command = commands.command[data_.cartesian_plan->at(data_.next_plan+i).second.command];
 	srv.request.ee_name = ee_name;
@@ -244,12 +187,12 @@ void ik_moving_substate::run()
         
 	if(client.call(srv))
 	{
-	    ROS_INFO_STREAM("IK Exec Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
+	    ROS_INFO_STREAM("IK " << data_.cartesian_plan->at(data_.next_plan+i).second.command << " request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
             pending_sequence_numbers.insert(sequence_counter);
 	}
 	else
 	{
-    	    ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+    	    ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : failed to call service ik_ros_service \'" << srv.request.command << "\'");
             initialized=false;
             failed=true;
 	}
