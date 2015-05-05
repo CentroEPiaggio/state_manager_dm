@@ -68,15 +68,19 @@ std::map< ik_transition, bool > ik_moving_substate::getResults()
 {
     std::unique_lock<std::mutex> lck(moving_executed_mutex);
     std::map< ik_transition, bool > results;
-    if(data_.next_plan == data_.cartesian_plan->size())
+    if(failed)
+    {
+	results[ik_transition::fail]=failed;
+    }
+    else if(data_.next_plan == data_.cartesian_plan->size())
     {
 	results[ik_transition::done]=(moving_executed==0);
     }
     else
     {
+	// TODO: moving_forwarded || moving_executed==0
 	results[ik_transition::plan]=(moving_executed==0);
     }
-    results[ik_transition::fail]=failed;
     return results;
 }
 
@@ -94,7 +98,12 @@ void ik_moving_substate::run()
     {
 	initialized = true;
     }
-    if(move_sent) return;
+    if(move_sent) 
+    {
+      // sleep 5ms to allow for other stuff to go on
+      usleep(5000);
+      return;
+    }
     {
     std::unique_lock<std::mutex> lck(moving_executed_mutex);
     moving_executed = 0;
