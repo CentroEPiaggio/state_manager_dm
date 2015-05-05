@@ -1,6 +1,5 @@
 #include "../include/ik_checking_grasp_substate.h"
 #include "../../planning/src/gml2lgf/node.h"
-#include "dual_manipulation_shared/start_tracker.h"
 #include <tf_conversions/tf_kdl.h>
 #include "dual_manipulation_shared/serialization_utils.h"
 
@@ -10,6 +9,8 @@
 #define ORIENTATION_TOLERANCE 0.005
 #define MAX_POSITION_DISTANCE 0.5
 #define MAX_ORIENTATION_DISTANCE 0.5
+
+#define CLASS_NAMESPACE "ik_checking_grasp_substate::"
 
 ik_checking_grasp_substate::ik_checking_grasp_substate(ik_shared_memory& data):data_(data),converter_(database_)
 {
@@ -92,10 +93,16 @@ void ik_checking_grasp_substate::run()
   
   tf::StampedTransform World_RealObjTf;
   double timeout = 1.0;
-  // if(!tf_listener_.waitForTransform("world","tracked_object",ros::Time(0),ros::Duration(timeout)))
-  //   World_RealObjTf.setIdentity();
-  // else
-  //   tf_listener_.lookupTransform("world","tracked_object", ros::Time(0), World_RealObjTf);
+  if(!tf_listener_.waitForTransform("world",*data_.object_name + "_tracked",ros::Time(0),ros::Duration(timeout)))
+  {
+    // TODO: throw some error? continue? ignore everything?
+    ROS_WARN_STREAM(CLASS_NAMESPACE << __func__ << " : unable to retrieve TF for \'" << *data_.object_name << "_tracked\' after " << timeout << "s, returning...");
+    is_complete_ = true;
+    return;
+    World_RealObjTf.setIdentity();
+  }
+  else
+    tf_listener_.lookupTransform("world",*data_.object_name + "_tracked", ros::Time(0), World_RealObjTf);
   
   //TODO: remove
   World_RealObjTf.stamp_ = ros::Time::now();
