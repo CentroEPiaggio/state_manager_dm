@@ -84,8 +84,10 @@ void semantic_planning_state::run()
         temp.next_ee_id = std::get<1>(database.Grasps[next_grasp_id]);
         if (database.Reachability.at(temp.next_ee_id).count(source))
 	{
-            converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes);
-	    msg.good_source_grasps.push_back(temp.current_grasp_id);
+            if(converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes))
+	      msg.good_source_grasps.push_back(temp.next_grasp_id);
+	    else
+	      msg.bad_source_grasps.push_back(temp.next_grasp_id);
 	}
     }
 
@@ -100,8 +102,10 @@ void semantic_planning_state::run()
         temp.current_ee_id = std::get<1>(database.Grasps[current_grasp_id]);
         if (database.Reachability.at(temp.current_ee_id).count(target))
 	{
-            converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes);
-	    msg.good_target_grasps.push_back(temp.current_grasp_id);
+            if(converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes))
+	      msg.good_target_grasps.push_back(temp.current_grasp_id);
+	    else
+	      msg.bad_target_grasps.push_back(temp.current_grasp_id);
 	}
     }
 
