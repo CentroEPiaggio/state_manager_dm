@@ -484,7 +484,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
 	    // TODO: check the following transformation, should be more precisely something like "World_Object*Object_PostGraspFirstEE*(Object_GraspFirstEE.Inverse())"
 	    tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
-            cartesian_command move_away(cartesian_commands::HOME,1,-1);
+            cartesian_command move_away(cartesian_commands::HOME,0,-1);
             result.push_back(std::make_pair(node.current_ee_id,move_away));
         }
         else if (node.type==node_properties::MOVABLE_TO_MOVABLE)
@@ -514,7 +514,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
             //TODO: make this next seq a 0 once home is implemented as any other location
-            cartesian_command move_away(cartesian_commands::HOME,1,-1);
+            cartesian_command move_away(cartesian_commands::HOME,0,-1);
             result.push_back(std::make_pair(node.current_ee_id,move_away));
         }
         else 
