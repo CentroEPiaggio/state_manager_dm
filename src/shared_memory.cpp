@@ -68,4 +68,7 @@ moving_cmd::moving_cmd()
   command[cartesian_commands::GRASP] = capabilities.name[ik_control_capabilities::GRASP];
   command[cartesian_commands::UNGRASP] = capabilities.name[ik_control_capabilities::UNGRASP];
   command[cartesian_commands::HOME] = capabilities.name[ik_control_capabilities::MOVE];
+  
+  is_exec_alone.insert(cartesian_commands::GRASP);
+  is_exec_alone.insert(cartesian_commands::UNGRASP);
 }

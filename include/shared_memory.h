@@ -45,6 +45,8 @@ public:
   
   ik_control_capability capabilities;
   std::map<cartesian_commands,std::string> command;
+  // says whether a command has to be executed alone
+  std::set<cartesian_commands> is_exec_alone;
 };
 
 struct cartesian_command

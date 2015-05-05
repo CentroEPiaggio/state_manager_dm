@@ -118,7 +118,7 @@ void ik_moving_substate::run()
         auto item = data_.cartesian_plan->at(data_.next_plan+i);
 // 	ee_pose=item.second.cartesian_task;
 
-	if(item.second.command==cartesian_commands::GRASP || item.second.command==cartesian_commands::UNGRASP)
+	if(commands.is_exec_alone.count(item.second.command))
 	{
 		if(item.second.command==cartesian_commands::GRASP)
 		{
