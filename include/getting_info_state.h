@@ -5,7 +5,6 @@
 #include "ros/ros.h"
 #include <visualization_msgs/Marker.h>
 #include <dual_manipulation_shared/databasemapper.h>
-#include <dual_manipulation_shared/estimate.h>
 #include <dual_manipulation_shared/gui_target_response.h>
 #include <XmlRpcValue.h>
 #include <pacman_vision_comm/estimate.h>
@@ -27,6 +26,7 @@ private:
     ros::Publisher pub;
     ros::ServiceClient planner_client, gui_target_client, scene_object_client;
     ros::ServiceClient vision_client;
+    ros::ServiceClient tracker_client;
     
     databaseMapper db_mapper_;
 

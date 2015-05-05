@@ -9,6 +9,7 @@
 #include <dual_manipulation_shared/serialization_utils.h>
 #include <dual_manipulation_shared/ik_service.h>
 #include <dual_manipulation_shared/parsing_utils.h>
+#include <pacman_vision_comm/track_object.h>
 
 #define OBJ_GRASP_FACTOR 1000
 
@@ -30,6 +31,7 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
     scene_object_client = n.serviceClient<dual_manipulation_shared::scene_object_service>("scene_object_ros_service");
     vision_client = n.serviceClient<pacman_vision_comm::estimate>("/pacman_vision/estimator/estimate");
     target_sub = n.subscribe("/gui_target_response",1,&getting_info_state::gui_target_set_callback,this);
+    tracker_client = n.serviceClient<pacman_vision_comm::track_object>("/pacman_vision/tracker/track_object");
 
     fresh_data = false;
 }
@@ -167,7 +169,6 @@ void getting_info_state::gui_target_set_callback(const dual_manipulation_shared:
 
     temp_data.source_position = msg->source_pose; //user selects which detected object is the source from the gui
     temp_data.target_position = msg->target_pose;
-    // TODO: take this from vision
     temp_data.obj_id = msg->obj_id;
     temp_data.object_name = msg->name;
     // TODO: ask for desired target end-effector; maybe even for desired final grasp?
@@ -175,6 +176,14 @@ void getting_info_state::gui_target_set_callback(const dual_manipulation_shared:
     temp_data.target_grasp=get_grasp_id_from_database(temp_data.obj_id,temp_data.target_position);
 
     target_set = true;
+
+    pacman_vision_comm::track_object srv;
+    srv.request.name = temp_data.object_name;
+    
+    if(!tracker_client.call(srv))
+    {
+      ROS_ERROR_STREAM("getting_info_state::gui_target_set_callback : unable to call track_object client...");
+    }
 }
 
 void getting_info_state::get_target_position_from_user(pacman_vision_comm::peArray source_poses)
