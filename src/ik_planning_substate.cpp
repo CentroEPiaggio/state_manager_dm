@@ -103,17 +103,12 @@ void ik_planning_substate::run()
 
 	if(!commands.is_to_be_planned.count(item.second.command))
 	{
-	    if(i!=0)
-	      ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : I found a command not to be planned after " << i+1 << " other(s) to be planned, but those will be IGNORED!!!");
-            int j=i;
-            while(data_.cartesian_plan->at(data_.next_plan+j).second.seq_num==0)
-            {
-                j++;
-		if(commands.is_to_be_planned.count(data_.cartesian_plan->at(data_.next_plan+j).second.command))
-                {
-                    ROS_ERROR("I found two MOVE commands with same sequence number, but there was some different command in the middle!!");
-                }
-            }
+	    if((i != 0) || (data_.cartesian_plan->at(data_.next_plan+i).second.seq_num == 0))
+	    {
+	      ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : I found a command (\'" << item.second.command << "\') not to be planned after " << i << " other(s) to be planned, but those will be IGNORED!!!");
+	      failed = true;
+	      return;
+	    }
 	    
 	    if(commands.is_to_be_checked.count(item.second.command))
 	      checking_grasp = true;
