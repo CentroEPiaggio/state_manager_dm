@@ -76,7 +76,7 @@ void ros_server::loop()
 //     std::cout<<current_state->get_type()<<std::endl;
     current_state->run();
     ros::spinOnce(); //Will check for user commands
-    usleep(500000);
+    usleep(5000);
     if (current_state->isComplete())
     {
 	auto temp_map = current_state->getResults();

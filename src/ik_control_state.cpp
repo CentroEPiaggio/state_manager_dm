@@ -122,7 +122,7 @@ void ik_control_state::run()
 	    //   std::cin >> tmp;
 	    //   usleep(200000);
 	    // }
-	    sleep(1);
+	    usleep(5000);
 	    transition_map.clear();
 	    break;
 	}
