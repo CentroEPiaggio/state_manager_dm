@@ -84,7 +84,12 @@ void ik_planning_substate::run()
 	initialized = true;
     }
 
-    if(plan_sent) return;
+    if(plan_sent)
+    {
+      // sleep 5ms to allow for other stuff to go on
+      usleep(5000);
+      return;
+    }
 
     plan_executed = 0;
 
