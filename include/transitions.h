@@ -16,6 +16,7 @@ enum class transition {
     task_accomplished, //object was successfully put in final place
     planning_done, //plan is done
     exit, //exit the program
+    failed, //a generic failure condition
 };
 
 enum class ik_transition {

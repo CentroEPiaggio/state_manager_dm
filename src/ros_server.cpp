@@ -49,7 +49,9 @@ void ros_server::init()
         std::make_tuple( ready        , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( planning     , std::make_pair(transition::exit,true)               ,    exiting           ),
         std::make_tuple( planned      , std::make_pair(transition::exit,true)               ,    exiting           ),
-        std::make_tuple( moving       , std::make_pair(transition::exit,true)               ,    exiting           )
+        std::make_tuple( moving       , std::make_pair(transition::exit,true)               ,    exiting           ),
+        //----------------------------+-----------------------------------------------------+-------------------+
+        std::make_tuple( getting_info , std::make_pair(transition::failed,true)             ,    steady            )
     };
     sm.insert(transition_table);
     this->transition_table=transition_table;

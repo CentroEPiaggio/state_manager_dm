@@ -212,7 +212,10 @@ void getting_info_state::get_target_position_from_user(pacman_vision_comm::peArr
 std::map< transition, bool > getting_info_state::getResults()
 {
     std::map< transition, bool > results;
-    results[transition::got_info]=fresh_data;
+    if(failed)
+      results[transition::failed] = true;
+    else
+      results[transition::got_info] = fresh_data;
     return results;
 }
 
