@@ -3,6 +3,7 @@
 #include <kdl_conversions/kdl_msg.h>
 
 #define OBJ_GRASP_FACTOR 1000
+#define PARALLELIZE_PLANNING false
 
 #define CLASS_NAMESPACE "ik_moving_substate::"
 
@@ -54,6 +55,8 @@ void ik_moving_substate::callback(const dual_manipulation_shared::ik_response::C
         if (pending_sequence_numbers.count(str->seq))
         {
             moving_executed--;
+	    if(moving_executed == 0)
+	      data_.robot_moving.store(false);
         }
         else
             ROS_WARN_STREAM("There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
@@ -63,6 +66,8 @@ void ik_moving_substate::callback(const dual_manipulation_shared::ik_response::C
         ROS_WARN_STREAM("There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
         failed=true;
         initialized=false;
+	data_.robot_moving.store(false);
+	data_.move_failed.store(true && PARALLELIZE_PLANNING);
     }
 }
 
@@ -80,8 +85,8 @@ std::map< ik_transition, bool > ik_moving_substate::getResults()
     }
     else
     {
-	// TODO: moving_forwarded || moving_executed==0
-	results[ik_transition::plan]=(moving_executed==0);
+	// I return to planning if I finished moving OR I can parallelize
+	results[ik_transition::plan]=(moving_executed==0 || (PARALLELIZE_PLANNING && move_sent));
     }
     return results;
 }
@@ -91,7 +96,8 @@ bool ik_moving_substate::isComplete()
     std::unique_lock<std::mutex> lck(moving_executed_mutex);
     if(data_.next_plan == data_.cartesian_plan->size()+1) moving_executed=0;
 
-    return (moving_executed==0 || failed);
+    // I can return if I executed the movement, I failed, or I sent the movement AND it's not the last one! (this only if I can parallelize..!)
+    return (moving_executed==0 || failed || (PARALLELIZE_PLANNING && move_sent && data_.next_plan < data_.cartesian_plan->size()));
 }
 
 void ik_moving_substate::run()
@@ -184,11 +190,12 @@ void ik_moving_substate::run()
 	srv.request.ee_name = ee_name;
         std::unique_lock<std::mutex> lck(moving_executed_mutex);
         srv.request.seq=sequence_counter;
-        
+	
 	if(client.call(srv))
 	{
 	    ROS_INFO_STREAM("IK " << data_.cartesian_plan->at(data_.next_plan+i).second.command << " request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
             pending_sequence_numbers.insert(sequence_counter);
+	    data_.robot_moving.store(true && PARALLELIZE_PLANNING);
 	}
 	else
 	{
