@@ -3,6 +3,7 @@
 
 #include "geometry_msgs/Pose.h"
 #include <kdl/frames.hpp>
+#include <atomic>
 #include <dual_manipulation_shared/databasemapper.h>
 #include <dual_manipulation_shared/planner_item.h>
 #include <dual_manipulation_shared/ik_control_capabilities.h>
@@ -93,6 +94,8 @@ public:
   std::vector<std::pair<endeffector_id,cartesian_command>>* cartesian_plan;
   const object_id* obj_id;
   const std::string* object_name;
+  std::atomic_bool robot_moving;
+  std::atomic_bool move_failed;
 };
 
 #endif // SHARED_MEMORY_H

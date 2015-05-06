@@ -21,6 +21,8 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     subdata.next_plan=0;
     subdata.obj_id = &data.obj_id;
     subdata.object_name = &data.object_name;
+    subdata.robot_moving.store(false);
+    subdata.move_failed.store(false);
 
     auto ik_planning = new ik_planning_substate(subdata);
     auto ik_checking_grasp = new ik_checking_grasp_substate(subdata);
@@ -83,6 +85,8 @@ void ik_control_state::reset()
     }
 
     subdata.next_plan=0;
+    subdata.robot_moving.store(false);
+    subdata.move_failed.store(false);
     complete=false;
     current_state=waiting;
     current_state->reset();
