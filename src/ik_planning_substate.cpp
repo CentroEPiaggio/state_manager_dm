@@ -66,9 +66,13 @@ void ik_planning_substate::callback(const dual_manipulation_shared::ik_response:
 std::map< ik_transition, bool > ik_planning_substate::getResults()
 {
     std::map< ik_transition, bool > results;
-    results[ik_transition::move]=(plan_executed==0 && plan_sent);
-    results[ik_transition::check_grasp]=checking_grasp;
-    results[ik_transition::fail]=failed;
+    if(failed || data_.move_failed.load())
+      results[ik_transition::fail] = true;
+    else
+    {
+      results[ik_transition::move]=(plan_executed==0 && plan_sent);
+      results[ik_transition::check_grasp]=checking_grasp;
+    }
     
     return results;
 }
