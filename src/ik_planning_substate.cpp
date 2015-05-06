@@ -246,7 +246,8 @@ void ik_planning_substate::run()
 
 bool ik_planning_substate::isComplete()
 {
-    return (plan_executed==0  || failed || checking_grasp);
+    // I am complete if the robot is not moving AND I've done what I needed
+    return (!data_.robot_moving.load() && (plan_executed==0  || failed || checking_grasp));
 }
 
 std::string ik_planning_substate::get_type()
