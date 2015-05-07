@@ -18,6 +18,16 @@ ros_server::ros_server()
 
 void ros_server::init()
 {
+    // this is needed in order to set KDLKinematicsPlugin epsilon parameter...
+    ros::NodeHandle n("~");
+    if(node.hasParam("ik_control_parameters/epsilon"))
+    {
+      double eps;
+      node.getParam("ik_control_parameters/epsilon",eps);
+      n.setParam("epsilon",eps);
+      ROS_INFO_STREAM("Private epsilon (used by KDLKinematicsPlugin) set! epsilon:=" << eps);
+    }
+
     auto starting=new starting_state(data);
     auto steady=new steady_state(data);
     auto getting_info=new getting_info_state(data);
