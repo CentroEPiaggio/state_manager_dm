@@ -373,7 +373,7 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
         }
         if(check_ik(current_ee_name,World_Object*Object.PostGraspFirstEE))
             // NOTE: this checks for World_preGraspSecondEE
-            if(check_ik(current_ee_name,World_Centroid_f*(Object.PreGraspSecondEE.Inverse())*Object.PostGraspFirstEE))
+            if(check_ik(current_ee_name,World_Object*Object.GraspSecondEE*(Object.PreGraspSecondEE.Inverse())*Object.PostGraspFirstEE))
                 // if(check_ik(current_ee_name,World_Object*Object_GraspFirstEE))
                 intergrasp_ok = true;
         if (!intergrasp_ok)
