@@ -8,6 +8,7 @@
 #include <kdl_conversions/kdl_msg.h>
 #include <std_msgs/String.h>
 
+#define GRASP_TESTING false
 
 semantic_planning_state::semantic_planning_state(shared_memory& data):data(data),converter(database)
 {
@@ -163,6 +164,13 @@ void semantic_planning_state::run()
         }
         std::vector<std::pair<endeffector_id,cartesian_command>> result;
         bool converted=converter.convert(result,srv.response.path,data,data.filtered_source_nodes,data.filtered_target_nodes);
+#if GRASP_TESTING
+	if(result.empty())
+	{
+	  ROS_ERROR_STREAM("The conversion resulted in an empty path!");
+	  max_counter = -1;
+	}
+#else
         if (!converted)
         {
 	  if(max_counter > 0)
@@ -174,6 +182,7 @@ void semantic_planning_state::run()
 	  }
 	  continue;
         }
+#endif
         std::cout << "=== Cartesian plan print-out ===" << std::endl;
         std::cout << "( Note that grasp/ungrasp poses are the object poses, not the end-effector ones )" << std::endl;
         data.cartesian_plan = result;
