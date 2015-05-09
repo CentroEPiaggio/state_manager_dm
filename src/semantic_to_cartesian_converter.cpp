@@ -393,13 +393,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
     // 3) Start of the main conversion loop
     for (auto node_it=path.begin();node_it!=path.end();)//++node)
     {
-        double centroid_x=0, centroid_y=0, centroid_z=0;
         geometry_msgs::Quaternion centroid_orientation;
         KDL::Frame World_Object;
         Object_GraspMatrixes Object;
-//         KDL::Frame Object_PreGraspFirstEE, Object_PreGraspSecondEE;
-//         KDL::Frame Object_GraspFirstEE, Object_GraspSecondEE;
-//         KDL::Frame Object_PostGraspFirstEE, Object_PostGraspSecondEE;
         KDL::Frame World_GraspSecondEE;
 	
         // 3.1) Getting preliminary info for the current node
@@ -440,8 +436,6 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         {
 	    std::cout << "Semantic to cartesian: node.type==node_properties::FIXED_TO_MOVABLE" << std::endl;
             // 3.6) compute a rough position of the place where the change of grasp will happen
-            compute_centroid(centroid_x,centroid_y,centroid_z,node);
-	    KDL::Frame World_Centroid_f(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
             if (!checkSingleGrasp(World_Object,node,data,node_it==path.begin(),false,filtered_source_nodes,filtered_target_nodes))
                 return false;
             World_GraspSecondEE = World_Object*Object.PreGraspSecondEE;
@@ -468,7 +462,6 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             move_command.seq_num=1;//do not parallelize with the fixed ee :)
             cartesian_command move_no_coll_command(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, node.current_grasp_id);
             // 3.6) compute a rough position of the place where the change of grasp will happen
-            compute_centroid(centroid_x,centroid_y,centroid_z,node);
             if (!checkSingleGrasp(World_Object,node,data,false,((next_node_it+1) == path.end()),filtered_source_nodes,filtered_target_nodes))
                 return false;
             KDL::Frame World_PreGraspSecondEE = World_Object*(Object.PreGraspSecondEE.Inverse())*Object.PostGraspFirstEE;
