@@ -79,6 +79,16 @@ void semantic_planning_state::run()
     temp.current_workspace_id = source;
     temp.next_workspace_id = source;
     temp.type=node_properties::FIXED_TO_MOVABLE;
+    
+    //TODO: check grasps only if source is a table grasp
+    bool source_ee_movable = std::get<1>(database.EndEffectors.at(temp.current_ee_id));
+    if(source_ee_movable)
+    {
+      //DO NOT CHECK GRASPS!!!
+      //NOTE: this could be used if going to planning directly from execution, when we have a grasp but we cannot perform the passing, to replan!
+      //how to test? having ik_control state wait for us, and changing the transition grasp with an unfeasible one!
+    }
+    
     for (auto next_grasp_id :database.Grasp_transitions.at(data.source_grasp))
     {
         temp.next_grasp_id = next_grasp_id;
@@ -97,6 +107,14 @@ void semantic_planning_state::run()
     temp.current_workspace_id = target;
     temp.next_workspace_id = target;
     temp.type=node_properties::MOVABLE_TO_FIXED;
+
+    //TODO: check grasps only if target is a table grasp
+    bool target_ee_movable = std::get<1>(database.EndEffectors.at(temp.next_ee_id));
+    if(target_ee_movable)
+    {
+      //DO NOT CHECK GRASPS!!!
+    }
+
     for (auto current_grasp_id :database.Grasp_transitions.at(data.target_grasp))
     {
         temp.current_grasp_id = current_grasp_id;
