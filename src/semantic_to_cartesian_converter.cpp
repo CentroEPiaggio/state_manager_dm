@@ -455,7 +455,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             result.push_back(std::make_pair(node.next_ee_id,grasp));
 	    cartesian_command move_no_coll_command(cartesian_commands::MOVE_BEST_EFFORT_NO_COLLISION_CHECK, 1, node.next_grasp_id);
 	    KDL::Frame World_postGraspSecondEE;
-	    World_postGraspSecondEE = World_Centroid_f*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
+	    World_postGraspSecondEE = World_Object*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
             tf::poseKDLToMsg(World_postGraspSecondEE,move_no_coll_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,move_no_coll_command));
         }
@@ -469,10 +469,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             cartesian_command move_no_coll_command(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, node.current_grasp_id);
             // 3.6) compute a rough position of the place where the change of grasp will happen
             compute_centroid(centroid_x,centroid_y,centroid_z,node);
-	    KDL::Frame World_Centroid_f(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
             if (!checkSingleGrasp(World_Object,node,data,false,((next_node_it+1) == path.end()),filtered_source_nodes,filtered_target_nodes))
                 return false;
-            KDL::Frame World_PreGraspSecondEE = World_Centroid_f*(Object.PreGraspSecondEE.Inverse())*Object.PostGraspFirstEE;
+            KDL::Frame World_PreGraspSecondEE = World_Object*(Object.PreGraspSecondEE.Inverse())*Object.PostGraspFirstEE;
             tf::poseKDLToMsg(World_PreGraspSecondEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_command)); //move the first
             KDL::Frame World_GraspSecondEE = World_Object*Object.PostGraspFirstEE;
