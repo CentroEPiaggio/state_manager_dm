@@ -9,7 +9,7 @@
 #include <algorithm>    // std::min_element, std::max_element
 #include <std_msgs/String.h>
 
-#define HIGH 0.5
+#define HIGH 0.6
 #define LOW 0.06
 #define ANGLE_STEPS 4.0 // 6.0
 #define BIMANUAL_IK_ATTEMPTS 3
