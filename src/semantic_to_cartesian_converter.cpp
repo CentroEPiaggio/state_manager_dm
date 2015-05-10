@@ -440,7 +440,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             if (!checkSingleGrasp(World_Object,node,data,node_it==path.begin(),false,filtered_source_nodes,filtered_target_nodes))
                 return false;
             World_GraspSecondEE = World_Object*Object.PreGraspSecondEE;
-            cartesian_command move_command(cartesian_commands::MOVE, 1, node.next_grasp_id);
+            cartesian_command move_command(cartesian_commands::MOVE_BEST_EFFORT, 1, node.next_grasp_id);
             tf::poseKDLToMsg(World_GraspSecondEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,move_command)); //move the next
 
@@ -448,7 +448,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id);
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,grasp));
-	    cartesian_command move_no_coll_command(cartesian_commands::MOVE_BEST_EFFORT, 1, node.next_grasp_id);
+	    cartesian_command move_no_coll_command(cartesian_commands::MOVE_CLOSE_BEST_EFFORT, 1, node.next_grasp_id);
 	    KDL::Frame World_postGraspSecondEE;
 	    World_postGraspSecondEE = World_Object*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
             tf::poseKDLToMsg(World_postGraspSecondEE,move_no_coll_command.cartesian_task);
@@ -458,7 +458,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         {
 	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_FIXED" << std::endl;
             cartesian_command move_command;
-            move_command.command=cartesian_commands::MOVE;
+            move_command.command=cartesian_commands::MOVE_BEST_EFFORT;
             move_command.ee_grasp_id=node.current_grasp_id;
             move_command.seq_num=1;//do not parallelize with the fixed ee :)
             cartesian_command move_no_coll_command(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, node.current_grasp_id);
