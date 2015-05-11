@@ -27,6 +27,9 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     lungraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Ungrasp"));
     rungraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Ungrasp"));
 
+    n.param("dual_manipulation_parameters/parallelize_plan_execute",parallelize_planning,PARALLELIZE_PLANNING);
+    ROS_INFO_STREAM(CLASS_NAMESPACE << " : initialized and " << (parallelize_planning?"":"NOT ") << "parallelizing planning and execution!");
+
     reset();
 }
 
@@ -67,7 +70,7 @@ void ik_moving_substate::callback(const dual_manipulation_shared::ik_response::C
         failed=true;
         initialized=false;
 	data_.robot_moving.store(false);
-	data_.move_failed.store(true && PARALLELIZE_PLANNING);
+	data_.move_failed.store(true && parallelize_planning);
     }
 }
 
@@ -86,7 +89,7 @@ std::map< ik_transition, bool > ik_moving_substate::getResults()
     else
     {
 	// I return to planning if I finished moving OR I can parallelize
-	results[ik_transition::plan]=(moving_executed==0 || (PARALLELIZE_PLANNING && move_sent));
+	results[ik_transition::plan]=(moving_executed==0 || (parallelize_planning && move_sent));
     }
     return results;
 }
@@ -97,7 +100,7 @@ bool ik_moving_substate::isComplete()
     if(data_.next_plan == data_.cartesian_plan->size()+1) moving_executed=0;
 
     // I can return if I executed the movement, I failed, or I sent the movement AND it's not the last one! (this only if I can parallelize..!)
-    return (moving_executed==0 || failed || (PARALLELIZE_PLANNING && move_sent && data_.next_plan < data_.cartesian_plan->size()));
+    return (moving_executed==0 || failed || (parallelize_planning && move_sent && data_.next_plan < data_.cartesian_plan->size()));
 }
 
 void ik_moving_substate::run()
@@ -195,7 +198,7 @@ void ik_moving_substate::run()
 	{
 	    ROS_INFO_STREAM("IK " << data_.cartesian_plan->at(data_.next_plan+i).second.command << " request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
             pending_sequence_numbers.insert(sequence_counter);
-	    data_.robot_moving.store(true && PARALLELIZE_PLANNING);
+	    data_.robot_moving.store(true && parallelize_planning);
 	}
 	else
 	{

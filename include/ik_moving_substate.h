@@ -33,7 +33,7 @@ private:
     ros::Subscriber rungraspsub;
     bool initialized;
     void callback(const dual_manipulation_shared::ik_response::ConstPtr& str, std::string type);
-    
+    bool parallelize_planning;
     
     void reset();
     
