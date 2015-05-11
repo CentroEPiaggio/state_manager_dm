@@ -448,11 +448,11 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id);
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,grasp));
-	    cartesian_command move_no_coll_command(cartesian_commands::MOVE_CLOSE_BEST_EFFORT, 1, node.next_grasp_id);
-	    KDL::Frame World_postGraspSecondEE;
-	    World_postGraspSecondEE = World_Object*Object.GraspFirstEE*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
-            tf::poseKDLToMsg(World_postGraspSecondEE,move_no_coll_command.cartesian_task);
-            result.push_back(std::make_pair(node.next_ee_id,move_no_coll_command));
+	    // cartesian_command move_no_coll_command(cartesian_commands::MOVE_CLOSE_BEST_EFFORT, 1, node.next_grasp_id);
+	    // KDL::Frame World_postGraspSecondEE;
+	    // World_postGraspSecondEE = World_Object*Object.GraspFirstEE*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
+	    // tf::poseKDLToMsg(World_postGraspSecondEE,move_no_coll_command.cartesian_task);
+	    // result.push_back(std::make_pair(node.next_ee_id,move_no_coll_command));
         }
         else if (node.type==node_properties::MOVABLE_TO_FIXED)
         {
