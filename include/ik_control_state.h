@@ -59,9 +59,14 @@ private:
     void fake_plan();
     void print_plan();
     void show_plan_with_tf();
+    void show_plan_with_markers();
     ros::NodeHandle n;
     ros::ServiceClient client;
     dual_manipulation_shared::ik_service srv;
+    // these bool will be updated from other states (such as ik_checking_grasp...) and from the GUI, respectively
+    bool new_plan, show_plan;
+    databaseMapper db_mapper;
+    ros::Publisher planned_path_publisher_;
 };
 
 #endif // IK_CONTROL_STATE_H
