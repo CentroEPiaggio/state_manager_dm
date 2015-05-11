@@ -11,6 +11,7 @@
 #define MAX_ORIENTATION_DISTANCE 0.5
 
 #define CLASS_NAMESPACE "ik_checking_grasp_substate::"
+#define TRACKER_TESTING 1
 
 ik_checking_grasp_substate::ik_checking_grasp_substate(ik_shared_memory& data):data_(data),converter_(database_)
 {
@@ -19,6 +20,7 @@ ik_checking_grasp_substate::ik_checking_grasp_substate(ik_shared_memory& data):d
 std::map< ik_transition, bool > ik_checking_grasp_substate::getResults()
 {
     std::map< ik_transition, bool > results;
+#if !TRACKER_TESTING
     if(soft_failed_)
       results[ik_transition::soft_fail] = true;
     else if(need_replanning_)
@@ -26,6 +28,7 @@ std::map< ik_transition, bool > ik_checking_grasp_substate::getResults()
     else if(failed_)
       results[ik_transition::fail] = true;
     else if(is_complete_)
+#endif
       results[ik_transition::check_done] = true;
     return results;
 }
@@ -104,9 +107,6 @@ void ik_checking_grasp_substate::run()
   else
     tf_listener_.lookupTransform("world",*data_.object_name + "_tracked", ros::Time(0), World_RealObjTf);
   
-  //TODO: remove
-  World_RealObjTf.stamp_ = ros::Time::now();
-  
   ros::Duration timeDiff = ros::Time::now() - World_RealObjTf.stamp_;
   if(timeDiff.toSec() > LONG_TIME_NO_SEE)
   {
@@ -114,11 +114,6 @@ void ik_checking_grasp_substate::run()
     soft_failed_ = true;
     return;
   }
-  
-  // TODO: remove
-  double r,p=0.0,y=0.0;
-  r = (double)(rand()%1000)/100000.0;
-  World_RealObjPose = World_ExpectedObjPose*KDL::Frame(KDL::Rotation::RPY(r,p,y));
   
   // tf::poseTFToKDL(World_RealObjTf,World_RealObjPose);
   KDL::Twist xi;
@@ -193,8 +188,10 @@ void ik_checking_grasp_substate::run()
   {
     ROS_INFO_STREAM("ik_checking_grasp_substate::run : OK to change only next grasp position!");
     
+#if !TRACKER_TESTING
     // also add a waypoint here?
     tf::poseKDLToMsg(World_RealObjPose,data_.cartesian_plan->at(data_.next_plan).second.cartesian_task);
+#endif
     is_complete_ = true;
     return;
   }
@@ -218,7 +215,8 @@ void ik_checking_grasp_substate::run()
     // get grasp matrixes
     Object_GraspMatrixes Object;
     semantic_to_cartesian_converter::getGraspMatrixes(data.obj_id,node,Object);
-    
+
+#if !TRACKER_TESTING
     // change grasping pose
     tf::poseKDLToMsg(World_Object,data_.cartesian_plan->at(data_.next_plan).second.cartesian_task);
     // change ungrasping pose
@@ -233,7 +231,8 @@ void ik_checking_grasp_substate::run()
     KDL::Frame World_GraspSecondEE(World_Object*Object.PreGraspSecondEE);
     tf::poseKDLToMsg(World_GraspSecondEE,second_move_command.cartesian_task);
     data_.cartesian_plan->insert(data_.cartesian_plan->begin() + data_.next_plan + 1,std::make_pair(node.next_ee_id,second_move_command)); //move the next
-    
+#endif
+
     need_replanning_ = true;
     return;
   }
