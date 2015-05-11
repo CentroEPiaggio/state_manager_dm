@@ -450,7 +450,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             result.push_back(std::make_pair(node.next_ee_id,grasp));
 	    cartesian_command move_no_coll_command(cartesian_commands::MOVE_CLOSE_BEST_EFFORT, 1, node.next_grasp_id);
 	    KDL::Frame World_postGraspSecondEE;
-	    World_postGraspSecondEE = World_Object*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
+	    World_postGraspSecondEE = World_Object*Object.GraspFirstEE*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
             tf::poseKDLToMsg(World_postGraspSecondEE,move_no_coll_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,move_no_coll_command));
         }
