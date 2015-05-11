@@ -13,7 +13,7 @@ enum class cartesian_commands
     MOVE,
     MOVE_NO_COLLISION_CHECK,
     MOVE_BEST_EFFORT,
-    MOVE_BEST_EFFORT_NO_COLLISION_CHECK,
+    MOVE_CLOSE_BEST_EFFORT,
     GRASP,
     UNGRASP,
     HOME
