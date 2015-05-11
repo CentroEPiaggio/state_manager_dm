@@ -84,7 +84,7 @@ void ik_planning_substate::run()
 	initialized = true;
     }
 
-    if(plan_sent)
+    if(plan_sent || checking_grasp)
     {
       // sleep 5ms to allow for other stuff to go on
       usleep(5000);
