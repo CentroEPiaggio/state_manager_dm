@@ -54,7 +54,7 @@ private:
     abstract_state<ik_transition>* current_state;
     std::map<ik_transition,bool> transition_map;
     ik_steady_substate* waiting;
-    const shared_memory& data_;
+    shared_memory& data_;
     ik_shared_memory subdata;
     void fake_plan();
     void print_plan();
@@ -65,6 +65,8 @@ private:
     dual_manipulation_shared::ik_service srv;
     // these bool will be updated from other states (such as ik_checking_grasp...) and from the GUI, respectively
     bool new_plan, show_plan;
+    // whether we need to ask for another semantic planning...
+    bool need_replan;
     databaseMapper db_mapper;
     ros::Publisher planned_path_publisher_;
 };

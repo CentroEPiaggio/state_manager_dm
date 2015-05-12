@@ -11,6 +11,11 @@
 #include <tf_conversions/tf_kdl.h>
 
 #define OBJ_GRASP_FACTOR 1000
+#define ALLOW_REPLANNING 0
+
+#if ALLOW_REPLANNING
+#include "../include/ik_need_semantic_replan.h"
+#endif
 
 ik_control_state::ik_control_state(shared_memory& data):data_(data)
 {
@@ -36,6 +41,9 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     waiting = new ik_steady_substate(subdata);
     auto exiting = new ik_exiting_substate(subdata);
     auto failing = new ik_failing_substate(subdata);
+#if ALLOW_REPLANNING
+    auto ik_need_replan = new ik_need_semantic_replan(subdata,data);
+#endif
     
     std::vector<std::tuple<abstract_state<ik_transition>*,ik_transition_type,abstract_state<ik_transition>*>> transition_table{
         //------initial state---------------+--------- command ---------------------------------------+-- final state------ +
@@ -55,9 +63,18 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
 	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::soft_fail,true)           ,   ik_moving         ),
 	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::plan,true)                ,   ik_planning       ),
 	//----------------------------------+---------------------------------------------------------+-------------------- +
+#if ALLOW_REPLANNING
+	std::make_tuple( ik_need_replan     , std::make_pair(ik_transition::need_replan,true)         ,   exiting           ),
+#endif
+	//----------------------------------+---------------------------------------------------------+-------------------- +
 	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::fail,true)                ,   failing           ),
         std::make_tuple( ik_moving          , std::make_pair(ik_transition::fail,true)                ,   failing           ),
+#if ALLOW_REPLANNING
+	std::make_tuple( ik_planning        , std::make_pair(ik_transition::fail,true)                ,   ik_need_replan    ),
+	std::make_tuple( ik_need_replan     , std::make_pair(ik_transition::fail,true)                ,   failing           ),
+#else
         std::make_tuple( ik_planning        , std::make_pair(ik_transition::fail,true)                ,   failing           ),
+#endif
     };
 
     sm.insert(transition_table);
@@ -66,6 +83,7 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data)
     complete = false;
     new_plan = true;
     show_plan = true;
+    need_replan = false;
     current_state=waiting;
 
     client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
@@ -98,6 +116,7 @@ void ik_control_state::reset()
     subdata.move_failed.store(false);
     complete=false;
     new_plan = true;
+    need_replan = false;
     current_state=waiting;
     current_state->reset();
 }
@@ -108,6 +127,10 @@ void ik_control_state::run()
     {
 	complete = true;
 	return;
+    }
+    else if(current_state->get_type()=="ik_need_semantic_replan")
+    {
+	need_replan = true;
     }
 
     if(new_plan || show_plan)

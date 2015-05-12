@@ -36,6 +36,7 @@ src/steady_state.cpp
 src/ik_control_state.cpp
 src/exit_state.cpp
  src/semantic_to_cartesian_converter.cpp
+src/ik_need_semantic_replan.cpp
 )
 
 SET( SUBSTATES_FILES
