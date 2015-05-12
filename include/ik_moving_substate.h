@@ -50,6 +50,7 @@ private:
 
     databaseMapper db_mapper;
     bool move_sent;
+    bool grasping;
     int moving_executed;
     bool failed;
     int sequence_counter;

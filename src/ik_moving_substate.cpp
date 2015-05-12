@@ -40,6 +40,7 @@ void ik_moving_substate::reset()
     initialized = false;
     move_sent = false;
     failed=false;
+    grasping=false;
     pending_sequence_numbers.clear();
 }
 
@@ -99,8 +100,8 @@ bool ik_moving_substate::isComplete()
     std::unique_lock<std::mutex> lck(moving_executed_mutex);
     if(data_.next_plan == data_.cartesian_plan->size()+1) moving_executed=0;
 
-    // I can return if I executed the movement, I failed, or I sent the movement AND it's not the last one! (this only if I can parallelize..!)
-    return (moving_executed==0 || failed || (parallelize_planning && move_sent && data_.next_plan < data_.cartesian_plan->size()));
+    // I can return if I executed the movement, I failed, or I sent the movement AND it's not the last one! (this only if I can parallelize, and NOT for grasping WPs..!)
+    return (moving_executed==0 || failed || (parallelize_planning && move_sent && !grasping && data_.next_plan < data_.cartesian_plan->size()));
 }
 
 void ik_moving_substate::run()
@@ -170,6 +171,7 @@ void ik_moving_substate::run()
 				std::reverse(srv.request.ee_pose.begin(),srv.request.ee_pose.end());
 				std::reverse(srv.request.grasp_trajectory.points.begin(),srv.request.grasp_trajectory.points.end());
 			    }
+			    grasping = true;
 			}
 		}
 		
