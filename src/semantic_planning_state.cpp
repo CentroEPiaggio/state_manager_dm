@@ -88,18 +88,23 @@ void semantic_planning_state::run()
       //NOTE: this could be used if going to planning directly from execution, when we have a grasp but we cannot perform the passing, to replan!
       //how to test? having ik_control state wait for us, and changing the transition grasp with an unfeasible one!
     }
-    
-    for (auto next_grasp_id :database.Grasp_transitions.at(data.source_grasp))
+    else
     {
-        temp.next_grasp_id = next_grasp_id;
-        temp.next_ee_id = std::get<1>(database.Grasps[next_grasp_id]);
-        if (database.Reachability.at(temp.next_ee_id).count(source))
-	{
-            if(converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes))
-	      msg.good_source_grasps.push_back(temp.next_grasp_id);
-	    else
-	      msg.bad_source_grasps.push_back(temp.next_grasp_id);
-	}
+      std::cout << "#database.Grasp_transitions.at(" << data.source_grasp << ")=" << database.Grasp_transitions.at(data.source_grasp).size() << " | " << std::endl;
+      for (auto next_grasp_id :database.Grasp_transitions.at(data.source_grasp))
+      {
+	std::cout << next_grasp_id << " | ";
+	  temp.next_grasp_id = next_grasp_id;
+	  temp.next_ee_id = std::get<1>(database.Grasps[next_grasp_id]);
+	  if (database.Reachability.at(temp.next_ee_id).count(source))
+	  {
+	      if(converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes))
+		msg.good_source_grasps.push_back(temp.next_grasp_id);
+	      else
+		msg.bad_source_grasps.push_back(temp.next_grasp_id);
+	  }
+      }
+      std::cout << std::endl;
     }
 
     temp.next_ee_id = std::get<1>(database.Grasps[data.target_grasp]);
@@ -114,18 +119,20 @@ void semantic_planning_state::run()
     {
       //DO NOT CHECK GRASPS!!!
     }
-
-    for (auto current_grasp_id :database.Grasp_transitions.at(data.target_grasp))
+    else
     {
-        temp.current_grasp_id = current_grasp_id;
-        temp.current_ee_id = std::get<1>(database.Grasps[current_grasp_id]);
-        if (database.Reachability.at(temp.current_ee_id).count(target))
-	{
-            if(converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes))
-	      msg.good_target_grasps.push_back(temp.current_grasp_id);
-	    else
-	      msg.bad_target_grasps.push_back(temp.current_grasp_id);
-	}
+      for (auto current_grasp_id :database.Grasp_transitions.at(data.target_grasp))
+      {
+	  temp.current_grasp_id = current_grasp_id;
+	  temp.current_ee_id = std::get<1>(database.Grasps[current_grasp_id]);
+	  if (database.Reachability.at(temp.current_ee_id).count(target))
+	  {
+	      if(converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes))
+		msg.good_target_grasps.push_back(temp.current_grasp_id);
+	      else
+		msg.bad_target_grasps.push_back(temp.current_grasp_id);
+	  }
+      }
     }
 
     good_grasps_pub.publish(msg);
