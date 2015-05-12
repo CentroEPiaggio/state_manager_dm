@@ -26,7 +26,7 @@ private:
     ros::Publisher pub;
     ros::ServiceClient planner_client, gui_target_client, scene_object_client;
     ros::ServiceClient vision_client;
-    ros::ServiceClient tracker_client;
+    ros::ServiceClient tracker_start_client,tracker_stop_client;
     
     databaseMapper db_mapper_;
 

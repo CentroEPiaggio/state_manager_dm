@@ -10,8 +10,10 @@
 #include <dual_manipulation_shared/ik_service.h>
 #include <dual_manipulation_shared/parsing_utils.h>
 #include <pacman_vision_comm/track_object.h>
+#include <pacman_vision_comm/stop_track.h>
 
 #define OBJ_GRASP_FACTOR 1000
+#define CLASS_NAMESPACE "getting_info_state::"
 
 getting_info_state::getting_info_state(shared_memory& data):data_(data)
 {
@@ -31,7 +33,8 @@ getting_info_state::getting_info_state(shared_memory& data):data_(data)
     scene_object_client = n.serviceClient<dual_manipulation_shared::scene_object_service>("scene_object_ros_service");
     vision_client = n.serviceClient<pacman_vision_comm::estimate>("/pacman_vision/estimator/estimate");
     target_sub = n.subscribe("/gui_target_response",1,&getting_info_state::gui_target_set_callback,this);
-    tracker_client = n.serviceClient<pacman_vision_comm::track_object>("/pacman_vision/tracker/track_object");
+    tracker_start_client = n.serviceClient<pacman_vision_comm::track_object>("/pacman_vision/tracker/track_object");
+    tracker_stop_client = n.serviceClient<pacman_vision_comm::stop_track>("/pacman_vision/tracker/stop_track");
 
     fresh_data = false;
 }
@@ -53,6 +56,10 @@ void getting_info_state::get_start_position_from_vision(pacman_vision_comm::peAr
     {
       ROS_ERROR_STREAM("getting_info_state::get_start_position_from_vision : Failed to call service dual_manipulation_shared::scene_object_service : " << srv_obj0.request.command);
     }
+    
+    pacman_vision_comm::stop_track track_srv;
+    if (tracker_stop_client.call(track_srv))
+      ROS_WARN_STREAM(CLASS_NAMESPACE << __func__ << " : unable to stop the tracker, just to inform you...!");
     
     if (vision_client.call(vision_srv))
     {
@@ -180,7 +187,7 @@ void getting_info_state::gui_target_set_callback(const dual_manipulation_shared:
     pacman_vision_comm::track_object srv;
     srv.request.name = temp_data.object_name;
     
-    if(!tracker_client.call(srv))
+    if(!tracker_start_client.call(srv))
     {
       ROS_ERROR_STREAM("getting_info_state::gui_target_set_callback : unable to call track_object client...");
     }
