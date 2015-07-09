@@ -8,6 +8,8 @@
 #include <math.h>
 #include <algorithm>    // std::min_element, std::max_element
 #include <std_msgs/String.h>
+#include <kdl_parser/kdl_parser.hpp>
+#include <random>
 
 #define HIGH 0.6
 #define LOW 0.06
@@ -25,7 +27,8 @@ static std::vector<double> right_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
 
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
 
-semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database)
+
+semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database):distribution(0.0,1.0)
 {
   this->database=database;
   double t=(1.0+sqrt(5.0))/2.0;
@@ -46,7 +49,77 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
   }
   
   ik_check_capability = new dual_manipulation::ik_control::ikCheckCapability();
+  ros::NodeHandle nh;
+  std::string global_name, relative_name, default_param;
+  if (nh.getParam("/robot_description", global_name)) //The checks here are redundant, but they may provide more debug info
+  {
+      robot_urdf=global_name;
+  }
+  else if (nh.getParam("robot_description", relative_name))
+  {
+      robot_urdf=relative_name;
+  }
+  else 
+  {
+      ROS_ERROR_STREAM("semantic_to_cartesian_converter::constructor : cannot find robot_description");
+      abort();
+  }
+  if (!urdf_model.initParam("robot_description"))
+  {
+      ROS_ERROR_STREAM("semantic_to_cartesian_converter::constructor : cannot load robot_description");
+      abort();
+  }
+  
+  if (!kdl_parser::treeFromUrdfModel(urdf_model, robot_kdl))
+  {
+      ROS_ERROR_STREAM("Failed to construct kdl tree");
+      abort();
+  }
+  robot_kdl.getChain("left_arm_base_link","left_hand_palm_link",LSh_Obj);
+  robot_kdl.getChain("right_hand_palm_link","right_arm_base_link",Obj_Rsh);
+  robot_kdl.getChain("left_arm_base_link","right_arm_base_link",LSh_Waist_RSh);
+  robot_kdl.getChain("vito_anchor","left_arm_base_link",World_LSh_Chain);
+  KDL::ChainFkSolverPos_recursive temp_solver(LSh_Waist_RSh);
+  KDL::JntArray temp_jnts;
+  temp_jnts.resize(robot_kdl.getNrOfJoints());
+  temp_solver.JntToCart(temp_jnts,LSh_RSh);
+  KDL::ChainFkSolverPos_recursive temp_solver1(World_LSh_Chain);
+  KDL::JntArray temp_jnts1;
+  temp_jnts1.resize(robot_kdl.getNrOfJoints());
+  temp_solver1.JntToCart(temp_jnts1,World_LSh);
 }
+
+void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* container) const
+{
+    delete container->fksolver;
+    delete container->iksolver;
+    delete container->ikvelsolver;
+    for (KDL::Segment& segment: container->chain.segments)
+    {
+        if (segment.getJoint().getType()==KDL::Joint::None) continue;
+        //std::cout<<segment.getJoint().getName()<<std::endl;
+        container->joint_names.push_back(segment.getJoint().getName());
+    }
+    assert(container->joint_names.size()==container->chain.getNrOfJoints());
+    container->q_max.resize(container->chain.getNrOfJoints());
+    container->q_min.resize(container->chain.getNrOfJoints());
+    container->fksolver=new KDL::ChainFkSolverPos_recursive(container->chain);
+    container->ikvelsolver = new KDL::ChainIkSolverVel_pinv(container->chain);
+    int j=0;
+    for (auto joint_name:container->joint_names)
+    {
+        #if IGNORE_JOINT_LIMITS
+        container->q_max(j)=M_PI/3.0;
+        container->q_min(j)=-M_PI/3.0;
+        #else
+        container->q_max(j)=urdf_model.joints_.at(joint_name)->limits->upper;
+        container->q_min(j)=urdf_model.joints_.at(joint_name)->limits->lower;
+        #endif
+        j++;
+    }
+    container->iksolver= new KDL::ChainIkSolverPos_NR_JL(container->chain,container->q_min,container->q_max,*container->fksolver,*container->ikvelsolver);
+}
+
 
 bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, grasp_id grasp, Object_SingleGrasp& Matrixes)
 {
@@ -160,9 +233,9 @@ bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL:
   }
   else
   {
-    ROS_ERROR_STREAM("semantic_to_cartesian_converter::check_ik : unknown end-effector couple <" << current_ee_name << " | " << next_ee_name << ">");
-    ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
-    return false;
+      ROS_ERROR_STREAM("semantic_to_cartesian_converter::check_ik : unknown end-effector couple <" << current_ee_name << " | " << next_ee_name << ">");
+      ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
+      return false;
   }
   
 #if DEBUG
@@ -220,13 +293,71 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
     double centroid_x,centroid_y,centroid_z;
     compute_centroid(centroid_x,centroid_y,centroid_z,node);
     KDL::Frame World_centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
-    
+
     Object_GraspMatrixes Object;
     auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
     auto next_ee_name=std::get<0>(database.EndEffectors.at(node.next_ee_id));
     if (!getGraspMatrixes(object, node, Object)) abort();
     if (node.type==node_properties::MOVABLE_TO_MOVABLE)
     {
+        //New implementation //TODO: check for PreGrasp
+        KDL::Chain LSh_Obj_RSh;
+        LSh_Obj_RSh.addChain(LSh_Obj);
+        if (current_ee_name=="left_hand" && next_ee_name=="right_hand")
+        {
+            LSh_Obj_RSh.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.PostGraspFirstEE.Inverse()));
+            LSh_Obj_RSh.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.GraspSecondEE));
+        }
+        else if (current_ee_name=="right_hand" && next_ee_name=="left_hand")
+        {
+            LSh_Obj_RSh.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.GraspSecondEE.Inverse()));
+            LSh_Obj_RSh.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.PostGraspFirstEE));
+        }
+        else
+        {
+            ROS_ERROR_STREAM("semantic_to_cartesian_converter::compute_intergrasp_orientation : unknown end-effector couple <" << current_ee_name << " | " << next_ee_name << ">");
+            ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
+            return false;
+        }
+        LSh_Obj_RSh.addChain(Obj_Rsh);
+        LSh_Obj_RSh_solvers.chain=LSh_Obj_RSh;
+        this->initialize_solvers(&LSh_Obj_RSh_solvers);
+        bool done=false;
+        bool found=false;
+        int counter=0;
+        KDL::JntArray random_start;
+        KDL::JntArray q_out;
+        random_start.resize(LSh_Obj_RSh.getNrOfJoints());
+        q_out.resize(LSh_Obj_RSh.getNrOfJoints());
+        while(!done)
+        {
+            for (int i=0;i<LSh_Obj_RSh.getNrOfJoints();i++)
+            {
+                random_start(i) = distribution(generator)*(LSh_Obj_RSh_solvers.q_max(i)-LSh_Obj_RSh_solvers.q_min(i))+LSh_Obj_RSh_solvers.q_min(i);
+            }
+            if (LSh_Obj_RSh_solvers.iksolver->CartToJnt(random_start,LSh_RSh,q_out)) 
+            {
+                found=true;
+                done=true;
+            }
+            if (counter>10) done=true;
+        }
+        if (found)
+        {
+            KDL::ChainFkSolverPos_recursive temp_fk(LSh_Obj);
+            KDL::JntArray temp;
+            temp.resize(LSh_Obj.getNrOfJoints());
+            for (int i=0;i<LSh_Obj.getNrOfJoints();i++)
+            {
+                temp(i)=q_out(i);
+            }
+            KDL::Frame LSh_LeftHand;
+            temp_fk.JntToCart(temp,LSh_LeftHand);
+            if (current_ee_name=="left_hand" && next_ee_name=="right_hand") World_Object=World_LSh*LSh_LeftHand*Object.PostGraspFirstEE.Inverse();
+            if (current_ee_name=="right_hand" && next_ee_name=="left_hand") World_Object=World_LSh*LSh_LeftHand*Object.GraspSecondEE.Inverse();
+        }
+        return found;
+        //OLD implementation
         std::vector<double> joint_pose_norm;
 	//TODO: pre-align the grasp to a good configuration, then go through sphere_sampling in a spiral manner, and stop when you first find a feasible one
 	for (auto& rot: sphere_sampling)

@@ -4,6 +4,12 @@
 #include "shared_memory.h"
 #include <dual_manipulation_shared/planner_serviceResponse.h>
 #include <kdl/frames.hpp>
+#include <kdl/chain.hpp>
+#include <kdl/jntarray.hpp>
+#include <kdl/chainiksolvervel_pinv.hpp>
+#include <kdl/chainiksolverpos_nr_jl.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/tree.hpp>
 #include <ik_check_capability/ik_check_capability.h>
 
 enum class node_properties
@@ -43,6 +49,19 @@ struct Object_GraspMatrixes
     KDL::Frame GraspFirstEE,GraspSecondEE;
 };
 
+class chain_and_solvers
+{
+public:
+    KDL::Chain chain;
+    KDL::ChainFkSolverPos_recursive* fksolver=0;
+    KDL::ChainIkSolverPos_NR_JL* iksolver=0;
+    KDL::ChainIkSolverVel_pinv* ikvelsolver=0;
+    std::vector<std::string> joint_names;
+    int index;
+    KDL::JntArray q_min, q_max;
+};
+
+
 class semantic_to_cartesian_converter
 {
 public:
@@ -58,12 +77,22 @@ private:
     bool check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< std::vector< double > >& results) const;
     bool check_ik(std::string ee_name, KDL::Frame World_EE) const;
     void addNewFilteredArc(const node_info& node, std::vector<dual_manipulation_shared::planner_item>& filtered_source_nodes,std::vector<dual_manipulation_shared::planner_item>& filtered_target_nodes) const;
+    void initialize_solvers(chain_and_solvers* container) const;
 private:
      databaseMapper database;
      std::map<int,KDL::Frame> fine_tuning;
      std::vector<KDL::Rotation> sphere_sampling;
      static std::map<std::pair<object_id,grasp_id>, Object_SingleGrasp> cache_matrixes;
      mutable dual_manipulation::ik_control::ikCheckCapability *ik_check_capability;
+     mutable chain_and_solvers LSh_Obj_RSh_solvers;
+     KDL::Frame LSh_RSh, World_LSh;
+     std::string robot_urdf;
+     urdf::Model urdf_model;
+     KDL::Tree robot_kdl;
+     KDL::Chain LSh_Obj, Obj_Rsh, LSh_Waist_RSh, World_LSh_Chain;
+     mutable std::default_random_engine generator;
+     mutable std::uniform_real_distribution<double> distribution;
+     
 };
 
 #endif // SEMANTIC_TO_CARTESIAN_CONVERTER_H
