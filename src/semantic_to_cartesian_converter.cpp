@@ -10,6 +10,7 @@
 #include <std_msgs/String.h>
 #include <kdl_parser/kdl_parser.hpp>
 #include <random>
+#include <kdl/frames_io.hpp>
 
 #define HIGH 0.6
 #define LOW 0.06
@@ -79,14 +80,35 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
   robot_kdl.getChain("right_hand_palm_link","right_arm_base_link",Obj_Rsh);
   robot_kdl.getChain("left_arm_base_link","right_arm_base_link",LSh_Waist_RSh);
   robot_kdl.getChain("vito_anchor","left_arm_base_link",World_LSh_Chain);
-  KDL::ChainFkSolverPos_recursive temp_solver(LSh_Waist_RSh);
-  KDL::JntArray temp_jnts;
-  temp_jnts.resize(robot_kdl.getNrOfJoints());
-  temp_solver.JntToCart(temp_jnts,LSh_RSh);
-  KDL::ChainFkSolverPos_recursive temp_solver1(World_LSh_Chain);
-  KDL::JntArray temp_jnts1;
-  temp_jnts1.resize(robot_kdl.getNrOfJoints());
-  temp_solver1.JntToCart(temp_jnts1,World_LSh);
+//   KDL::ChainFkSolverPos_recursive temp_solver(LSh_Waist_RSh);
+//   KDL::JntArray temp_jnts;
+//   temp_jnts.resize(robot_kdl.getNrOfJoints());
+//   temp_solver.JntToCart(temp_jnts,LSh_RSh);
+//   std::cout << "LSh_RSh: " << LSh_RSh << std::endl;
+//   KDL::ChainFkSolverPos_recursive temp_solver1(World_LSh_Chain);
+//   KDL::JntArray temp_jnts1;
+//   temp_jnts1.resize(robot_kdl.getNrOfJoints());
+//   temp_solver1.JntToCart(temp_jnts1,World_LSh);
+//   std::cout << "World_LSh: " << World_LSh << std::endl;
+  
+  World_LSh.M = KDL::Rotation::RPY(1.571, 0.524, -0.524);
+  World_LSh.p = KDL::Vector(-0.165, -0.109, 0.390);
+// $ rosrun tf tf_echo vito_anchor left_arm_base_link
+// At time 1436460598.096
+// - Translation: [-0.165, -0.109, 0.390]
+// - Rotation: in Quaternion [0.707, -0.000, -0.354, 0.612]
+//             in RPY (radian) [1.571, 0.524, -0.524]
+//             in RPY (degree) [90.000, 30.000, -30.000]
+  
+  LSh_RSh.M = KDL::Rotation::RPY(2.428, 0.848, -0.333);
+  LSh_RSh.p = KDL::Vector(-0.094, -0.054, -0.188);
+// $ rosrun tf tf_echo left_arm_base_link right_arm_base_link
+// At time 1436460619.536
+// - Translation: [-0.094, -0.054, -0.188]
+// - Rotation: in Quaternion [0.866, 0.000, -0.433, 0.250]
+//             in RPY (radian) [2.428, 0.848, -0.333]
+//             in RPY (degree) [139.107, 48.590, -19.107]
+
 }
 
 void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* container) const
@@ -94,6 +116,7 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
     delete container->fksolver;
     delete container->iksolver;
     delete container->ikvelsolver;
+    container->joint_names.clear();
     for (KDL::Segment& segment: container->chain.segments)
     {
         if (segment.getJoint().getType()==KDL::Joint::None) continue;
@@ -340,7 +363,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
                 found=true;
                 done=true;
             }
-            if (counter>10) done=true;
+            if (counter++>10) done=true;
         }
         if (found)
         {
