@@ -79,6 +79,13 @@ void semantic_planning_state::run()
     temp.current_workspace_id = source;
     temp.next_workspace_id = source;
     temp.type=node_properties::FIXED_TO_MOVABLE;
+    if(database.Grasp_transitions.empty())
+    {
+        std::cerr << "There are no transitions in the loaded database, plan failed" << std::endl;
+        internal_state.insert(std::make_pair(transition::failed_plan,true));
+        completed=true;
+        return;
+    }
     for (auto next_grasp_id :database.Grasp_transitions.at(data.source_grasp))
     {
         temp.next_grasp_id = next_grasp_id;
