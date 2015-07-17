@@ -147,21 +147,22 @@ void semantic_planning_state::run()
         srv.request.source.workspace_id=source;
         srv.request.destination.grasp_id=data.target_grasp;
         srv.request.destination.workspace_id=target;
-        srv.request.filtered_source_nodes=data.filtered_source_nodes;
-        srv.request.filtered_target_nodes=data.filtered_target_nodes;
-
-        if (client.call(srv))
+//         srv.request.filtered_source_nodes=data.filtered_source_nodes;
+//         srv.request.filtered_target_nodes=data.filtered_target_nodes;
+        srv.response.path.clear();
+//         if (client.call(srv))
+        if (data.planner.plan(data.source_grasp,source,data.target_grasp,target,srv.response.path))
         {
-            ROS_INFO("Planning Request accepted, response: %d", (int)srv.response.ack);
-            if (srv.response.ack)
+//             ROS_INFO("Planning Request accepted, response: %d", (int)srv.response.ack);
+//             if (srv.response.ack)
             {
                 for (auto node:srv.response.path)
                     std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
             }
-            else
-            {
-                ROS_ERROR("Failed to plan, reason: %s",srv.response.status.c_str());
-            }
+//             else
+//             {
+//                 ROS_ERROR("Failed to plan, reason: %s",srv.response.status.c_str());
+//             }
         }
         else
         {
@@ -198,6 +199,7 @@ void semantic_planning_state::run()
 #else
         if (!converted)
         {
+          data.planner.add_filtered_arc(data.filtered_source_nodes.grasp_id,data.filtered_source_nodes.workspace_id,data.filtered_target_nodes.grasp_id, data.filtered_target_nodes.workspace_id);
 	  if(max_counter > 0)
             ROS_WARN_STREAM("Error converting semantic to cartesian! I will try again for " << max_counter << " times");
 	  else
@@ -237,7 +239,7 @@ std::string semantic_planning_state::get_type()
 
 void semantic_planning_state::reset()
 {
-  data.filtered_source_nodes.clear();
-  data.filtered_target_nodes.clear();
+//   data.filtered_source_nodes.clear();
+//   data.filtered_target_nodes.clear();
   data.cartesian_plan.clear();
 }

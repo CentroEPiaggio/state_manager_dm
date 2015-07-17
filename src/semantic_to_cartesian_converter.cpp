@@ -226,17 +226,12 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     return result;
 }
 
-void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
+void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, dual_manipulation_shared::planner_item& filtered_source_node, dual_manipulation_shared::planner_item& filtered_target_node) const
 {
-        dual_manipulation_shared::planner_item source_node,target_node;
-        source_node.grasp_id=node.current_grasp_id;
-        source_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
-        target_node.grasp_id=node.next_grasp_id;
-        target_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
-        filtered_source_nodes.push_back(source_node);
-        filtered_target_nodes.push_back(target_node);
-        filtered_source_nodes.push_back(target_node);
-        filtered_target_nodes.push_back(source_node);
+    filtered_source_node.grasp_id=node.current_grasp_id;
+    filtered_source_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
+    filtered_target_node.grasp_id=node.next_grasp_id;
+    filtered_target_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
 }
 
 bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< std::vector< double > >& results) const
@@ -474,7 +469,7 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
     return true;
 }
 
-bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node, const shared_memory& data, bool first_node, bool last_node, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
+bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node, const shared_memory& data, bool first_node, bool last_node, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes) const
 {
     double centroid_x=0, centroid_y=0, centroid_z=0;
     Object_GraspMatrixes Object;
@@ -540,7 +535,7 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
     return true;
 }
 
-bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
+bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
 {
     // 1) Clearing result vector
     result.clear();

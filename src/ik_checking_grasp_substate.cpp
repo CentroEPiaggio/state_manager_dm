@@ -179,7 +179,7 @@ void ik_checking_grasp_substate::run()
     node.current_grasp_id = data_.cartesian_plan->at(data_.next_plan+1).second.ee_grasp_id;
   }
   
-  std::vector <dual_manipulation_shared::planner_item> filtered_source_nodes,filtered_target_nodes;
+  dual_manipulation_shared::planner_item filtered_source_nodes,filtered_target_nodes;
   bool first_node = true, last_node = false;
   KDL::Frame unused;
   // try at first to move next end-effector only

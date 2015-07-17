@@ -8,14 +8,15 @@ shared_memory::shared_memory()
 void shared_memory::reset()
 {
     cartesian_plan.clear();
-    filtered_source_nodes.clear();
-    filtered_target_nodes.clear();
+//     filtered_source_nodes.clear();
+//     filtered_target_nodes.clear();
     obj_id=-1;
     object_name="";
     source_grasp=-1;
     target_grasp=-1;
     target_position=geometry_msgs::Pose();
     source_position=geometry_msgs::Pose();
+    planner.clear_filtered_arcs();
 }
 
 std::ostream& operator<<(std::ostream& output, const cartesian_commands& command)
