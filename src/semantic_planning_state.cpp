@@ -79,6 +79,13 @@ void semantic_planning_state::run()
     temp.current_workspace_id = source;
     temp.next_workspace_id = source;
     temp.type=node_properties::FIXED_TO_MOVABLE;
+    if(database.Grasp_transitions.empty())
+    {
+        std::cerr << "There are no transitions in the loaded database, plan failed" << std::endl;
+        internal_state.insert(std::make_pair(transition::failed_plan,true));
+        completed=true;
+        return;
+    }
     
     //TODO: check grasps only if source is a table grasp
     bool source_ee_movable = std::get<1>(database.EndEffectors.at(temp.current_ee_id));
