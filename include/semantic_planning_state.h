@@ -24,7 +24,7 @@ public:
     virtual std::string get_type();
     virtual void reset();
 private:
-
+    
     ros::NodeHandle n;
     ros::ServiceClient client;
     ros::Publisher good_grasps_pub;

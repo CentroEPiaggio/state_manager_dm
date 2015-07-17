@@ -244,7 +244,7 @@ void getting_info_state::run()
 	
 	dual_manipulation_shared::planner_service srv;
 	srv.request.command="set object";
-	srv.request.time = 2; //TODO
+	srv.request.time = ros::Time::now().toSec();
 	srv.request.object_id=data_.obj_id;
 	srv.request.object_name=data_.object_name;
         data_.planner.set_object(data_.obj_id,data_.object_name);

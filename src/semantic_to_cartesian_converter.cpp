@@ -377,7 +377,6 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
         return found;
         //OLD implementation
         std::vector<double> joint_pose_norm;
-	//TODO: pre-align the grasp to a good configuration, then go through sphere_sampling in a spiral manner, and stop when you first find a feasible one
 	for (auto& rot: sphere_sampling)
 	{
             KDL::Frame World_Object(rot,World_centroid.p);
@@ -621,7 +620,8 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             tf::poseKDLToMsg(World_GraspSecondEE,move_no_coll_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_no_coll_command)); //move the first
             cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id);
-	    // TODO: check the following transformation, should be more precisely something like "World_Object*Object_PostGraspFirstEE*(Object_GraspFirstEE.Inverse())"
+	    // TODO: check the following transformation, should be more precisely something like 
+            // TODO: "World_Object*Object_PostGraspFirstEE*(Object_GraspFirstEE.Inverse())"
 	    tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
             cartesian_command move_away(cartesian_commands::HOME,0,-1);
