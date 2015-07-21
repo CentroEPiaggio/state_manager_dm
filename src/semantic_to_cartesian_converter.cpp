@@ -246,17 +246,12 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     return result;
 }
 
-void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
+void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, dual_manipulation_shared::planner_item& filtered_source_node, dual_manipulation_shared::planner_item& filtered_target_node) const
 {
-        dual_manipulation_shared::planner_item source_node,target_node;
-        source_node.grasp_id=node.current_grasp_id;
-        source_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
-        target_node.grasp_id=node.next_grasp_id;
-        target_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
-        filtered_source_nodes.push_back(source_node);
-        filtered_target_nodes.push_back(target_node);
-        filtered_source_nodes.push_back(target_node);
-        filtered_target_nodes.push_back(source_node);
+    filtered_source_node.grasp_id=node.current_grasp_id;
+    filtered_source_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
+    filtered_target_node.grasp_id=node.next_grasp_id;
+    filtered_target_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
 }
 
 bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< std::vector< double > >& results) const
@@ -407,7 +402,6 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
         return found;
         //OLD implementation
         std::vector<double> joint_pose_norm;
-	//TODO: pre-align the grasp to a good configuration, then go through sphere_sampling in a spiral manner, and stop when you first find a feasible one
 	for (auto& rot: sphere_sampling)
 	{
             KDL::Frame World_Object(rot,World_centroid.p);
@@ -499,7 +493,7 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
     return true;
 }
 
-bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node, const shared_memory& data, bool first_node, bool last_node, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
+bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node, const shared_memory& data, bool first_node, bool last_node, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes) const
 {
     double centroid_x=0, centroid_y=0, centroid_z=0;
     Object_GraspMatrixes Object;
@@ -565,7 +559,7 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
     return true;
 }
 
-bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, std::vector< dual_manipulation_shared::planner_item >& filtered_source_nodes, std::vector< dual_manipulation_shared::planner_item >& filtered_target_nodes) const
+bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
 {
     // 1) Clearing result vector
     result.clear();
@@ -651,7 +645,8 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             tf::poseKDLToMsg(World_GraspSecondEE,move_no_coll_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_no_coll_command)); //move the first
             cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id);
-	    // TODO: check the following transformation, should be more precisely something like "World_Object*Object_PostGraspFirstEE*(Object_GraspFirstEE.Inverse())"
+	    // TODO: check the following transformation, should be more precisely something like 
+            // TODO: "World_Object*Object_PostGraspFirstEE*(Object_GraspFirstEE.Inverse())"
 	    tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
             cartesian_command move_away(cartesian_commands::HOME,0,-1);

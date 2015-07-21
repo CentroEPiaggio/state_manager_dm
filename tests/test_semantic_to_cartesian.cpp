@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     
     std::cout << "path: " << path << std::endl;
     
-    std::vector<dual_manipulation_shared::planner_item> a,b; 
+    dual_manipulation_shared::planner_item a,b; 
     state.convert(result,path,data,a,b);
     for (auto i:result)
         std::cout<<i<<std::endl;

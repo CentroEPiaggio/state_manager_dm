@@ -8,14 +8,15 @@ namespace dual_manipulation{
     namespace state_manager{
         
         /** 
-         * @brief STATE MACHINE EXAMPLE
+         * @brief Transition table example
          *
+         *  \code{.cpp}
+         * 
          * std::vector<std::tuple<state,transition,state>> transition_table{
          //--------------initial state ----------+--------- command ---------+------ final state--------- +
          std::make_tuple( state::idle            ,   COMMAND_VALVE_DATA_SENT ,    state::ready            ),
          //--------------------------------------+---------------------------+----------------------------+
          std::make_tuple( state::ready           ,   COMMAND_REACH           ,    state::reaching         ),
-         std::make_tuple( state::ready           ,   COMMAND_VALVE_DONE      ,    state::idle             ),
          //--------------------------------------+---------------------------+----------------------------+
          std::make_tuple( state::reaching        ,   COMMAND_ACTION_DONE     ,    state::reached          ),
          //--------------------------------------+---------------------------+----------------------------+
@@ -33,22 +34,18 @@ namespace dual_manipulation{
          std::make_tuple( state::grasped         ,   COMMAND_TURN            ,    state::valve_rotating   ),
          std::make_tuple( state::grasped         ,   COMMAND_UNGRASP         ,    state::ungrasping       ),
          //--------------------------------------+---------------------------+----------------------------+
-         std::make_tuple( state::valve_rotating  ,   COMMAND_ACTION_DONE     ,    state::valve_rotated    ),
-         //--------------------------------------+---------------------------+----------------------------+
-         std::make_tuple( state::valve_rotated   ,   COMMAND_UNGRASP         ,    state::ungrasping       ),
-         //--------------------------------------+---------------------------+----------------------------+
          std::make_tuple( state::ungrasping      ,   COMMAND_HAND_DONE       ,    state::ungrasped        ),
          //--------------------------------------+---------------------------+----------------------------+
          std::make_tuple( state::ungrasped       ,   COMMAND_GRASP           ,    state::grasping         ),
          std::make_tuple( state::ungrasped       ,   COMMAND_REACH           ,    state::reaching         ),
          std::make_tuple( state::ungrasped       ,   COMMAND_MOVE_AWAY       ,    state::moving_away      ),
-         std::make_tuple( state::ungrasped       ,   COMMAND_VALVE_DONE      ,    state::idle             ),
          //--------------------------------------+---------------------------+----------------------------+
          std::make_tuple( state::moving_away     ,   COMMAND_ACTION_DONE     ,    state::moved_away       ),
          //--------------------------------------+---------------------------+----------------------------+
          std::make_tuple( state::moved_away      ,   COMMAND_REACH           ,    state::reaching         ),
-         std::make_tuple( state::moved_away      ,   COMMAND_VALVE_DONE      ,    state::idle             ),
-    };*/
+    };
+    \endcode
+    */
         
         template <class state_type, class transition_type>
         class state_machine
