@@ -135,8 +135,16 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
         container->q_max(j)=M_PI/3.0;
         container->q_min(j)=-M_PI/3.0;
         #else
-        container->q_max(j)=urdf_model.joints_.at(joint_name)->limits->upper;
-        container->q_min(j)=urdf_model.joints_.at(joint_name)->limits->lower;
+        if(urdf_model.joints_.at(joint_name)->safety)
+        {
+            container->q_max(j)=urdf_model.joints_.at(joint_name)->safety->soft_upper_limit;
+            container->q_min(j)=urdf_model.joints_.at(joint_name)->safety->soft_lower_limit;
+        }
+        else
+        {
+            container->q_max(j)=urdf_model.joints_.at(joint_name)->limits->upper;
+            container->q_min(j)=urdf_model.joints_.at(joint_name)->limits->lower;
+        }
         #endif
         j++;
     }
