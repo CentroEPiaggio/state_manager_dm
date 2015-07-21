@@ -372,7 +372,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
         KDL::JntArray q_out;
         random_start.resize(LSh_Obj_RSh.getNrOfJoints());
         q_out.resize(LSh_Obj_RSh.getNrOfJoints());
-        while(!done)
+        while(!done && !found)
         {
             for (int i=0;i<LSh_Obj_RSh.getNrOfJoints();i++)
             {
@@ -380,8 +380,13 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
             }
             if (LSh_Obj_RSh_solvers.iksolver->CartToJnt(random_start,LSh_RSh,q_out)) 
             {
-                found=true;
-                done=true;
+                // prepare collision checking
+                moveit::core::RobotState rs = ik_check_capability->get_robot_state();
+                for(int j=0; j<LSh_Obj_RSh.getNrOfJoints();j++)
+                  rs.setJointPositions(LSh_Obj_RSh_solvers.joint_names.at(j),&(q_out(j)));
+                bool self_collision_only = false;
+                found = ik_check_capability->is_state_collision_free(&rs, "both_hands", self_collision_only);
+                std::cout << __func__ << "@" << __LINE__ << " : found a configuration which was " << (found?"NOT ":"") << "colliding!" << std::endl;
             }
             if (counter++>10) done=true;
         }
