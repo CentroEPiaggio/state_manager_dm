@@ -148,6 +148,18 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
         #endif
         j++;
     }
+    // impose some new limits on shoulder joints of both arms
+    double LSh0_mean = 0.5, LSh1_mean = 1.0;
+    double RSh0_mean = -0.5, RSh1_mean = 1.0;
+    double allowed_range = 0.75;
+    container->q_min(0) = LSh0_mean - allowed_range;
+    container->q_min(1) = LSh1_mean - allowed_range;
+    container->q_min(12) = RSh1_mean - allowed_range;
+    container->q_min(13) = RSh0_mean - allowed_range;
+    container->q_max(0) = LSh0_mean + allowed_range;
+    container->q_max(1) = LSh1_mean + allowed_range;
+    container->q_max(12) = RSh1_mean + allowed_range;
+    container->q_max(13) = RSh0_mean + allowed_range;
     container->iksolver= new KDL::ChainIkSolverPos_NR_JL(container->chain,container->q_min,container->q_max,*container->fksolver,*container->ikvelsolver);
 }
 
