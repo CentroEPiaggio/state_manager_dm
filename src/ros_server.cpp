@@ -9,8 +9,9 @@
 
 using namespace dual_manipulation::state_manager;
 
-ros_server::ros_server()
+ros_server::ros_server() : aspin(1)
 {
+    aspin.start();
     init();
     service = node.advertiseService("state_manager_ros_service", &ros_server::state_manager_ros_service, this);
     loop_thread=std::thread(&ros_server::loop,this);
@@ -83,11 +84,10 @@ void ros_server::loop()
      * Else do nothing
      */
 
-    while(current_state->get_type() != "exit_state")
+    while(current_state->get_type() != "exit_state" && ros::ok())
     {
 //     std::cout<<current_state->get_type()<<std::endl;
     current_state->run();
-    ros::spinOnce(); //Will check for user commands
     usleep(5000);
     if (current_state->isComplete())
     {

@@ -21,6 +21,7 @@ public:
     void join();
     shared_memory data;
 private:
+    ros::AsyncSpinner aspin;
     void loop();
     void init();
     std::thread loop_thread;
