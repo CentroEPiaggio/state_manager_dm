@@ -56,6 +56,7 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
       abort();
   }
   
+  // TODO: generalize to N-arm systems
   robot_kdl.getChain("left_arm_base_link","left_hand_palm_link",LSh_Obj);
   robot_kdl.getChain("right_hand_palm_link","right_arm_base_link",Obj_Rsh);
   robot_kdl.getChain("left_arm_base_link","right_arm_base_link",LSh_Waist_RSh);
@@ -71,6 +72,7 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 //   temp_solver1.JntToCart(temp_jnts1,World_LSh);
 //   std::cout << "World_LSh: " << World_LSh << std::endl;
   
+  // TODO: find all World_ArmBase, generate next ones as Inv(A)*B
   World_LSh.M = KDL::Rotation::RPY(1.571, 0.524, -0.524);
   World_LSh.p = KDL::Vector(-0.165, -0.109, 0.390);
 // $ rosrun tf tf_echo vito_anchor left_arm_base_link
@@ -280,6 +282,8 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
     if (node.type==node_properties::MOVABLE_TO_MOVABLE)
     {
         //New implementation //TODO: check for PreGrasp
+        // TODO: use two maps, direct and inverse chains, indexed by end-effector names
+        // TODO: LSh_Obj_RSh.addChain(ChainMap.at(current_ee_name)); ...
         KDL::Chain LSh_Obj_RSh;
         LSh_Obj_RSh.addChain(LSh_Obj);
         if (current_ee_name=="left_hand" && next_ee_name=="right_hand")
@@ -321,6 +325,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
                 for(int j=0; j<LSh_Obj_RSh.getNrOfJoints();j++)
                   rs.setJointPositions(LSh_Obj_RSh_solvers.joint_names.at(j),&(q_out(j)));
                 bool self_collision_only = false;
+                // TODO: instead of "both_hands", use the FULL ROBOT group (which has to exist in MoveIt! and doesn't need to change depending on considered ee's)
                 found = ik_check_capability->is_state_collision_free(&rs, "both_hands", self_collision_only);
                 std::cout << __func__ << "@" << __LINE__ << " : found a configuration which was " << (found?"NOT ":"") << "colliding!" << std::endl;
             }
@@ -337,6 +342,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
             }
             KDL::Frame LSh_LeftHand;
             temp_fk.JntToCart(temp,LSh_LeftHand);
+            // TODO: since we build all possible chains, just use the 1st row
             if (current_ee_name=="left_hand" && next_ee_name=="right_hand") World_Object=World_LSh*LSh_LeftHand*Object.PostGraspFirstEE.Inverse();
             if (current_ee_name=="right_hand" && next_ee_name=="left_hand") World_Object=World_LSh*LSh_LeftHand*Object.GraspSecondEE.Inverse();
         }

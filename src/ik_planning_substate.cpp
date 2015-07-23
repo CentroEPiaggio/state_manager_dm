@@ -20,6 +20,9 @@ ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
     sequence_counter=0;
 
     typedef const dual_manipulation_shared::ik_response::ConstPtr& msg_type;
+    
+    //TODO: roba (fai una sola callback su planning_done)
+    
     lsub = n.subscribe<ik_planning_substate,msg_type>("/ik_control/left_hand/planning_done",1,boost::bind(&ik_planning_substate::callback, this, _1, "Left IK Plan"));
     rsub = n.subscribe<ik_planning_substate,msg_type>("/ik_control/right_hand/planning_done",1,boost::bind(&ik_planning_substate::callback, this, _1, "Right IK Plan"));
     bimanualsub = n.subscribe<ik_planning_substate,msg_type>("/ik_control/both_hands/planning_done",1,boost::bind(&ik_planning_substate::callback, this, _1, "Both hands IK Plan"));

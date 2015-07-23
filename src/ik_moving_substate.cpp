@@ -19,6 +19,9 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
 
     typedef const dual_manipulation_shared::ik_response::ConstPtr& msg_type;
+    
+    //TODO: roba (fai una sola callback per action_, grasp_, ed ungrasp_done)
+    
     lsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Exec"));
     rsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Exec"));
     bimanualsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/both_hands/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Both hands IK Exec"));
