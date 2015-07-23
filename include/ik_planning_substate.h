@@ -24,9 +24,7 @@ private:
     dual_manipulation_shared::ik_service srv;
     int plan_executed=0;
     bool initialized;
-    ros::Subscriber lsub;
-    ros::Subscriber rsub;
-    ros::Subscriber bimanualsub;
+    ros::Subscriber plan_sub;
     void callback(const dual_manipulation_shared::ik_response::ConstPtr& str, std::string type);
     void reset();
     int sequence_counter;

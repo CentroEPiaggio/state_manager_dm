@@ -21,11 +21,7 @@ ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
 
     typedef const dual_manipulation_shared::ik_response::ConstPtr& msg_type;
     
-    //TODO: roba (fai una sola callback su planning_done)
-    
-    lsub = n.subscribe<ik_planning_substate,msg_type>("/ik_control/left_hand/planning_done",1,boost::bind(&ik_planning_substate::callback, this, _1, "Left IK Plan"));
-    rsub = n.subscribe<ik_planning_substate,msg_type>("/ik_control/right_hand/planning_done",1,boost::bind(&ik_planning_substate::callback, this, _1, "Right IK Plan"));
-    bimanualsub = n.subscribe<ik_planning_substate,msg_type>("/ik_control/both_hands/planning_done",1,boost::bind(&ik_planning_substate::callback, this, _1, "Both hands IK Plan"));
+    plan_sub = n.subscribe<ik_planning_substate,msg_type>("/ik_control/planning_done",1,boost::bind(&ik_planning_substate::callback, this, _1, "Just to use a boost::bind"));
 
     reset();
 }
@@ -48,7 +44,7 @@ void ik_planning_substate::callback(const dual_manipulation_shared::ik_response:
     if(plan_executed >= 9999)
       return;
     
-    ROS_INFO_STREAM(type.c_str()<<" " << str->data << " | plan_executed = " << plan_executed);
+    ROS_INFO_STREAM(str->group_name.c_str()<<" " << str->data << " | plan_executed = " << plan_executed);
     if(str->data=="done")
     {
         if (pending_sequence_numbers.count(str->seq))

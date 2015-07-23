@@ -19,16 +19,10 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
     client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
 
     typedef const dual_manipulation_shared::ik_response::ConstPtr& msg_type;
-    
-    //TODO: roba (fai una sola callback per action_, grasp_, ed ungrasp_done)
-    
-    lsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Exec"));
-    rsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Exec"));
-    bimanualsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/both_hands/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Both hands IK Exec"));
-    lgraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Grasp"));
-    rgraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Grasp"));
-    lungraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/left_hand/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Left IK Ungrasp"));
-    rungraspsub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/right_hand/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Right IK Ungrasp"));
+
+    exe_sub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Execution"));
+    grasp_sub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Grasp"));
+    ungrasp_sub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Ungrasp"));
 
     n.param("dual_manipulation_parameters/parallelize_plan_execute",parallelize_planning,PARALLELIZE_PLANNING);
     ROS_INFO_STREAM(CLASS_NAMESPACE << " : initialized and " << (parallelize_planning?"":"NOT ") << "parallelizing planning and execution!");
@@ -55,8 +49,7 @@ void ik_moving_substate::callback(const dual_manipulation_shared::ik_response::C
     if(moving_executed >= 9999)
       return;
     
-    
-    ROS_INFO_STREAM(type.c_str()<<" " << str->data << " | moving_executed = " << moving_executed);
+    ROS_INFO_STREAM(type.c_str() << ": " << str->group_name.c_str() << " " << str->data << " | moving_executed = " << moving_executed);
     if(str->data=="done")
     {
         if (pending_sequence_numbers.count(str->seq))

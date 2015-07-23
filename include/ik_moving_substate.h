@@ -24,13 +24,7 @@ private:
     ros::NodeHandle n;
     ros::ServiceClient client;
     dual_manipulation_shared::ik_service srv;
-    ros::Subscriber lsub;
-    ros::Subscriber rsub;
-    ros::Subscriber bimanualsub;
-    ros::Subscriber lgraspsub;
-    ros::Subscriber rgraspsub;
-    ros::Subscriber lungraspsub;
-    ros::Subscriber rungraspsub;
+    ros::Subscriber exe_sub,grasp_sub,ungrasp_sub;
     bool initialized;
     void callback(const dual_manipulation_shared::ik_response::ConstPtr& str, std::string type);
     bool parallelize_planning;
