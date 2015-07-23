@@ -21,34 +21,13 @@
 
 #define DEBUG 0 // if 1, print some more information
 
-// TODO: write here a good configuration!!!
-static bool use_best_ik_ = false;
-static std::vector<double> left_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
-static std::vector<double> right_arm_pos={0.1,0.1,0.1,0.1,0.1,0.1,0.1};
-
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
 
 
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database):distribution(0.0,1.0)
 {
   this->database=database;
-  double t=(1.0+sqrt(5.0))/2.0;
-  for (double angle=-M_PI+M_PI/ANGLE_STEPS;angle<M_PI-0.001;angle=angle+2.0*M_PI/ANGLE_STEPS)
-  {
-    for (int i=0;i<4;i++)
-    {
-      sphere_sampling.emplace_back(KDL::Rotation::Rot(KDL::Vector(0, i&2?-1:1, i&1?-t:t),angle));
-    }
-    for (int i=4;i<8;i++)
-    {
-      sphere_sampling.emplace_back(KDL::Rotation::Rot(KDL::Vector(i&2?-1:1, i&1?-t:t, 0),angle));
-    }
-    for (int i=8;i<12;i++)
-    {
-      sphere_sampling.emplace_back(KDL::Rotation::Rot(KDL::Vector(i&1?-t:t, 0, i&2?-1:1),angle));
-    }
-  }
-  
+
   ik_check_capability = new dual_manipulation::ik_control::ikCheckCapability();
   ros::NodeHandle nh;
   std::string global_name, relative_name, default_param;
@@ -76,6 +55,7 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
       ROS_ERROR_STREAM("Failed to construct kdl tree");
       abort();
   }
+  
   robot_kdl.getChain("left_arm_base_link","left_hand_palm_link",LSh_Obj);
   robot_kdl.getChain("right_hand_palm_link","right_arm_base_link",Obj_Rsh);
   robot_kdl.getChain("left_arm_base_link","right_arm_base_link",LSh_Waist_RSh);
@@ -254,56 +234,17 @@ void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, d
     filtered_target_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
 }
 
-bool semantic_to_cartesian_converter::check_ik(std::string current_ee_name, KDL::Frame World_FirstEE, std::string next_ee_name, KDL::Frame World_SecondEE, std::vector< std::vector< double > >& results) const
-{
-  std::vector<geometry_msgs::Pose> ee_poses;
-  ee_poses.resize(2);
-  geometry_msgs::Pose &left_pose = ee_poses.at(0), &right_pose = ee_poses.at(1);
-  if(current_ee_name == "left_hand" && next_ee_name == "right_hand")
-  {
-    tf::poseKDLToMsg(World_FirstEE,left_pose);
-    tf::poseKDLToMsg(World_SecondEE,right_pose);
-  }
-  else if(current_ee_name == "right_hand" && next_ee_name == "left_hand")
-  {
-    tf::poseKDLToMsg(World_FirstEE,right_pose);
-    tf::poseKDLToMsg(World_SecondEE,left_pose);
-  }
-  else
-  {
-      ROS_ERROR_STREAM("semantic_to_cartesian_converter::check_ik : unknown end-effector couple <" << current_ee_name << " | " << next_ee_name << ">");
-      ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
-      return false;
-  }
-  
-#if DEBUG
-  std::cout << "check_ik: left_hand in " << ee_poses.at(0) << " and right_hand in " << ee_poses.at(1) << std::endl;
-#endif
-  
-  std::vector <double > initial_guess = std::vector<double>();
-  bool check_collisions = false;
-  bool return_approximate_solution = false;
-  unsigned int attempts = BIMANUAL_IK_ATTEMPTS;
-  double timeout = BIMANUAL_IK_TIMEOUT;
-  // std::map <std::string, std::string > allowed_collisions = std::map< std::string, std::string >();
-  
-  ik_check_capability->reset_robot_state();
-  bool found_ik = ik_check_capability->find_group_ik("both_hands",ee_poses,results,initial_guess,check_collisions,return_approximate_solution,attempts,timeout/*,allowed_collisions*/);
-  
-  return found_ik;
-}
-
 bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame World_EE) const
 {
   std::vector<geometry_msgs::Pose> ee_poses;
   ee_poses.resize(1);
   geometry_msgs::Pose &ee_pose = ee_poses.at(0);
-  if(ee_name != "left_hand" && ee_name != "right_hand")
-  {
-    ROS_ERROR_STREAM("semantic_to_cartesian_converter::check_ik : unknown end-effector <" << ee_name << ">");
-    ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
-    return false;
-  }
+//   if(ee_name != "left_hand" && ee_name != "right_hand")
+//   {
+//     ROS_ERROR_STREAM("semantic_to_cartesian_converter::check_ik : unknown end-effector <" << ee_name << ">");
+//     ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
+//     return false;
+//   }
   tf::poseKDLToMsg(World_EE,ee_pose);
   
 #if DEBUG
@@ -328,9 +269,9 @@ bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame W
 
 bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object) const
 {
-    double centroid_x,centroid_y,centroid_z;
-    compute_centroid(centroid_x,centroid_y,centroid_z,node);
-    KDL::Frame World_centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
+//     double centroid_x,centroid_y,centroid_z;
+//     compute_centroid(centroid_x,centroid_y,centroid_z,node);
+//     KDL::Frame World_centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
 
     Object_GraspMatrixes Object;
     auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
@@ -400,40 +341,6 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
             if (current_ee_name=="right_hand" && next_ee_name=="left_hand") World_Object=World_LSh*LSh_LeftHand*Object.GraspSecondEE.Inverse();
         }
         return found;
-        //OLD implementation
-        std::vector<double> joint_pose_norm;
-	for (auto& rot: sphere_sampling)
-	{
-            KDL::Frame World_Object(rot,World_centroid.p);
-	    World_Object = World_Object*(std::get<2>(database.Objects.at(object)).Inverse());
-	    std::vector<std::vector<double>> results;
-	    results.resize(2);
-	    std::vector<double> &result_first = results.at(0), &result_second = results.at(1);
-	    bool ik_ok=check_ik(current_ee_name,World_Object*Object.PostGraspFirstEE,next_ee_name,World_Object*Object.PreGraspSecondEE, results);
-    	    bool ik_ok1=check_ik(current_ee_name,World_Object*Object.PostGraspFirstEE,next_ee_name,World_Object*Object.GraspSecondEE, results);
-	    if (!(ik_ok && ik_ok1)) 
-	    {
-	      joint_pose_norm.push_back(1000);
-	      continue;
-	    }
-
-	    double norm=0;
-	    // NOTE: the first result when both hands are used is for left_hand, the second for the right one (lexical order)
-	    for (int j=0;j<left_arm_pos.size();j++)
-	      norm=norm+pow(result_first[j]-left_arm_pos.at(j),2);
-	    for (int j=0;j<right_arm_pos.size();j++)
-	      norm=norm+pow(result_second[j]-right_arm_pos.at(j),2);
-	    joint_pose_norm.push_back(norm);
-	    
-	    if(!use_best_ik_)
-	      break;
-	}
-	auto it=std::min_element(joint_pose_norm.begin(),joint_pose_norm.end());
-	if (*it==1000)
-	  return false;
-	auto best_rot=sphere_sampling.at(it-joint_pose_norm.begin());
-	World_Object=KDL::Frame(best_rot,World_centroid.p);
-	return true;
     }
     else if (node.type==node_properties::FIXED_TO_MOVABLE)
     {
