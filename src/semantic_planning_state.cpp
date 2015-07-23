@@ -163,6 +163,7 @@ void semantic_planning_state::run()
 //             ROS_INFO("Planning Request accepted, response: %d", (int)srv.response.ack);
 //             if (srv.response.ack)
             {
+                data.planner.draw_path();
                 for (auto node:srv.response.path)
                     std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
             }
