@@ -77,20 +77,24 @@ private:
     bool check_ik(std::string ee_name, KDL::Frame World_EE) const;
     void addNewFilteredArc(const node_info& node, dual_manipulation_shared::planner_item& filtered_source_node, dual_manipulation_shared::planner_item& filtered_target_node) const;
     void initialize_solvers(chain_and_solvers* container) const;
+    void parseParameters(XmlRpc::XmlRpcValue& params);
 private:
      databaseMapper database;
      std::map<int,KDL::Frame> fine_tuning;
      std::vector<KDL::Rotation> sphere_sampling;
      static std::map<std::pair<object_id,grasp_id>, Object_SingleGrasp> cache_matrixes;
      mutable dual_manipulation::ik_control::ikCheckCapability *ik_check_capability;
-     mutable chain_and_solvers LSh_Obj_RSh_solvers;
-     KDL::Frame LSh_RSh, World_LSh;
+     mutable chain_and_solvers double_arm_solver;
      std::string robot_urdf;
      urdf::Model urdf_model;
      KDL::Tree robot_kdl;
-     KDL::Chain LSh_Obj, Obj_Rsh, LSh_Waist_RSh, World_LSh_Chain;
      mutable std::default_random_engine generator;
      mutable std::uniform_real_distribution<double> distribution;
+     // managing external parameters
+     XmlRpc::XmlRpcValue ik_control_params;
+     std::vector<std::string> chain_names_list;
+     std::map<std::string,KDL::Chain> chains;
+     std::map<std::string,KDL::Chain> chains_reverse;
      
 };
 

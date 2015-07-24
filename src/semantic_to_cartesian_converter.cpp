@@ -1,5 +1,6 @@
 #include "../include/semantic_to_cartesian_converter.h"
 #include <shared_memory.h>
+#include <dual_manipulation_shared/parsing_utils.h>
 #include <dual_manipulation_shared/databasemapper.h>
 #include <dual_manipulation_shared/planner_serviceResponse.h>
 #include <vector>
@@ -56,40 +57,55 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
       abort();
   }
   
-  // TODO: generalize to N-arm systems
-  robot_kdl.getChain("left_arm_base_link","left_hand_palm_link",LSh_Obj);
-  robot_kdl.getChain("right_hand_palm_link","right_arm_base_link",Obj_Rsh);
-  robot_kdl.getChain("left_arm_base_link","right_arm_base_link",LSh_Waist_RSh);
-  robot_kdl.getChain("vito_anchor","left_arm_base_link",World_LSh_Chain);
-//   KDL::ChainFkSolverPos_recursive temp_solver(LSh_Waist_RSh);
-//   KDL::JntArray temp_jnts;
-//   temp_jnts.resize(robot_kdl.getNrOfJoints());
-//   temp_solver.JntToCart(temp_jnts,LSh_RSh);
-//   std::cout << "LSh_RSh: " << LSh_RSh << std::endl;
-//   KDL::ChainFkSolverPos_recursive temp_solver1(World_LSh_Chain);
-//   KDL::JntArray temp_jnts1;
-//   temp_jnts1.resize(robot_kdl.getNrOfJoints());
-//   temp_solver1.JntToCart(temp_jnts1,World_LSh);
-//   std::cout << "World_LSh: " << World_LSh << std::endl;
-  
-  // TODO: find all World_ArmBase, generate next ones as Inv(A)*B
-  World_LSh.M = KDL::Rotation::RPY(1.571, 0.524, -0.524);
-  World_LSh.p = KDL::Vector(-0.165, -0.109, 0.390);
-// $ rosrun tf tf_echo vito_anchor left_arm_base_link
-// At time 1436460598.096
-// - Translation: [-0.165, -0.109, 0.390]
-// - Rotation: in Quaternion [0.707, -0.000, -0.354, 0.612]
-//             in RPY (radian) [1.571, 0.524, -0.524]
-//             in RPY (degree) [90.000, 30.000, -30.000]
-  
-  LSh_RSh.M = KDL::Rotation::RPY(2.428, 0.848, -0.333);
-  LSh_RSh.p = KDL::Vector(-0.094, -0.054, -0.188);
-// $ rosrun tf tf_echo left_arm_base_link right_arm_base_link
-// At time 1436460619.536
-// - Translation: [-0.094, -0.054, -0.188]
-// - Rotation: in Quaternion [0.866, 0.000, -0.433, 0.250]
-//             in RPY (radian) [2.428, 0.848, -0.333]
-//             in RPY (degree) [139.107, 48.590, -19.107]
+  if (nh.getParam("ik_control_parameters", ik_control_params))
+      parseParameters(ik_control_params);
+
+  KDL::Chain temp;
+  std::vector<std::string> link_names;
+  ik_check_capability->get_robot_state().getRobotModel()->getJointModelGroup("full_robot")->getEndEffectorTips(link_names);
+  std::string root = ik_check_capability->get_robot_state().getRobotModel()->getRootLinkName();
+  for (auto end_effector: link_names)
+  {
+    robot_kdl.getChain(root,end_effector,temp);
+    std::string seg_fake_name;
+    bool fake_next=true;
+    for (auto s: temp.segments)
+    {
+        KDL::Joint j = s.getJoint();
+        if (fake_next)
+        {
+            if (s.getJoint().getType()==KDL::Joint::None)
+            {
+                seg_fake_name=end_effector;
+                fake_next=true;
+                j=KDL::Joint(s.getJoint().getName()+end_effector);
+            }
+            else if (s.getJoint().getType()!=KDL::Joint::None && fake_next)
+            {
+                seg_fake_name=end_effector;
+                fake_next=false;
+            }
+        }
+        else
+        {
+            seg_fake_name="";
+            fake_next=false;
+        }
+        KDL::Segment b(s.getName()+seg_fake_name,j,s.getFrameToTip(),s.getInertia());
+        chains[end_effector].addSegment(b);
+    }
+    KDL::Tree t("fake_root");
+    bool done = t.addChain(chains[end_effector],"fake_root");
+    assert(done);
+    t.getChain(end_effector,root,chains_reverse[end_effector]);
+  }
+
+}
+
+void semantic_to_cartesian_converter::parseParameters(XmlRpc::XmlRpcValue& params)
+{
+    ROS_ASSERT(params.getType() == XmlRpc::XmlRpcValue::TypeStruct);
+    parseSingleParameter(params,chain_names_list,"chain_group_names",1);
 
 }
 
@@ -102,7 +118,9 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
     for (KDL::Segment& segment: container->chain.segments)
     {
         if (segment.getJoint().getType()==KDL::Joint::None) continue;
-        //std::cout<<segment.getJoint().getName()<<std::endl;
+#if DEBUG
+        std::cout<<segment.getJoint().getName()<<std::endl;
+#endif
         container->joint_names.push_back(segment.getJoint().getName());
     }
     assert(container->joint_names.size()==container->chain.getNrOfJoints());
@@ -130,18 +148,21 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
         #endif
         j++;
     }
-    // impose some new limits on shoulder joints of both arms
-    double LSh0_mean = 0.5, LSh1_mean = 1.0;
-    double RSh0_mean = -0.5, RSh1_mean = 1.0;
-    double allowed_range = 0.75;
-    container->q_min(0) = LSh0_mean - allowed_range;
-    container->q_min(1) = LSh1_mean - allowed_range;
-    container->q_min(12) = RSh1_mean - allowed_range;
-    container->q_min(13) = RSh0_mean - allowed_range;
-    container->q_max(0) = LSh0_mean + allowed_range;
-    container->q_max(1) = LSh1_mean + allowed_range;
-    container->q_max(12) = RSh1_mean + allowed_range;
-    container->q_max(13) = RSh0_mean + allowed_range;
+    if (urdf_model.joints_.size()==14) //Particular case of two kukas
+    {
+        //TODO impose some new limits on shoulder joints of both arms
+        double LSh0_mean = 0.5, LSh1_mean = 1.0;
+        double RSh0_mean = -0.5, RSh1_mean = 1.0;
+        double allowed_range = 0.75;
+        container->q_min(0) = LSh0_mean - allowed_range;
+        container->q_min(1) = LSh1_mean - allowed_range;
+        container->q_min(12) = RSh1_mean - allowed_range;
+        container->q_min(13) = RSh0_mean - allowed_range;
+        container->q_max(0) = LSh0_mean + allowed_range;
+        container->q_max(1) = LSh1_mean + allowed_range;
+        container->q_max(12) = RSh1_mean + allowed_range;
+        container->q_max(13) = RSh0_mean + allowed_range;
+    }
     container->iksolver= new KDL::ChainIkSolverPos_NR_JL(container->chain,container->q_min,container->q_max,*container->fksolver,*container->ikvelsolver);
 }
 
@@ -282,69 +303,52 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
     if (node.type==node_properties::MOVABLE_TO_MOVABLE)
     {
         //New implementation //TODO: check for PreGrasp
-        // TODO: use two maps, direct and inverse chains, indexed by end-effector names
-        // TODO: LSh_Obj_RSh.addChain(ChainMap.at(current_ee_name)); ...
-        KDL::Chain LSh_Obj_RSh;
-        LSh_Obj_RSh.addChain(LSh_Obj);
-        if (current_ee_name=="left_hand" && next_ee_name=="right_hand")
-        {
-            LSh_Obj_RSh.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.PostGraspFirstEE.Inverse()));
-            LSh_Obj_RSh.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.GraspSecondEE));
-        }
-        else if (current_ee_name=="right_hand" && next_ee_name=="left_hand")
-        {
-            LSh_Obj_RSh.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.GraspSecondEE.Inverse()));
-            LSh_Obj_RSh.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.PostGraspFirstEE));
-        }
-        else
-        {
-            ROS_ERROR_STREAM("semantic_to_cartesian_converter::compute_intergrasp_orientation : unknown end-effector couple <" << current_ee_name << " | " << next_ee_name << ">");
-            ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
-            return false;
-        }
-        LSh_Obj_RSh.addChain(Obj_Rsh);
-        LSh_Obj_RSh_solvers.chain=LSh_Obj_RSh;
-        this->initialize_solvers(&LSh_Obj_RSh_solvers);
+        KDL::Chain First_Obj_Second;
+        assert(chains.count(current_ee_name));
+        assert(chains_reverse.count(next_ee_name));
+        First_Obj_Second.addChain(chains.at(current_ee_name));
+        First_Obj_Second.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.PostGraspFirstEE.Inverse()));
+        First_Obj_Second.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),Object.GraspSecondEE));
+        First_Obj_Second.addChain(chains_reverse.at(next_ee_name));
+        double_arm_solver.chain=First_Obj_Second;
+        this->initialize_solvers(&double_arm_solver);
         bool done=false;
         bool found=false;
         int counter=0;
         KDL::JntArray random_start;
         KDL::JntArray q_out;
-        random_start.resize(LSh_Obj_RSh.getNrOfJoints());
-        q_out.resize(LSh_Obj_RSh.getNrOfJoints());
+        random_start.resize(First_Obj_Second.getNrOfJoints());
+        q_out.resize(First_Obj_Second.getNrOfJoints());
         while(!done && !found)
         {
-            for (int i=0;i<LSh_Obj_RSh.getNrOfJoints();i++)
+            for (int i=0;i<First_Obj_Second.getNrOfJoints();i++)
             {
-                random_start(i) = distribution(generator)*(LSh_Obj_RSh_solvers.q_max(i)-LSh_Obj_RSh_solvers.q_min(i))+LSh_Obj_RSh_solvers.q_min(i);
+                random_start(i) = distribution(generator)*(double_arm_solver.q_max(i)-double_arm_solver.q_min(i))+double_arm_solver.q_min(i);
             }
-            if (LSh_Obj_RSh_solvers.iksolver->CartToJnt(random_start,LSh_RSh,q_out)) 
+            if (double_arm_solver.iksolver->CartToJnt(random_start,KDL::Frame(),q_out)) 
             {
                 // prepare collision checking
                 moveit::core::RobotState rs = ik_check_capability->get_robot_state();
-                for(int j=0; j<LSh_Obj_RSh.getNrOfJoints();j++)
-                  rs.setJointPositions(LSh_Obj_RSh_solvers.joint_names.at(j),&(q_out(j)));
+                for(int j=0; j<First_Obj_Second.getNrOfJoints();j++)
+                  rs.setJointPositions(double_arm_solver.joint_names.at(j),&(q_out(j)));
                 bool self_collision_only = false;
-                // TODO: instead of "both_hands", use the FULL ROBOT group (which has to exist in MoveIt! and doesn't need to change depending on considered ee's)
-                found = ik_check_capability->is_state_collision_free(&rs, "both_hands", self_collision_only);
+                found = ik_check_capability->is_state_collision_free(&rs, "full_robot", self_collision_only);
                 std::cout << __func__ << "@" << __LINE__ << " : found a configuration which was " << (found?"NOT ":"") << "colliding!" << std::endl;
             }
             if (counter++>10) done=true;
         }
         if (found)
         {
-            KDL::ChainFkSolverPos_recursive temp_fk(LSh_Obj);
+            KDL::ChainFkSolverPos_recursive temp_fk(chains.at(current_ee_name));
             KDL::JntArray temp;
-            temp.resize(LSh_Obj.getNrOfJoints());
-            for (int i=0;i<LSh_Obj.getNrOfJoints();i++)
+            temp.resize(chains.at(current_ee_name).getNrOfJoints());
+            for (int i=0;i<chains.at(current_ee_name).getNrOfJoints();i++)
             {
                 temp(i)=q_out(i);
             }
-            KDL::Frame LSh_LeftHand;
-            temp_fk.JntToCart(temp,LSh_LeftHand);
-            // TODO: since we build all possible chains, just use the 1st row
-            if (current_ee_name=="left_hand" && next_ee_name=="right_hand") World_Object=World_LSh*LSh_LeftHand*Object.PostGraspFirstEE.Inverse();
-            if (current_ee_name=="right_hand" && next_ee_name=="left_hand") World_Object=World_LSh*LSh_LeftHand*Object.GraspSecondEE.Inverse();
+            KDL::Frame World_FirstEE;
+            temp_fk.JntToCart(temp,World_FirstEE);
+            World_Object=World_FirstEE*Object.PostGraspFirstEE.Inverse();
         }
         return found;
     }
