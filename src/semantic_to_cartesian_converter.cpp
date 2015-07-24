@@ -12,6 +12,7 @@
 #include <kdl_parser/kdl_parser.hpp>
 #include <random>
 #include <kdl/frames_io.hpp>
+#include <moveit/robot_model/joint_model_group.h>
 
 #define HIGH 0.6
 #define LOW 0.06
@@ -62,10 +63,13 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 
   KDL::Chain temp;
   std::vector<std::string> link_names;
-  ik_check_capability->get_robot_state().getRobotModel()->getJointModelGroup("full_robot")->getEndEffectorTips(link_names);
+  const moveit::core::JointModelGroup* jmg = ik_check_capability->get_robot_state().getRobotModel()->getJointModelGroup("full_robot");
+  jmg->getEndEffectorTips(link_names);
+  std::vector<std::string> ee_names = jmg->getAttachedEndEffectorNames();
   std::string root = ik_check_capability->get_robot_state().getRobotModel()->getRootLinkName();
-  for (auto end_effector: link_names)
+  for (int i=0; i<link_names.size(); i++)
   {
+    std::string end_effector = link_names.at(i);
     robot_kdl.getChain(root,end_effector,temp);
     std::string seg_fake_name;
     bool fake_next=true;
@@ -92,12 +96,12 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
             fake_next=false;
         }
         KDL::Segment b(s.getName()+seg_fake_name,j,s.getFrameToTip(),s.getInertia());
-        chains[end_effector].addSegment(b);
+        chains[ee_names.at(i)].addSegment(b);
     }
     KDL::Tree t("fake_root");
-    bool done = t.addChain(chains[end_effector],"fake_root");
+    bool done = t.addChain(chains[ee_names.at(i)],"fake_root");
     assert(done);
-    t.getChain(end_effector,root,chains_reverse[end_effector]);
+    t.getChain(end_effector,root,chains_reverse[ee_names.at(i)]);
   }
 
 }
