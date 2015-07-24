@@ -15,7 +15,7 @@
 #define OBJ_GRASP_FACTOR 1000
 #define CLASS_NAMESPACE "getting_info_state::"
 
-getting_info_state::getting_info_state(shared_memory& data):data_(data)
+getting_info_state::getting_info_state(shared_memory& data):data_(data),db_mapper_(data.db_mapper),target_set(false)
 {
     if( !ros::isInitialized() )
     {
@@ -172,25 +172,25 @@ int getting_info_state::get_object_id(std::string obj_name)
 
 void getting_info_state::gui_target_set_callback(const dual_manipulation_shared::gui_target_response::ConstPtr& msg)
 {
+    if (target_set.load()) return;
     ROS_INFO_STREAM("Target set to "<<msg->target_pose.position.x<<' '<<msg->target_pose.position.y<<' '<<msg->target_pose.position.z<<' '<<msg->target_pose.orientation.x<<' '<<msg->target_pose.orientation.y<<' '<<msg->target_pose.orientation.z<<' '<<msg->target_pose.orientation.w);
 
-    temp_data.source_position = msg->source_pose; //user selects which detected object is the source from the gui
-    temp_data.target_position = msg->target_pose;
-    temp_data.obj_id = msg->obj_id;
-    temp_data.object_name = msg->name;
+    data_.source_position = msg->source_pose; //user selects which detected object is the source from the gui
+    data_.target_position = msg->target_pose;
+    data_.obj_id = msg->obj_id;
+    data_.object_name = msg->name;
     // TODO: ask for desired target end-effector; maybe even for desired final grasp?
-    temp_data.source_grasp=get_grasp_id_from_database(temp_data.obj_id,temp_data.source_position);
-    temp_data.target_grasp=get_grasp_id_from_database(temp_data.obj_id,temp_data.target_position);
-
-    target_set = true;
+    data_.source_grasp=get_grasp_id_from_database(data_.obj_id,data_.source_position);
+    data_.target_grasp=get_grasp_id_from_database(data_.obj_id,data_.target_position);
 
     pacman_vision_comm::track_object srv;
-    srv.request.name = temp_data.object_name;
-    
+    srv.request.name = data_.object_name;
+
     if(!tracker_start_client.call(srv))
     {
       ROS_ERROR_STREAM("getting_info_state::gui_target_set_callback : unable to call track_object client...");
     }
+    target_set.store(true);
 }
 
 void getting_info_state::get_target_position_from_user(pacman_vision_comm::peArray source_poses)
@@ -233,15 +233,9 @@ void getting_info_state::run()
     if(!source_set) get_start_position_from_vision(source_poses);
     if(source_set && !target_request) get_target_position_from_user(source_poses);
     
-    if(target_set)
+    if(target_set.load())
     {
-	data_.source_grasp = temp_data.source_grasp;
-	data_.target_grasp = temp_data.target_grasp;
-	data_.source_position = temp_data.source_position;
-	data_.target_position = temp_data.target_position;
-	data_.object_name = temp_data.object_name;
-	data_.obj_id = temp_data.obj_id;
-	
+
 	dual_manipulation_shared::planner_service srv;
 	srv.request.command="set object";
 	srv.request.time = ros::Time::now().toSec();

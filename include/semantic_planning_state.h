@@ -29,7 +29,7 @@ private:
     ros::ServiceClient client;
     ros::Publisher good_grasps_pub;
     dual_manipulation_shared::planner_service srv;
-    databaseMapper database;
+    const databaseMapper& database;
     geometry_tools geom;
     shared_memory& data;
     bool completed;

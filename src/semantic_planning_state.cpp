@@ -10,7 +10,7 @@
 
 #define GRASP_TESTING false
 
-semantic_planning_state::semantic_planning_state(shared_memory& data):data(data),converter(database)
+semantic_planning_state::semantic_planning_state(shared_memory& data):data(data),database(data.db_mapper),converter(data.db_mapper)
 {
     if( !ros::isInitialized() )
     {
@@ -74,7 +74,7 @@ void semantic_planning_state::run()
     dual_manipulation_shared::good_grasp_msg msg;
 
     node_info temp;
-    temp.current_ee_id = std::get<1>(database.Grasps[data.source_grasp]);
+    temp.current_ee_id = std::get<1>(database.Grasps.at(data.source_grasp));
     temp.current_grasp_id = data.source_grasp;
     temp.current_workspace_id = source;
     temp.next_workspace_id = source;
@@ -102,7 +102,7 @@ void semantic_planning_state::run()
       {
 	std::cout << next_grasp_id << " | ";
 	  temp.next_grasp_id = next_grasp_id;
-	  temp.next_ee_id = std::get<1>(database.Grasps[next_grasp_id]);
+	  temp.next_ee_id = std::get<1>(database.Grasps.at(next_grasp_id));
 	  if (database.Reachability.at(temp.next_ee_id).count(source))
 	  {
 	      if(converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes))
@@ -114,7 +114,7 @@ void semantic_planning_state::run()
       std::cout << std::endl;
     }
 
-    temp.next_ee_id = std::get<1>(database.Grasps[data.target_grasp]);
+    temp.next_ee_id = std::get<1>(database.Grasps.at(data.target_grasp));
     temp.next_grasp_id = data.target_grasp;
     temp.current_workspace_id = target;
     temp.next_workspace_id = target;
@@ -131,7 +131,7 @@ void semantic_planning_state::run()
       for (auto current_grasp_id :database.Grasp_transitions.at(data.target_grasp))
       {
 	  temp.current_grasp_id = current_grasp_id;
-	  temp.current_ee_id = std::get<1>(database.Grasps[current_grasp_id]);
+	  temp.current_ee_id = std::get<1>(database.Grasps.at(current_grasp_id));
 	  if (database.Reachability.at(temp.current_ee_id).count(target))
 	  {
 	      if(converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes))

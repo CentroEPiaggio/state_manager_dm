@@ -7,7 +7,7 @@
 
 #define CLASS_NAMESPACE "ik_moving_substate::"
 
-ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data)
+ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data),db_mapper(data.db_mapper)
 {
     if( !ros::isInitialized() )
     {

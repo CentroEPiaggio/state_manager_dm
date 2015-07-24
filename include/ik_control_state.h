@@ -67,7 +67,7 @@ private:
     bool new_plan, show_plan;
     // whether we need to ask for another semantic planning...
     bool need_replan;
-    databaseMapper db_mapper;
+    const databaseMapper& db_mapper;
     ros::Publisher planned_path_publisher_;
 };
 

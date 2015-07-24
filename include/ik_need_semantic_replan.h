@@ -6,7 +6,7 @@
 class ik_need_semantic_replan : public abstract_state<ik_transition>
 {
 public:
-    ik_need_semantic_replan(ik_shared_memory& subdata, shared_memory& data):data_(data),subdata_(subdata){};
+    ik_need_semantic_replan(ik_shared_memory& subdata, shared_memory& data);
     virtual std::map< ik_transition, bool > getResults();
     virtual void run(){ask_semantic_replan();};
     virtual bool isComplete(){return true;};
@@ -17,7 +17,7 @@ private:
     shared_memory& data_;
     bool need_replan_;
     bool failed_;
-    databaseMapper database_;
+    const databaseMapper& database_;
     int get_grasp_id_from_db(int object_id, const geometry_msgs::Pose& pose, int ee_id);
 };
 

@@ -13,7 +13,7 @@
 #define CLASS_NAMESPACE "ik_checking_grasp_substate::"
 #define TRACKER_TESTING 1
 
-ik_checking_grasp_substate::ik_checking_grasp_substate(ik_shared_memory& data):data_(data),converter_(database_)
+ik_checking_grasp_substate::ik_checking_grasp_substate(ik_shared_memory& data):data_(data),database_(data.db_mapper),converter_(data.db_mapper)
 {
 }
 

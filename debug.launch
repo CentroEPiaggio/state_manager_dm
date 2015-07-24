@@ -1,0 +1,7 @@
+<launch>
+
+                <!-- Load .yaml configuration files on the param server -->
+                <include file="$(find dual_manipulation_shared)/launch/dual_manipulation.launch"/>
+        <node name="dual_manipulation_state_manager" pkg="dual_manipulation_state_manager" type="dual_manipulation_state_manager" respawn="false" output="screen" launch-prefix="gdb -ex run --args"/> 
+
+</launch>

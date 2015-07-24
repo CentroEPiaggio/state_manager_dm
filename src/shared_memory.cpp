@@ -5,6 +5,11 @@ shared_memory::shared_memory()
     reset();
 }
 
+ik_shared_memory::ik_shared_memory(const databaseMapper& db):db_mapper(db)
+{
+
+}
+
 void shared_memory::reset()
 {
     cartesian_plan.clear();

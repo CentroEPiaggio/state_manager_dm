@@ -6,6 +6,11 @@
 #define OBJ_GRASP_FACTOR 1000
 #define CLASS_NAMESPACE "ik_need_semantic_replan::"
 
+ik_need_semantic_replan::ik_need_semantic_replan(ik_shared_memory& subdata, shared_memory& data):data_(data),database_(data.db_mapper),subdata_(subdata)
+{
+
+}
+
 void ik_need_semantic_replan::ask_semantic_replan()
 {
   // failure condition: I've not been able to do even the first step > stop here!

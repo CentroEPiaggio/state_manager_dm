@@ -28,7 +28,7 @@ private:
     ros::ServiceClient vision_client;
     ros::ServiceClient tracker_start_client,tracker_stop_client;
     
-    databaseMapper db_mapper_;
+    const databaseMapper& db_mapper_;
 
     void get_start_position_from_vision(pacman_vision_comm::peArray& source_poses);
     
@@ -45,7 +45,7 @@ private:
      * @return the index of the associated grasp id
      */
     int get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id = 3);
-    
+
     /**
      * @brief Given the name of an object, returns the associated id. The name may contain a suffix w.r.t. the database name, but not a prefix.
      * 
@@ -54,17 +54,16 @@ private:
      * @return the object id from the database; -1 if no corresponding entry has been found
      */
     int get_object_id(std::string obj_name);
-    
+
     void get_target_position_from_user(pacman_vision_comm::peArray source_poses);
-    
+
     void parseParameters(XmlRpc::XmlRpcValue& params);
 
     ros::Subscriber target_sub;
     void gui_target_set_callback(const dual_manipulation_shared::gui_target_response::ConstPtr& msg);
-    shared_memory temp_data;
-    
+
     bool failed=false;
-    bool target_set=false;
+    std::atomic<bool> target_set;
     bool source_set=false;
     bool target_request=false;
     bool use_vision=true;

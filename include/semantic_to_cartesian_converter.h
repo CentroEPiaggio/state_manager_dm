@@ -79,7 +79,7 @@ private:
     void initialize_solvers(chain_and_solvers* container) const;
     void parseParameters(XmlRpc::XmlRpcValue& params);
 private:
-     databaseMapper database;
+     const databaseMapper& database;
      std::map<int,KDL::Frame> fine_tuning;
      std::vector<KDL::Rotation> sphere_sampling;
      static std::map<std::pair<object_id,grasp_id>, Object_SingleGrasp> cache_matrixes;

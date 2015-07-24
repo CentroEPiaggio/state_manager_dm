@@ -42,7 +42,7 @@ private:
      */
     void change_frame_to_pose_vector(geometry_msgs::Pose object_pose_msg, std::vector<geometry_msgs::Pose>& ee_pose);
 
-    databaseMapper db_mapper;
+    const databaseMapper& db_mapper;
     bool move_sent;
     bool grasping;
     int moving_executed;

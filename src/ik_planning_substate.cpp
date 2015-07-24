@@ -4,7 +4,7 @@
 
 #define CLASS_NAMESPACE "ik_planning_substate::"
 
-ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data)
+ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data),db_mapper(data.db_mapper)
 {
     if( !ros::isInitialized() )
     {

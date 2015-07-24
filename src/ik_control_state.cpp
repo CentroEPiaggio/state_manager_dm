@@ -17,7 +17,7 @@
 #include "../include/ik_need_semantic_replan.h"
 #endif
 
-ik_control_state::ik_control_state(shared_memory& data):data_(data)
+ik_control_state::ik_control_state(shared_memory& data):data_(data),subdata(data.db_mapper),db_mapper(data.db_mapper)
 {
     if( !ros::isInitialized() )
     {

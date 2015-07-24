@@ -30,7 +30,7 @@ private:
     int sequence_counter;
     std::set<int> pending_sequence_numbers;
     std::mutex plan_executed_mutex;
-    databaseMapper db_mapper;
+    const databaseMapper& db_mapper;
     bool plan_sent;
     bool failed;
     bool checking_grasp;

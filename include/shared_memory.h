@@ -84,21 +84,25 @@ std::string object_name;
 std::vector<std::pair<endeffector_id,cartesian_command>> cartesian_plan;
 dual_manipulation_shared::planner_item filtered_source_nodes,filtered_target_nodes;
 dual_manipulation::planner::planner_lib planner;
-
+databaseMapper db_mapper;
 void reset();
 private:
+    shared_memory(const shared_memory&)=delete;
+    shared_memory& operator=(const shared_memory&)=delete;
 // geometry_msgs::Pose object_pose_;
 };
 
 class ik_shared_memory
 {
 public:
+  ik_shared_memory(const databaseMapper& db);
   int next_plan;
   std::vector<std::pair<endeffector_id,cartesian_command>>* cartesian_plan;
   const object_id* obj_id;
   const std::string* object_name;
   std::atomic_bool robot_moving;
   std::atomic_bool move_failed;
+  const databaseMapper& db_mapper;
 };
 
 #endif // SHARED_MEMORY_H

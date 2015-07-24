@@ -27,7 +27,7 @@ private:
     bool failed_ = false;
     bool soft_failed_ = false;
     tf::TransformListener tf_listener_;
-    databaseMapper database_;
+    const databaseMapper& database_;
     semantic_to_cartesian_converter converter_;
     geometry_tools geom;
 };

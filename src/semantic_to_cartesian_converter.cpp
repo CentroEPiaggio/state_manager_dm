@@ -25,9 +25,9 @@
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
 
 
-semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database):distribution(0.0,1.0)
+semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database):distribution(0.0,1.0),database(database)
 {
-  this->database=database;
+//   this->database=database;
 
   ik_check_capability = new dual_manipulation::ik_control::ikCheckCapability();
   ros::NodeHandle nh;
