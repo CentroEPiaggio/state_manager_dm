@@ -164,8 +164,8 @@ void semantic_planning_state::run()
 //             if (srv.response.ack)
             {
                 data.planner.draw_path();
-                for (auto node:srv.response.path)
-                    std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
+//                 for (auto node:srv.response.path)
+//                     std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
             }
 //             else
 //             {
@@ -218,12 +218,15 @@ void semantic_planning_state::run()
 	  continue;
         }
 #endif
-        std::cout << "=== Cartesian plan print-out ===" << std::endl;
+        std::cout << "=== Semantic and Cartesian plans print-out ===" << std::endl;
         std::cout << "( Note that grasp/ungrasp poses are the object poses, not the end-effector ones )" << std::endl;
         data.cartesian_plan = result;
+        for (auto node:srv.response.path)
+            std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
         for (auto i:result)
             std::cout<<i<<std::endl;
-        std::cout << "=== end of cartesian plan print-out ===" << std::endl;
+        std::cout << "=== end of plans print-out ===" << std::endl;
+
 	break;
     }
     if(max_counter >= 0)

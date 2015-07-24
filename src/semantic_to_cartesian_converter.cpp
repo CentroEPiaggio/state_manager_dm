@@ -421,7 +421,9 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
     if (!getGraspMatrixes(data.obj_id, node, Object)) abort();
     if (node.type==node_properties::FIXED_TO_MOVABLE)
     {
+#if DEBUG
         std::cout << "Semantic to cartesian: node.type==node_properties::FIXED_TO_MOVABLE" << std::endl;
+#endif
         // 3.6) compute a rough position of the place where the change of grasp will happen
         compute_centroid(centroid_x,centroid_y,centroid_z,node);
         KDL::Frame World_Centroid_f(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
@@ -430,7 +432,9 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
         
         if (first_node)
         {
+            #if DEBUG
             std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
+            #endif
             tf::poseMsgToKDL(data.source_position,World_Object);
         }
         else
@@ -448,7 +452,9 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
     }
     else if (node.type==node_properties::MOVABLE_TO_FIXED)
     {
+#if DEBUG
         std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_FIXED" << std::endl;
+#endif
         // 3.6) compute a rough position of the place where the change of grasp will happen
         compute_centroid(centroid_x,centroid_y,centroid_z,node);
         KDL::Frame World_Centroid_f(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
@@ -456,7 +462,9 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
         auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
         if (last_node)
         {
+#if DEBUG
             std::cout << "Semantic to cartesian: last step, using fixed location to update the path..." << std::endl;
+#endif
             tf::poseMsgToKDL(data.target_position,World_Object);
             // NOTE: here there are two checks only cause ungrasp retreat is already best-effort!!
 
@@ -529,7 +537,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         }
         else if (node.type==node_properties::FIXED_TO_MOVABLE)
         {
+#if DEBUG
 	    std::cout << "Semantic to cartesian: node.type==node_properties::FIXED_TO_MOVABLE" << std::endl;
+#endif
             // 3.6) compute a rough position of the place where the change of grasp will happen
             if (!checkSingleGrasp(World_Object,node,data,node_it==path.begin(),false,filtered_source_nodes,filtered_target_nodes))
                 return false;
@@ -550,7 +560,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         }
         else if (node.type==node_properties::MOVABLE_TO_FIXED)
         {
+#if DEBUG
 	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_FIXED" << std::endl;
+#endif
             cartesian_command move_command;
             move_command.command=cartesian_commands::MOVE_BEST_EFFORT;
             move_command.ee_grasp_id=node.current_grasp_id;
@@ -575,7 +587,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         }
         else if (node.type==node_properties::MOVABLE_TO_MOVABLE)
         {
+#if DEBUG
 	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_MOVABLE" << std::endl;
+#endif
             cartesian_command move_command(cartesian_commands::MOVE,0,-1); // Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
             bool intergrasp_ok = compute_intergrasp_orientation(World_Object,node,data.obj_id);
