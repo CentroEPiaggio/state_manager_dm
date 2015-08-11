@@ -6,6 +6,7 @@
 #include <starting_state.h>
 #include <semantic_planning_state.h>
 #include <exit_state.h>
+#include <std_msgs/String.h>
 
 using namespace dual_manipulation::state_manager;
 
@@ -14,6 +15,7 @@ ros_server::ros_server() : aspin(1)
     aspin.start();
     init();
     service = node.advertiseService("state_manager_ros_service", &ros_server::state_manager_ros_service, this);
+    state_pub  = node.advertise<std_msgs::String>("state_machine_change",5);
     loop_thread=std::thread(&ros_server::loop,this);
 }
 
@@ -102,6 +104,9 @@ void ros_server::loop()
 	{
 	    current_state=temp_state;
             current_state->reset();
+            std_msgs::String s;
+            s.data=current_state->get_type();
+            state_pub.publish(s);
 	    std::cout<<"- new state type: "<<current_state->get_type()<<std::endl;
 	    transition_map.clear();
 	    break;

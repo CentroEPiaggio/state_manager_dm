@@ -33,6 +33,7 @@ private:
     state_machine<abstract_state<transition>*,transition_type> sm;
     abstract_state<transition>* current_state;
     std::map<transition,bool> transition_map;
+    ros::Publisher state_pub;
 };
 
 
