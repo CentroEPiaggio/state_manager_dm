@@ -102,7 +102,17 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
     KDL::Tree t("fake_root");
     bool done = t.addChain(chains[ee_names.at(i)],"fake_root");
     assert(done);
-    t.getChain(end_effector,root,chains_reverse[ee_names.at(i)]);
+    done = t.getChain(end_effector,"fake_root",chains_reverse[ee_names.at(i)]);
+#if DEBUG
+    std::cout << "t.getNrOfJoints(): " << t.getNrOfJoints() << std::endl;
+    std::cout << "chains_reverse[ee_names.at(i)].getNrOfJoints(): " << chains_reverse[ee_names.at(i)].getNrOfJoints() << std::endl;
+    std::cout << "segments: | ";
+    for(auto segs:t.getSegments())
+        std::cout << segs.first << " | ";
+    std::cout << std::endl;
+    if(!done)
+        abort();
+#endif
   }
 
 }
@@ -153,7 +163,7 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
         #endif
         j++;
     }
-    if (urdf_model.joints_.size()==14) //Particular case of two kukas
+    if (container->joint_names.size()==14) //Particular case of two kukas
     {
         //TODO impose some new limits on shoulder joints of both arms
         double LSh0_mean = 0.5, LSh1_mean = 1.0;
