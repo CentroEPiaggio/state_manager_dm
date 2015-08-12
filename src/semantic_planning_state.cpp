@@ -7,7 +7,10 @@
 #include "dual_manipulation_shared/good_grasp_msg.h"
 #include <kdl_conversions/kdl_msg.h>
 #include <std_msgs/String.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <dual_manipulation_shared/grasp_trajectory.h>
 
+#define OBJ_GRASP_FACTOR 1000
 #define GRASP_TESTING false
 
 semantic_planning_state::semantic_planning_state(shared_memory& data):data(data),database(data.db_mapper),converter(data.db_mapper)
@@ -21,6 +24,7 @@ semantic_planning_state::semantic_planning_state(shared_memory& data):data(data)
     client = n.serviceClient<dual_manipulation_shared::planner_service>("planner_ros_service");
     good_grasps_pub = n.advertise<dual_manipulation_shared::good_grasp_msg>( "/good_grasp_topic", 1000 );
     completed=false;
+    planned_path_publisher_ = n.advertise<visualization_msgs::MarkerArray>("cartesian_converted_semantic_path", 1000, true );
 }
 
 std::map< transition, bool > semantic_planning_state::getResults()
@@ -230,7 +234,10 @@ void semantic_planning_state::run()
 	break;
     }
     if(max_counter >= 0)
+    {
       internal_state.insert(std::make_pair(transition::good_plan,true));
+      show_plan_with_markers();
+    }
     else
       internal_state.insert(std::make_pair(transition::failed_plan,true));
     completed=true;
@@ -253,4 +260,89 @@ void semantic_planning_state::reset()
 //   data.filtered_source_nodes.clear();
 //   data.filtered_target_nodes.clear();
   data.cartesian_plan.clear();
+}
+
+void semantic_planning_state::show_plan_with_markers()
+{
+    std::string file_name;
+    int obj_id = (int)(data.obj_id);
+    visualization_msgs::Marker marker;
+    visualization_msgs::MarkerArray markers;
+    std::string path_r = "package://soft_hand_description/meshes/palm_right.stl";
+    std::string path_l = "package://soft_hand_description/meshes/palm_left.stl";
+    std::string path_obj = "package://asus_scanner_models/" + std::get<1>(database.Objects.at( obj_id ));
+    
+    marker.action=3; //delete all
+    marker.header.frame_id = "world";
+    markers.markers.push_back(marker);
+    
+    marker.action=visualization_msgs::Marker::ADD;
+    marker.lifetime=ros::DURATION_MAX;
+    marker.type=visualization_msgs::Marker::MESH_RESOURCE;
+    
+    int marker_id = 0;
+    for(auto item:(data.cartesian_plan))
+    {
+        if(item.second.command != cartesian_commands::GRASP && item.second.command != cartesian_commands::UNGRASP)
+            continue;
+        
+        int grasp_id = item.second.ee_grasp_id;
+        int ee_id = item.first;
+        dual_manipulation_shared::grasp_trajectory grasp_msg;
+        file_name = "object" + std::to_string(obj_id) + "/grasp" + std::to_string(grasp_id % OBJ_GRASP_FACTOR);
+        if(!deserialize_ik(grasp_msg,file_name))
+        {
+            ROS_WARN_STREAM("Error in deserialization object" + std::to_string(obj_id) + "/grasp" + std::to_string(grasp_id) << "! . . . Retry!");
+            continue;
+        }
+        // object
+        marker.scale.x=1;
+        marker.scale.y=1;
+        marker.scale.z=1;
+        // I'll use the same ID in different namespaces
+        marker.id = marker_id++;
+        
+        marker.color.a = 1;
+        marker.color.b = 1;
+        marker.color.g = 0;
+        marker.color.r = 1;
+        marker.pose = item.second.cartesian_task;
+        marker.mesh_resource = path_obj.c_str();
+        marker.ns = "objects";
+        markers.markers.push_back(marker);
+        
+        // hand marker should be scaled
+        marker.scale.x=0.001;
+        marker.scale.y=0.001;
+        marker.scale.z=0.001;
+        KDL::Frame Obj_EEGrasp,Obj_EEPostGrasp,World_Object;
+        tf::poseMsgToKDL(item.second.cartesian_task,World_Object);
+        tf::poseMsgToKDL(grasp_msg.attObject.object.mesh_poses.front(),Obj_EEPostGrasp);
+        Obj_EEPostGrasp = Obj_EEPostGrasp.Inverse();
+        tf::poseMsgToKDL(grasp_msg.ee_pose.back(),Obj_EEGrasp);
+        
+        if(item.second.command == cartesian_commands::GRASP)
+        {
+            marker.color.a = 1;
+            marker.color.b = (ee_id==1)?0:1;
+            marker.color.g = (ee_id==1)?1:0;
+            marker.color.r = 0;
+            tf::poseKDLToMsg(World_Object*Obj_EEGrasp,marker.pose);
+            marker.mesh_resource = (ee_id==1)?(path_l.c_str()):(path_r.c_str());
+            marker.ns = "grasping_ee";
+        }
+        else if(item.second.command == cartesian_commands::UNGRASP)
+        {
+            marker.color.a = 1;
+            marker.color.b = (ee_id==1)?0:1;
+            marker.color.g = (ee_id==1)?1:0;
+            marker.color.r = 0;
+            tf::poseKDLToMsg(World_Object*Obj_EEPostGrasp,marker.pose);
+            marker.mesh_resource = (ee_id==1)?(path_l.c_str()):(path_r.c_str());
+            marker.ns = "ungrasping_ee";
+        }
+        markers.markers.push_back(marker);
+    }
+    
+    planned_path_publisher_.publish(markers);
 }

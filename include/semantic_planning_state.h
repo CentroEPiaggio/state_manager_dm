@@ -35,6 +35,8 @@ private:
     bool completed;
     std::map< transition, bool > internal_state;
     semantic_to_cartesian_converter converter;
+    void show_plan_with_markers();
+    ros::Publisher planned_path_publisher_;
 };
 
 #endif // SEMANTIC_PLANNING_STATE_H
