@@ -201,7 +201,8 @@ void ik_planning_substate::run()
 	if(planning_ee_name.empty())
 	  planning_ee_name = ee_name;
 	else if(planning_ee_name != ee_name)
-	  planning_ee_name = "both_hands";
+        // if more than a single group has been considered, always plan for the full robot group
+	  planning_ee_name = "full_robot";
 	
 	// flush newly set target
 	if(commands.flushing.count(item.second.command))

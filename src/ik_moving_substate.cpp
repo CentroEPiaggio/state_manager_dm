@@ -178,7 +178,7 @@ void ik_moving_substate::run()
 	{
 	        move_num++;
 		if(!ee_name.empty() && ee_name != std::get<0>(db_mapper.EndEffectors.at(item.first)))
-		  ee_name = "both_hands";
+		  ee_name = "full_robot";
 		else
 		  ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
 	}
