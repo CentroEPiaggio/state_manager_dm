@@ -22,6 +22,7 @@
 #define OBJ_GRASP_FACTOR 1000
 
 #define DEBUG 0 // if 1, print some more information
+#define SHOW_IK 0
 
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
 
@@ -353,6 +354,13 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
             KDL::Frame World_FirstEE;
             temp_fk.JntToCart(temp,World_FirstEE);
             World_Object=World_FirstEE*Object.PostGraspFirstEE.Inverse();
+            
+#if SHOW_IK
+            publishConfig(double_arm_solver.joint_names,q_out);
+            std::cout << "Press any key to continue...";
+            char y;
+            std::cin >> y;
+#endif
         }
         return found;
     }
@@ -623,5 +631,28 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         node_it=next_node_it;
     }
     // 4) return
+    return true;
+}
+
+bool semantic_to_cartesian_converter::publishConfig(const std::vector< std::string >& joint_names, const KDL::JntArray& q) const
+{
+    static ros::Publisher joint_state_pub_;
+    static bool pub_initialized(false);
+    static ros::NodeHandle node;
+    if (!pub_initialized)
+    {
+        joint_state_pub_ = node.advertise<sensor_msgs::JointState>("/joint_states",10);
+        pub_initialized = true;
+    }
+    sensor_msgs::JointState js_msg;
+    js_msg.name = joint_names;
+    js_msg.header.stamp = ros::Time::now();
+    js_msg.position.clear();
+    for(int i=0; i<js_msg.name.size(); i++)
+    {
+        js_msg.position.push_back(q(i));
+    }
+    joint_state_pub_.publish(js_msg);
+    
     return true;
 }

@@ -78,6 +78,7 @@ private:
     void addNewFilteredArc(const node_info& node, dual_manipulation_shared::planner_item& filtered_source_node, dual_manipulation_shared::planner_item& filtered_target_node) const;
     void initialize_solvers(chain_and_solvers* container) const;
     void parseParameters(XmlRpc::XmlRpcValue& params);
+    bool publishConfig(const std::vector<std::string>& joint_names, const KDL::JntArray& q) const;
 private:
      const databaseMapper& database;
      std::map<int,KDL::Frame> fine_tuning;
