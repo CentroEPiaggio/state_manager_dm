@@ -87,7 +87,7 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
             }
             else if (s.getJoint().getType()!=KDL::Joint::None && fake_next)
             {
-                seg_fake_name=end_effector;
+                seg_fake_name="";
                 fake_next=false;
             }
         }
@@ -106,12 +106,19 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 #if DEBUG
     std::cout << "t.getNrOfJoints(): " << t.getNrOfJoints() << std::endl;
     std::cout << "chains_reverse[ee_names.at(i)].getNrOfJoints(): " << chains_reverse[ee_names.at(i)].getNrOfJoints() << std::endl;
-    std::cout << "segments: | ";
+    std::cout << "chains[" << ee_names.at(i) << "].segments: | ";
+    for(auto segs:chains[ee_names.at(i)].segments)
+        std::cout << segs.getName() << " | ";
+    std::cout << std::endl;
+    std::cout << "t.segments: | ";
     for(auto segs:t.getSegments())
         std::cout << segs.first << " | ";
     std::cout << std::endl;
     if(!done)
+    {
+        std::cout << "semantic_to_cartesian_converter : unable to construct chains_reverse[" << ee_names.at(i) << "] - aborting" << std::endl;
         abort();
+    }
 #endif
   }
 
