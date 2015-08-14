@@ -44,6 +44,7 @@ void getting_info_state::parseParameters(XmlRpc::XmlRpcValue& params)
     ROS_ASSERT(params.getType() == XmlRpc::XmlRpcValue::TypeStruct);
     
     parseSingleParameter(params,use_vision,"use_vision");
+    parseSingleParameter(params,table_ee_id,"table_ee_id");
 }
 
 void getting_info_state::get_start_position_from_vision(pacman_vision_comm::peArray& source_poses)
@@ -111,9 +112,12 @@ void getting_info_state::get_start_position_from_vision(pacman_vision_comm::peAr
 int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id)
 {
     // make sure we are considering only table grasps
-    ee_id = 3;
-    ROS_WARN_STREAM("!! getting_info_state::get_grasp_id_from_database : only considering table grasps for now !!");
-    
+    if(ee_id != table_ee_id)
+    {
+        ROS_WARN_STREAM(CLASS_NAMESPACE << __func__ << " : only considering table grasps for now with id " << table_ee_id << ", specified id was " << ee_id << " instead");
+        ee_id = table_ee_id;
+    }
+
     KDL::Frame obj_frame,grasp_frame;
     tf::poseMsgToKDL(pose,obj_frame);
     double x,y,z,w;

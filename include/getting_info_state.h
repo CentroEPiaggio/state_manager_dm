@@ -67,6 +67,7 @@ private:
     bool source_set=false;
     bool target_request=false;
     bool use_vision=true;
+    int table_ee_id=3;
 };
 
 #endif // GETTING_INFO_STATE_H

@@ -8,6 +8,7 @@
 #include <dual_manipulation_shared/databasemapper.h>
 #include "semantic_to_cartesian_converter.h"
 #include <dual_manipulation_shared/geometry_tools.h>
+#include <XmlRpcValue.h>
 
 class ik_checking_grasp_substate : public abstract_state<ik_transition>
 {
@@ -18,6 +19,7 @@ public:
     std::map<ik_transition,bool> getResults();
     virtual std::string get_type();
     void reset();
+    void parseParameters(XmlRpc::XmlRpcValue& params);
 private:
     int get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id);
   
@@ -30,6 +32,7 @@ private:
     const databaseMapper& database_;
     semantic_to_cartesian_converter converter_;
     geometry_tools geom;
+    int table_ee_id=3;
 };
 
 #endif // IK_CHECKING_GRASP_SUBSTATE_H

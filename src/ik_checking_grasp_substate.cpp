@@ -2,6 +2,7 @@
 #include "../../planning/src/gml2lgf/node.h"
 #include <tf_conversions/tf_kdl.h>
 #include "dual_manipulation_shared/serialization_utils.h"
+#include <dual_manipulation_shared/parsing_utils.h>
 
 #define OBJ_GRASP_FACTOR 1000
 #define LONG_TIME_NO_SEE 3.0
@@ -15,6 +16,16 @@
 
 ik_checking_grasp_substate::ik_checking_grasp_substate(ik_shared_memory& data):data_(data),database_(data.db_mapper),converter_(data.db_mapper)
 {
+    ros::NodeHandle n;
+    XmlRpc::XmlRpcValue get_info_params;
+    if (n.getParam("dual_manipulation_parameters", get_info_params)) parseParameters(get_info_params);
+}
+
+void ik_checking_grasp_substate::parseParameters(XmlRpc::XmlRpcValue& params)
+{
+    ROS_ASSERT(params.getType() == XmlRpc::XmlRpcValue::TypeStruct);
+    
+    parseSingleParameter(params,table_ee_id,"table_ee_id");
 }
 
 std::map< ik_transition, bool > ik_checking_grasp_substate::getResults()
@@ -36,10 +47,10 @@ std::map< ik_transition, bool > ik_checking_grasp_substate::getResults()
 int ik_checking_grasp_substate::get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id)
 {
     // make sure we are considering only table grasps
-    if(ee_id != 3)
+    if(ee_id != table_ee_id)
     {
-      ROS_WARN_STREAM("!! ik_checking_grasp_substate::get_grasp_id_from_database : only considering table grasps for now !! end-effector id changed from " << ee_id << " to " << 3);
-      ee_id = 3;
+        ROS_WARN_STREAM(CLASS_NAMESPACE << __func__ << " : only considering table grasps for now with id " << table_ee_id << ", specified id was " << ee_id << " instead");
+        ee_id = table_ee_id;
     }
     
     KDL::Frame obj_frame,grasp_frame;
