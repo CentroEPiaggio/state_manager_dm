@@ -6,6 +6,8 @@
 #define PARALLELIZE_PLANNING false
 
 #define CLASS_NAMESPACE "ik_moving_substate::"
+#define NUM_KUKAS 6
+#define NUM_EE_IN_VITO 3
 
 ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data),db_mapper(data.db_mapper)
 {
@@ -158,6 +160,16 @@ void ik_moving_substate::run()
 			    srv.request.attObject.object.id = *data_.object_name;
 			    srv.request.object_db_id = (int)*data_.obj_id;
 			    ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+                
+                // make names coherent with the current urdf
+                // TODO: make this more general
+                if(db_mapper.EndEffectors.size() != NUM_EE_IN_VITO)
+                    if(item.first <= NUM_KUKAS)
+                    {
+                        srv.request.attObject.link_name = std::to_string((int)((item.first-1)/2)) + "_" + srv.request.attObject.link_name;
+                        for(auto& j:srv.request.grasp_trajectory.joint_names)
+                            j = std::to_string((int)((item.first-1)/2)) + "_" + j;
+                    }
 			
 			    // change frame of reference of the grasp trajectory to the current object frame
 			    change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
