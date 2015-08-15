@@ -167,6 +167,7 @@ void ik_moving_substate::run()
                     if(item.first <= NUM_KUKAS)
                     {
                         srv.request.attObject.link_name = std::to_string((int)((item.first-1)/2)) + "_" + srv.request.attObject.link_name;
+                        srv.request.attObject.object.header.frame_id = srv.request.attObject.link_name;
                         for(auto& j:srv.request.grasp_trajectory.joint_names)
                             j = std::to_string((int)((item.first-1)/2)) + "_" + j;
                     }
