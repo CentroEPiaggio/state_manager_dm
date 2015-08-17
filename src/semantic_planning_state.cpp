@@ -11,7 +11,7 @@
 #include <dual_manipulation_shared/grasp_trajectory.h>
 
 #define OBJ_GRASP_FACTOR 1000
-#define GRASP_TESTING false
+#define GRASP_TESTING 0
 
 semantic_planning_state::semantic_planning_state(shared_memory& data):data(data),database(data.db_mapper),converter(data.db_mapper)
 {
@@ -158,24 +158,29 @@ void semantic_planning_state::run()
         srv.request.source.workspace_id=source;
         srv.request.destination.grasp_id=data.target_grasp;
         srv.request.destination.workspace_id=target;
-        //         srv.request.filtered_source_nodes=data.filtered_source_nodes;
-        //         srv.request.filtered_target_nodes=data.filtered_target_nodes;
         srv.response.path.clear();
-        //         if (client.call(srv))
+        #if GRASP_TESTING
+            if (client.call(srv))
+            {
+                ROS_INFO("Planning Request accepted, response: %d", (int)srv.response.ack);
+                if (srv.response.ack)
+                {
+                    //for (auto node:srv.response.path)
+                       //std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
+                }
+                else
+                {
+                    ROS_ERROR("Failed to plan, reason: %s",srv.response.status.c_str());
+                }
+            }
+        #else
         if (data.planner.plan(data.source_grasp,source,data.target_grasp,target,srv.response.path))
         {
-            //             ROS_INFO("Planning Request accepted, response: %d", (int)srv.response.ack);
-            //             if (srv.response.ack)
             {
                 data.planner.draw_path();
-                //                 for (auto node:srv.response.path)
-                //                     std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
             }
-            //             else
-            //             {
-            //                 ROS_ERROR("Failed to plan, reason: %s",srv.response.status.c_str());
-            //             }
         }
+        #endif
         else
         {
             ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service");
@@ -183,9 +188,9 @@ void semantic_planning_state::run()
             completed=true;
             return;
         }
-        
+
         ros::spinOnce();
-        
+
         if (srv.response.path.size()<2)
         {
             ROS_ERROR("The planner returned a path with less than 2 nodes");
