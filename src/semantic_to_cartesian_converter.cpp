@@ -213,15 +213,29 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
         //TODO impose some new limits on shoulder joints of both arms
         // double LSh0_mean = 0.5, LSh1_mean = 1.0;
         // double RSh0_mean = -0.5, RSh1_mean = 1.0;
+        int start_ind, inc;
+        if (container->joint_names.at(0).find("left") == 0)
+        {
+            start_ind = 10; inc = 1;
+        }
+        else if (container->joint_names.at(0).find("right") == 0)
+        {
+            start_ind = 3; inc = -1;
+        }
+        else
+        {
+            std::cout << "Vito should start with something else! (container->joint_names.at(0) = " << container->joint_names.at(0) << ")" << std::endl;
+            abort();
+        }
         double allowed_range = 0.25;
-        container->q_min(10) = 1.4 - allowed_range;
-        container->q_min(11) = 1.8 - allowed_range;
-        container->q_min(12) = 1.0 - allowed_range/2.0;
-        container->q_min(13) = 0.5 - allowed_range/2.0;
-        container->q_max(10) = 1.4 + allowed_range;
-        container->q_max(11) = 1.8 + allowed_range;
-        container->q_max(12) = 1.0 + allowed_range/2.0;
-        container->q_max(13) = 0.5 + allowed_range/2.0;
+        container->q_min(start_ind) = 1.4 - allowed_range;
+        container->q_max(start_ind) = 1.4 + allowed_range;
+        container->q_min(start_ind+inc) = 1.8 - allowed_range;
+        container->q_max(start_ind+inc) = 1.8 + allowed_range;
+        container->q_min(start_ind+2*inc) = 1.0 - allowed_range/2.0;
+        container->q_max(start_ind+2*inc) = 1.0 + allowed_range/2.0;
+        container->q_min(start_ind+3*inc) = 0.5 - allowed_range/2.0;
+        container->q_max(start_ind+3*inc) = 0.5 + allowed_range/2.0;
     }
     uint max_iter = MAX_ITER;
     double eps = EPS;
