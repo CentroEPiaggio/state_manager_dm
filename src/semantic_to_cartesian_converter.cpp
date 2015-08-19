@@ -23,6 +23,8 @@
 
 #define DEBUG 0 // if 1, print some more information
 #define SHOW_IK 1
+#define MAX_ITER 100
+#define EPS 5e-3
 
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
 bool am_I_Vito = false;
@@ -221,7 +223,9 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
         container->q_max(12) = 1.0 + allowed_range/2.0;
         container->q_max(13) = 0.5 + allowed_range/2.0;
     }
-    container->iksolver= new KDL::ChainIkSolverPos_NR_JL(container->chain,container->q_min,container->q_max,*container->fksolver,*container->ikvelsolver);
+    uint max_iter = MAX_ITER;
+    double eps = EPS;
+    container->iksolver= new KDL::ChainIkSolverPos_NR_JL(container->chain,container->q_min,container->q_max,*container->fksolver,*container->ikvelsolver,max_iter,eps);
 }
 
 
@@ -386,7 +390,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
             {
                 random_start(i) = distribution(generator)*(double_arm_solver.q_max(i)-double_arm_solver.q_min(i))+double_arm_solver.q_min(i);
             }
-            if (double_arm_solver.iksolver->CartToJnt(random_start,KDL::Frame(),q_out)) 
+            if (double_arm_solver.iksolver->CartToJnt(random_start,KDL::Frame::Identity(),q_out) >= 0)
             {
                 // prepare collision checking
                 moveit::core::RobotState rs = ik_check_capability->get_robot_state();
