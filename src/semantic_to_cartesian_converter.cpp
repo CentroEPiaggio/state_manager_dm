@@ -196,6 +196,9 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, grasp_i
   bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
   if (ok)
   {
+      normalizePose(srv.request.ee_pose.front());
+      normalizePose(srv.request.ee_pose.back());
+      normalizePose(srv.request.attObject.object.mesh_poses.front());
     tf::poseMsgToKDL(srv.request.ee_pose.front(),Matrixes.PreGrasp);
     tf::poseMsgToKDL(srv.request.ee_pose.back(),Matrixes.Grasp);
     tf::poseMsgToKDL(srv.request.attObject.object.mesh_poses.front(),Matrixes.PostGrasp);
@@ -672,4 +675,30 @@ bool semantic_to_cartesian_converter::publishConfig(const std::vector< std::stri
     joint_state_pub_.publish(js_msg);
     
     return true;
+}
+
+bool semantic_to_cartesian_converter::normalizePose(geometry_msgs::Pose& pose)
+{
+    geometry_msgs::Quaternion& q(pose.orientation);
+    double q_norm = std::sqrt(q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w);
+    q.x = q.x/q_norm;
+    q.y = q.y/q_norm;
+    q.z = q.z/q_norm;
+    q.w = q.w/q_norm;
+    
+    bool ok = (q_norm < 1.01 && q_norm > 0.99);
+    
+    if(!ok)
+        std::cout << "Pose not properly normalized, quaternion norm was " << q_norm << std::endl;
+    
+    return ok;
+}
+
+bool semantic_to_cartesian_converter::normalizePoses(std::vector< geometry_msgs::Pose >& poses)
+{
+    bool ok = true;
+    for (auto& p:poses)
+        ok = ok & normalizePose(p);
+    
+    return ok;
 }

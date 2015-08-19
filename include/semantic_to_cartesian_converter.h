@@ -79,6 +79,8 @@ private:
     void initialize_solvers(chain_and_solvers* container) const;
     void parseParameters(XmlRpc::XmlRpcValue& params);
     bool publishConfig(const std::vector<std::string>& joint_names, const KDL::JntArray& q) const;
+    bool normalizePoses(std::vector< geometry_msgs::Pose >& poses);
+    static bool normalizePose(geometry_msgs::Pose& pose);
 private:
      const databaseMapper& database;
      std::map<int,KDL::Frame> fine_tuning;
