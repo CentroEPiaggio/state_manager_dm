@@ -22,7 +22,7 @@
 #define OBJ_GRASP_FACTOR 1000
 
 #define DEBUG 0 // if 1, print some more information
-#define SHOW_IK 0
+#define SHOW_IK 1
 
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
 
@@ -661,7 +661,7 @@ bool semantic_to_cartesian_converter::publishConfig(const std::vector< std::stri
     static ros::NodeHandle node;
     if (!pub_initialized)
     {
-        joint_state_pub_ = node.advertise<sensor_msgs::JointState>("/joint_states",10);
+        joint_state_pub_ = node.advertise<sensor_msgs::JointState>("/sem2cart/joint_states",10);
         pub_initialized = true;
     }
     sensor_msgs::JointState js_msg;
