@@ -21,7 +21,7 @@
 #define BIMANUAL_IK_TIMEOUT 0.005
 #define OBJ_GRASP_FACTOR 1000
 
-#define DEBUG 1 // if 1, print some more information
+#define DEBUG 0 // if 1, print some more information
 #define SHOW_IK 1
 #define MAX_ITER 100
 #define EPS 5e-3
