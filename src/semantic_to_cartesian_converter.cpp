@@ -27,7 +27,9 @@
 #define EPS 5e-3
 
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
+std::map<node_info, KDL::JntArray> semantic_to_cartesian_converter::cache_ik_solutions;
 bool am_I_Vito = false;
+double eps = EPS;
 
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database):distribution(0.0,1.0),database(database)
 {
@@ -164,9 +166,13 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 
 void semantic_to_cartesian_converter::parseParameters(XmlRpc::XmlRpcValue& params)
 {
+    double goal_position_tolerance = EPS, goal_orientation_tolerance = EPS;
     ROS_ASSERT(params.getType() == XmlRpc::XmlRpcValue::TypeStruct);
     parseSingleParameter(params,chain_names_list,"chain_group_names",1);
-
+    parseSingleParameter(params,goal_position_tolerance,"goal_position_tolerance");
+    parseSingleParameter(params,goal_orientation_tolerance,"goal_orientation_tolerance");
+    
+    eps = std::min(goal_position_tolerance,goal_orientation_tolerance);
 }
 
 void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* container) const
@@ -238,7 +244,6 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
         container->q_max(start_ind+3*inc) = 0.5 + allowed_range/2.0;
     }
     uint max_iter = MAX_ITER;
-    double eps = EPS;
     container->iksolver= new KDL::ChainIkSolverPos_NR_JL(container->chain,container->q_min,container->q_max,*container->fksolver,*container->ikvelsolver,max_iter,eps);
 }
 
@@ -398,6 +403,23 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
         KDL::JntArray q_out;
         random_start.resize(First_Obj_Second.getNrOfJoints());
         q_out.resize(First_Obj_Second.getNrOfJoints());
+        
+        // at first, look for possibly cached values
+        if(getCachedIKSolution(node,q_out))
+        {
+            // prepare collision checking
+            moveit::core::RobotState rs = ik_check_capability->get_robot_state();
+            for(int j=0; j<First_Obj_Second.getNrOfJoints();j++)
+                rs.setJointPositions(double_arm_solver.joint_names.at(j),&(q_out(j)));
+            bool self_collision_only = false;
+            found = ik_check_capability->is_state_collision_free(&rs, "full_robot", self_collision_only);
+            std::cout << __func__ << " : cached solution is " << (found?"still not ":"NOW ") << "colliding!" << (found?"":" Looking for a new IK!") << std::endl;
+            
+            if(!found)
+                eraseCachedIKSolution(node);
+        }
+        
+        // if there is no cache (or it is no longer valid), look for IK
         while(!done && !found)
         {
             for (int i=0;i<First_Obj_Second.getNrOfJoints();i++)
@@ -430,6 +452,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
         }
         if (found)
         {
+            setCachedIKSolution(node,q_out);
             KDL::ChainFkSolverPos_recursive temp_fk(chains.at(current_ee_name));
             KDL::JntArray temp;
             temp.resize(chains.at(current_ee_name).getNrOfJoints());
@@ -771,4 +794,25 @@ bool semantic_to_cartesian_converter::normalizePoses(std::vector< geometry_msgs:
         ok = ok & normalizePose(p);
     
     return ok;
+}
+
+bool semantic_to_cartesian_converter::getCachedIKSolution(const node_info& node, KDL::JntArray& q_out)
+{
+    if(cache_ik_solutions.count(node))
+    {
+        q_out = cache_ik_solutions.at(node);
+        return true;
+    }
+    return false;
+}
+
+void semantic_to_cartesian_converter::setCachedIKSolution(const node_info& node, const KDL::JntArray& q_out)
+{
+    cache_ik_solutions[node] = q_out;
+}
+
+void semantic_to_cartesian_converter::eraseCachedIKSolution(const node_info& node)
+{
+    if(cache_ik_solutions.count(node))
+        cache_ik_solutions.erase(node);
 }

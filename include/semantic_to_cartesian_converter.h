@@ -12,6 +12,8 @@
 #include <kdl/tree.hpp>
 #include <ik_check_capability/ik_check_capability.h>
 
+#define BIG_NR 10000
+
 enum class node_properties
 {
     MOVABLE_TO_FIXED,          //found, one is movable, change on ground
@@ -28,6 +30,12 @@ struct node_info
     endeffector_id current_ee_id=-1, next_ee_id=-1;
     workspace_id next_workspace_id=-1, current_workspace_id=-1;
     grasp_id current_grasp_id=-1, next_grasp_id=-1;
+    bool operator<(const node_info& a) const
+    {
+        uint64_t this_node_val = BIG_NR*BIG_NR*current_ee_id + BIG_NR*current_workspace_id + current_grasp_id;
+        uint64_t other_node_val = BIG_NR*BIG_NR*a.current_ee_id + BIG_NR*a.current_workspace_id + a.current_grasp_id;
+        return (this_node_val < other_node_val);
+    }
 };
 
 /**
@@ -81,11 +89,15 @@ private:
     bool publishConfig(const std::vector<std::string>& joint_names, const KDL::JntArray& q) const;
     bool normalizePoses(std::vector< geometry_msgs::Pose >& poses);
     static bool normalizePose(geometry_msgs::Pose& pose);
+    static bool getCachedIKSolution(const node_info& node, KDL::JntArray& q_out);
+    static void setCachedIKSolution(const node_info& node, const KDL::JntArray& q_out);
+    static void eraseCachedIKSolution(const node_info& node);
 private:
      const databaseMapper& database;
      std::map<int,KDL::Frame> fine_tuning;
      std::vector<KDL::Rotation> sphere_sampling;
      static std::map<std::pair<object_id,grasp_id>, Object_SingleGrasp> cache_matrixes;
+     static std::map<node_info, KDL::JntArray> cache_ik_solutions;
      mutable dual_manipulation::ik_control::ikCheckCapability *ik_check_capability;
      mutable chain_and_solvers double_arm_solver;
      std::string robot_urdf;
