@@ -25,7 +25,7 @@
 #define SHOW_IK 1
 
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
-
+bool am_I_Vito = false;
 
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database):distribution(0.0,1.0),database(database)
 {
@@ -154,6 +154,10 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 #endif
   }
 
+    // check whether I am using Vito
+    std::string robot_name = urdf_model.getName();
+    am_I_Vito = (robot_name == "vito");
+    std::cout << "semantic_to_cartesian_converter : I am using \"" << robot_name << "\" robot!" << std::endl;
 }
 
 void semantic_to_cartesian_converter::parseParameters(XmlRpc::XmlRpcValue& params)
@@ -202,7 +206,7 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
         #endif
         j++;
     }
-    if (container->joint_names.size()==14) //Particular case of two kukas
+    if (am_I_Vito) //Particular case of Vito robot
     {
         //TODO impose some new limits on shoulder joints of both arms
         // double LSh0_mean = 0.5, LSh1_mean = 1.0;
