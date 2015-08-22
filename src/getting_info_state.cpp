@@ -264,15 +264,13 @@ void getting_info_state::run()
 	    return;
 	}
 	
-	//NOTE: the following is not necessary when using vision, nonetheless the new collision object will override the one previously set with the same attObject.object.id
-	// send information to the cartesian planner (for collision checking)
+	//NOTE: the following behavior is needed when more than a single object is in the scene: remove the one we are planning for in order to do sem2cart conversion,
+	//      then insert the object back in the scene
 	dual_manipulation_shared::scene_object_service srv_obj;
-	srv_obj.request.command = "add";
+	srv_obj.request.command = "remove";
 	srv_obj.request.object_db_id = data_.obj_id;
 	// NOTE: this should be unique, while we can have more objects with the same "object_db_id"
 	srv_obj.request.attObject.object.id = data_.object_name;
-	srv_obj.request.attObject.object.mesh_poses.push_back( data_.source_position );
-	srv_obj.request.attObject.object.header.frame_id = "world";
 	if (scene_object_client.call(srv_obj))
 	{
 	    ROS_INFO("IK_control:test_grasping : %s object %s request accepted: %d", srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str(), (int)srv_obj.response.ack);

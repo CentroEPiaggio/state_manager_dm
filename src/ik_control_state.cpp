@@ -9,9 +9,14 @@
 #include <dual_manipulation_shared/serialization_utils.h>
 #include <dual_manipulation_shared/grasp_trajectory.h>
 #include <tf_conversions/tf_kdl.h>
+#include <dual_manipulation_shared/scene_object_service.h>
+#include <moveit_msgs/GetPlanningScene.h>
+#include <moveit/move_group/capability_names.h>
 
 #define OBJ_GRASP_FACTOR 1000
 #define ALLOW_REPLANNING 0
+#define CLASS_LOGNAME "ik_control_state"
+#define CLASS_NAMESPACE "ik_control_state::"
 
 #if ALLOW_REPLANNING
 #include "../include/ik_need_semantic_replan.h"
@@ -88,6 +93,8 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data),subdata(data
 
     client = n.serviceClient<dual_manipulation_shared::ik_service>("ik_ros_service");
     planned_path_publisher_ = n.advertise<visualization_msgs::MarkerArray>("cartesian_converted_semantic_path", 1000, true );
+    scene_object_client = n.serviceClient<dual_manipulation_shared::scene_object_service>("scene_object_ros_service");
+    scene_client_ = n.serviceClient<moveit_msgs::GetPlanningScene>(move_group::GET_PLANNING_SCENE_SERVICE_NAME);
 }
 
 std::map< transition, bool > ik_control_state::getResults()
@@ -119,6 +126,55 @@ void ik_control_state::reset()
     need_replan = false;
     current_state=waiting;
     current_state->reset();
+    
+    //NOTE: add back the object in the scene which was taken out at set_target
+    dual_manipulation_shared::scene_object_service srv_obj;
+    srv_obj.request.command = "add";
+    srv_obj.request.object_db_id = data_.obj_id;
+    // NOTE: this should be unique, while we can have more objects with the same "object_db_id"
+    srv_obj.request.attObject.object.id = data_.object_name;
+    srv_obj.request.attObject.object.mesh_poses.push_back( data_.source_position );
+    srv_obj.request.attObject.object.header.frame_id = "world";
+    if (scene_object_client.call(srv_obj))
+    {
+        ROS_INFO("IK_control:test_grasping : %s object %s request accepted: %d", srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str(), (int)srv_obj.response.ack);
+    }
+    else
+    {
+        ROS_ERROR("IK_control:test_grasping : Failed to call service dual_manipulation_shared::scene_object_service: %s %s",srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str());
+    }
+    
+    //NOTE: try to check for object in the scene, and wait for a while for them being set: if they aren't, the planner will not take them into account!
+    bool object_attached = false;
+    moveit_msgs::AttachedCollisionObject attObject_from_planning_scene;
+    int attempts_left = 10;
+    
+    while(!object_attached && attempts_left-- > 0)
+    {
+        moveit_msgs::GetPlanningScene srv;
+        uint32_t objects = moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES;
+        srv.request.components.components = objects;
+        if(!scene_client_.call(srv))
+            std::cout << CLASS_NAMESPACE << __func__ << " : unable to call /get_planning_scene service while looking for world object names..." << std::endl;
+        else
+        {
+            for(auto object:srv.response.scene.world.collision_objects)
+                if(object.id == srv_obj.request.attObject.object.id)
+                {
+                    object_attached = true;
+                    break;
+                }
+        }
+        
+        if(!object_attached)
+        {
+            std::cout << CLASS_NAMESPACE << __func__ << " : object \'" << srv_obj.request.attObject.object.id << "\' NOT FOUND in the planning scene!!! Sleeping 50ms and checking again for " << attempts_left << " times..." << std::endl;
+            usleep(50000);
+        }
+        else
+            std::cout << CLASS_NAMESPACE << __func__ << " : object \'" << srv_obj.request.attObject.object.id << "\' FOUND in the planning scene!!!" << std::endl;
+        
+    }
 }
 
 void ik_control_state::run()

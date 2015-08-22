@@ -362,7 +362,7 @@ bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame W
   results.resize(1);
   
   std::vector <double > initial_guess = std::vector<double>();
-  bool check_collisions = false;
+  bool check_collisions = true;
 //   bool return_approximate_solution = true;
 //   unsigned int attempts = 10;
 //   double timeout = 0.005;

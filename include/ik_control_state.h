@@ -69,6 +69,8 @@ private:
     bool need_replan;
     const databaseMapper& db_mapper;
     ros::Publisher planned_path_publisher_;
+    ros::ServiceClient scene_object_client;
+    ros::ServiceClient scene_client_;
 };
 
 #endif // IK_CONTROL_STATE_H
