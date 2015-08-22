@@ -22,7 +22,7 @@
 #define OBJ_GRASP_FACTOR 1000
 
 #define DEBUG 0 // if 1, print some more information
-#define SHOW_IK 1
+#define SHOW_IK 2
 #define MAX_ITER 100
 #define EPS 5e-3
 
@@ -419,6 +419,10 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
                 eraseCachedIKSolution(node);
         }
         
+        KDL::ChainFkSolverPos_recursive temp_fk(chains.at(current_ee_name));
+        KDL::JntArray temp;
+        temp.resize(chains.at(current_ee_name).getNrOfJoints());
+        moveit::core::RobotState rs = ik_check_capability->get_robot_state();
         // if there is no cache (or it is no longer valid), look for IK
         while(!done && !found)
         {
@@ -429,17 +433,16 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
             if (double_arm_solver.iksolver->CartToJnt(random_start,KDL::Frame::Identity(),q_out) >= 0)
             {
                 // prepare collision checking
-                moveit::core::RobotState rs = ik_check_capability->get_robot_state();
                 for(int j=0; j<First_Obj_Second.getNrOfJoints();j++)
                   rs.setJointPositions(double_arm_solver.joint_names.at(j),&(q_out(j)));
                 bool self_collision_only = false;
                 found = ik_check_capability->is_state_collision_free(&rs, "full_robot", self_collision_only);
                 std::cout << __func__ << "@" << __LINE__ << " : found a configuration which was " << (found?"NOT ":"") << "colliding!" << std::endl;
-#if DEBUG
-#if SHOW_IK
+#if SHOW_IK>1
                 publishConfig(double_arm_solver.joint_names,q_out);
                 ros::spinOnce();
 #endif
+#if DEBUG
                 KDL::Frame out_f;
                 double_arm_solver.fksolver->JntToCart(q_out,out_f);
                 std::cout << "Resulting transformation (should be the Identity)\n: " << out_f << std::endl;
@@ -448,14 +451,11 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
                 std::cin >> y;
 #endif
             }
-            if (counter++>10) done=true;
+            if (counter++>300) done=true;
         }
         if (found)
         {
             setCachedIKSolution(node,q_out);
-            KDL::ChainFkSolverPos_recursive temp_fk(chains.at(current_ee_name));
-            KDL::JntArray temp;
-            temp.resize(chains.at(current_ee_name).getNrOfJoints());
             for (int i=0;i<chains.at(current_ee_name).getNrOfJoints();i++)
             {
                 temp(i)=q_out(i);
@@ -464,7 +464,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
             temp_fk.JntToCart(temp,World_FirstEE);
             World_Object=World_FirstEE*Object.PostGraspFirstEE.Inverse();
             
-#if SHOW_IK
+#if SHOW_IK>0
             std::cout << "I found it!" << std::endl;
             publishConfig(double_arm_solver.joint_names,q_out);
 #if DEBUG
