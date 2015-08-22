@@ -14,8 +14,9 @@
 #include <kdl/frames_io.hpp>
 #include <moveit/robot_model/joint_model_group.h>
 
-#define HIGH 0.6
+#define HIGH 0.35
 #define LOW 0.06
+#define BOX_CONSTR_SIDE 0.2
 #define ANGLE_STEPS 4.0 // 6.0
 #define BIMANUAL_IK_ATTEMPTS 3
 #define BIMANUAL_IK_TIMEOUT 0.005
@@ -376,8 +377,8 @@ bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame W
 
 bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object) const
 {
-//     double centroid_x,centroid_y,centroid_z;
-//     compute_centroid(centroid_x,centroid_y,centroid_z,node);
+    double centroid_x,centroid_y,centroid_z;
+    compute_centroid(centroid_x,centroid_y,centroid_z,node);
 //     KDL::Frame World_centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
 
     Object_GraspMatrixes Object;
@@ -432,12 +433,35 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
             }
             if (double_arm_solver.iksolver->CartToJnt(random_start,KDL::Frame::Identity(),q_out) >= 0)
             {
-                // prepare collision checking
-                for(int j=0; j<First_Obj_Second.getNrOfJoints();j++)
-                  rs.setJointPositions(double_arm_solver.joint_names.at(j),&(q_out(j)));
-                bool self_collision_only = false;
-                found = ik_check_capability->is_state_collision_free(&rs, "full_robot", self_collision_only);
-                std::cout << __func__ << "@" << __LINE__ << " : found a configuration which was " << (found?"NOT ":"") << "colliding!" << std::endl;
+                
+                
+                if(am_I_Vito)
+                {
+                    for (int i=0;i<chains.at(current_ee_name).getNrOfJoints();i++)
+                    {
+                        temp(i)=q_out(i);
+                    }
+                    KDL::Frame World_FirstEE;
+                    temp_fk.JntToCart(temp,World_FirstEE);
+                    World_Object=World_FirstEE*Object.PostGraspFirstEE.Inverse();
+                    found = KDL::Equal(World_Object.p,KDL::Vector(centroid_x,centroid_y,centroid_z),BOX_CONSTR_SIDE/2.0);
+                }
+                else
+                {
+                    found = true;
+                    // as the limit has grown 10x, decimating the number of attempts when not using Vito
+                    counter += 9;
+                }
+                
+                if(found)
+                {
+                    // prepare collision checking
+                    for(int j=0; j<First_Obj_Second.getNrOfJoints();j++)
+                        rs.setJointPositions(double_arm_solver.joint_names.at(j),&(q_out(j)));
+                    bool self_collision_only = false;
+                    found = ik_check_capability->is_state_collision_free(&rs, "full_robot", self_collision_only);
+                    std::cout << __func__ << "@" << __LINE__ << " : found a configuration which was " << (found?"NOT ":"") << "colliding!" << std::endl;
+                }
 #if SHOW_IK>1
                 publishConfig(double_arm_solver.joint_names,q_out);
                 ros::spinOnce();
@@ -451,7 +475,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
                 std::cin >> y;
 #endif
             }
-            if (counter++>300) done=true;
+            if (counter++>3000) done=true;
         }
         if (found)
         {
