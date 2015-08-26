@@ -12,11 +12,14 @@
 #include <dual_manipulation_shared/scene_object_service.h>
 #include <moveit_msgs/GetPlanningScene.h>
 #include <moveit/move_group/capability_names.h>
+#include <dual_manipulation_shared/databasemapper.h>
 
 #define OBJ_GRASP_FACTOR 1000
-#define ALLOW_REPLANNING 0
+#define ALLOW_REPLANNING 1
 #define CLASS_LOGNAME "ik_control_state"
 #define CLASS_NAMESPACE "ik_control_state::"
+#define NUM_EE_IN_VITO 3
+#define NUM_KUKAS 6
 
 #if ALLOW_REPLANNING
 #include "../include/ik_need_semantic_replan.h"
@@ -102,6 +105,7 @@ std::map< transition, bool > ik_control_state::getResults()
     std::map< transition, bool > results;
     result =  (subdata.next_plan == subdata.cartesian_plan->size());
     if (current_state->get_type()=="ik_failing_substate") results[transition::abort_move]=true;
+    else if (need_replan) results[transition::plan]=true;
     else results[transition::task_accomplished]=result;
     return results;
 }
@@ -127,9 +131,37 @@ void ik_control_state::reset()
     current_state=waiting;
     current_state->reset();
     
+    bool ee_movable;
+    endeffector_id source_ee;
+    std::string source_ee_name;
+    source_ee = std::get<1>(data_.db_mapper.Grasps.at(data_.source_grasp));
+    source_ee_name = std::get<2>(data_.db_mapper.Grasps.at(data_.source_grasp));
+    ee_movable = std::get<1>(data_.db_mapper.EndEffectors.at(source_ee));
     //NOTE: add back the object in the scene which was taken out at set_target
     dual_manipulation_shared::scene_object_service srv_obj;
-    srv_obj.request.command = "add";
+    if(!ee_movable)
+        srv_obj.request.command = "add";
+    else
+    {
+        dual_manipulation_shared::grasp_trajectory grasp_msg;
+        std::string file_name = "object" + std::to_string(data_.obj_id) + "/grasp" + std::to_string(data_.source_grasp % OBJ_GRASP_FACTOR);
+        deserialize_ik(grasp_msg,file_name);
+        srv_obj.request.command = "attach";
+        srv_obj.request.ee_name = source_ee_name;
+        
+        // make names coherent with the current urdf
+        // TODO: make this more general
+        if(data_.db_mapper.EndEffectors.size() != NUM_EE_IN_VITO)
+            if(source_ee <= NUM_KUKAS)
+            {
+                srv_obj.request.attObject.link_name = std::to_string((int)((source_ee-1)/2)) + "_" + grasp_msg.attObject.link_name;
+//                 srv.request.attObject.object.header.frame_id = srv.request.attObject.link_name;
+//                 for(auto& j:srv.request.grasp_trajectory.joint_names)
+//                     j = std::to_string((int)((item.first-1)/2)) + "_" + j;
+            }
+//             
+//         srv_obj.request.attObject.link_name = grasp_msg.attObject.link_name;
+    }
     srv_obj.request.object_db_id = data_.obj_id;
     // NOTE: this should be unique, while we can have more objects with the same "object_db_id"
     srv_obj.request.attObject.object.id = data_.object_name;
@@ -152,18 +184,36 @@ void ik_control_state::reset()
     while(!object_attached && attempts_left-- > 0)
     {
         moveit_msgs::GetPlanningScene srv;
-        uint32_t objects = moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES;
+        uint32_t objects;
+        if(!ee_movable)
+            objects = moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES;
+        else
+            objects = moveit_msgs::PlanningSceneComponents::ROBOT_STATE_ATTACHED_OBJECTS;
         srv.request.components.components = objects;
         if(!scene_client_.call(srv))
-            std::cout << CLASS_NAMESPACE << __func__ << " : unable to call /get_planning_scene service while looking for world object names..." << std::endl;
+            std::cout << CLASS_NAMESPACE << __func__ << " : unable to call /get_planning_scene service while looking for objects in the scene..." << std::endl;
         else
         {
-            for(auto object:srv.response.scene.world.collision_objects)
-                if(object.id == srv_obj.request.attObject.object.id)
+            if(!ee_movable)
+                for(auto object:srv.response.scene.world.collision_objects)
                 {
-                    object_attached = true;
-                    break;
+                    if(object.id == srv_obj.request.attObject.object.id)
+                    {
+                        object_attached = true;
+                        break;
+                    }
                 }
+            else
+            {
+                for(auto object:srv.response.scene.robot_state.attached_collision_objects)
+                {
+                    if(object.object.id == srv_obj.request.attObject.object.id)
+                    {
+                        object_attached = true;
+                        break;
+                    }
+                }
+            }
         }
         
         if(!object_attached)

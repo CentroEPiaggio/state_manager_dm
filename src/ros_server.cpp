@@ -53,6 +53,7 @@ void ros_server::init()
         std::make_tuple( planned      , std::make_pair(transition::start_moving,true)       ,    moving         ),
         std::make_tuple( moving       , std::make_pair(transition::task_accomplished,true)  ,    steady         ),
         std::make_tuple( moving       , std::make_pair(transition::abort_move,true)         ,    steady         ),
+        std::make_tuple( moving       , std::make_pair(transition::plan,true)               ,    planning       ),
         //----------------------------+-----------------------------------------------------+-------------------+
         //         std::make_tuple( planning     , std::make_pair(transition::planning_done,true)      ,    steady         ),
         //         std::make_tuple( steady       , std::make_pair(transition::start_moving,true)       ,    moving         ),

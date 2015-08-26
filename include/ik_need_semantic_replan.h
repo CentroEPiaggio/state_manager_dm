@@ -11,6 +11,7 @@ public:
     virtual void run(){ask_semantic_replan();};
     virtual bool isComplete(){return true;};
     virtual std::string get_type(){return "ik_need_semantic_replan";};
+    virtual void reset();
     void ask_semantic_replan();
 private:
     ik_shared_memory& subdata_;

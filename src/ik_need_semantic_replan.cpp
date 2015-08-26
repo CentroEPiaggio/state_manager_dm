@@ -8,7 +8,13 @@
 
 ik_need_semantic_replan::ik_need_semantic_replan(ik_shared_memory& subdata, shared_memory& data):data_(data),database_(data.db_mapper),subdata_(subdata)
 {
+    reset();
+}
 
+void ik_need_semantic_replan::reset()
+{
+    failed_ = false;
+    need_replan_ = false;
 }
 
 void ik_need_semantic_replan::ask_semantic_replan()
@@ -16,7 +22,8 @@ void ik_need_semantic_replan::ask_semantic_replan()
   // failure condition: I've not been able to do even the first step > stop here!
   if(subdata_.next_plan == 0)
   {
-    failed_ = false;
+      need_replan_ = true;
+//     failed_ = true;
     return;
   }
   
@@ -27,15 +34,21 @@ void ik_need_semantic_replan::ask_semantic_replan()
   World_Object.orientation.w = 1;
   
   for(int i=0; i<subdata_.next_plan; i++)
-    if(subdata_.cartesian_plan->at(subdata_.next_plan).second.command == cartesian_commands::GRASP)
+    if(subdata_.cartesian_plan->at(i).second.command == cartesian_commands::GRASP)
     {
       movable_ee = true;
       grasp_id = subdata_.cartesian_plan->at(i).second.ee_grasp_id;
+      World_Object = subdata_.cartesian_plan->at(i).second.cartesian_task;
     }
-    else if(subdata_.cartesian_plan->at(subdata_.next_plan).second.command == cartesian_commands::UNGRASP)
+    else if(subdata_.cartesian_plan->at(i).second.command == cartesian_commands::UNGRASP)
     {
-      movable_ee = false;
-      World_Object = subdata_.cartesian_plan->at(subdata_.next_plan).second.cartesian_task;
+        if(subdata_.cartesian_plan->at(i).second.ee_grasp_id == grasp_id)
+            movable_ee = false;
+        World_Object = subdata_.cartesian_plan->at(i).second.cartesian_task;
+    }
+    else
+    {
+        ROS_WARN_STREAM(CLASS_NAMESPACE << __func__ << " : last part of the motion will not be considered as it was neither a grasp nor an ungrasp!!!");
     }
   
   if(!movable_ee)
