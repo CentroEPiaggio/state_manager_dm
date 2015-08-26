@@ -638,6 +638,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
     // 1) Clearing result vector
     result.clear();
 
+    // 2) Clear any previously found intergrasp configuration
+    cache_ik_solutions.clear();
+
     // 3) Start of the main conversion loop
     for (auto node_it=path.begin();node_it!=path.end();)//++node)
     {
