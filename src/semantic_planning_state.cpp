@@ -1,4 +1,5 @@
 #include "../include/semantic_planning_state.h"
+#include "dual_manipulation_planner/planner_lib.h"
 #include <dual_manipulation_shared/geometry_tools.h>
 #include <ros/init.h>
 #include <dual_manipulation_shared/stream_utils.h>
@@ -112,7 +113,10 @@ void semantic_planning_state::run()
                 if(converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes))
                     msg.good_source_grasps.push_back(temp.next_grasp_id);
                 else
+                {
                     msg.bad_source_grasps.push_back(temp.next_grasp_id);
+                    data.planner.add_filtered_arc(data.source_grasp,source,next_grasp_id,source);
+                }
             }
         }
         std::cout << std::endl;
@@ -141,7 +145,10 @@ void semantic_planning_state::run()
                 if(converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes))
                     msg.good_target_grasps.push_back(temp.current_grasp_id);
                 else
+                {
                     msg.bad_target_grasps.push_back(temp.current_grasp_id);
+                    data.planner.add_filtered_arc(current_grasp_id,target,data.target_grasp,target);
+                }
             }
         }
     }
