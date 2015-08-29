@@ -425,6 +425,11 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
         temp.resize(chains.at(current_ee_name).getNrOfJoints());
         moveit::core::RobotState rs = ik_check_capability->get_robot_state();
         // if there is no cache (or it is no longer valid), look for IK
+        uint max_counter;
+        if(am_I_Vito)
+            max_counter = 300;
+        else
+            max_counter = 30;
         while(!done && !found)
         {
             for (int i=0;i<First_Obj_Second.getNrOfJoints();i++)
@@ -449,8 +454,6 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
                 else
                 {
                     found = true;
-                    // as the limit has grown 10x, decimating the number of attempts when not using Vito
-                    counter += 9;
                 }
                 
                 if(found)
@@ -475,7 +478,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
                 std::cin >> y;
 #endif
             }
-            if (counter++>3000) done=true;
+            if (counter++>max_counter) done=true;
         }
         if (found)
         {
