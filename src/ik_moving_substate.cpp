@@ -22,9 +22,9 @@ ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data),db_ma
 
     typedef const dual_manipulation_shared::ik_response::ConstPtr& msg_type;
 
-    exe_sub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Execution"));
-    grasp_sub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Grasp"));
-    ungrasp_sub = n.subscribe<ik_moving_substate,msg_type>("/ik_control/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Ungrasp"));
+    exe_sub = n.subscribe<ik_moving_substate,msg_type>("ik_control/action_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Execution"));
+    grasp_sub = n.subscribe<ik_moving_substate,msg_type>("ik_control/grasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Grasp"));
+    ungrasp_sub = n.subscribe<ik_moving_substate,msg_type>("ik_control/ungrasp_done",1,boost::bind(&ik_moving_substate::callback, this, _1, "Ungrasp"));
 
     n.param("dual_manipulation_parameters/parallelize_plan_execute",parallelize_planning,PARALLELIZE_PLANNING);
     ROS_INFO_STREAM(CLASS_NAMESPACE << " : initialized and " << (parallelize_planning?"":"NOT ") << "parallelizing planning and execution!");

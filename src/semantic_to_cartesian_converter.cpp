@@ -784,7 +784,7 @@ bool semantic_to_cartesian_converter::publishConfig(const std::vector< std::stri
     static ros::NodeHandle node;
     if (!pub_initialized)
     {
-        joint_state_pub_ = node.advertise<sensor_msgs::JointState>("/sem2cart/joint_states",10);
+        joint_state_pub_ = node.advertise<sensor_msgs::JointState>("sem2cart/joint_states",10);
         pub_initialized = true;
     }
     sensor_msgs::JointState js_msg;

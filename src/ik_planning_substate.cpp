@@ -21,7 +21,7 @@ ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data),d
 
     typedef const dual_manipulation_shared::ik_response::ConstPtr& msg_type;
     
-    plan_sub = n.subscribe<ik_planning_substate,msg_type>("/ik_control/planning_done",1,boost::bind(&ik_planning_substate::callback, this, _1, "Just to use a boost::bind"));
+    plan_sub = n.subscribe<ik_planning_substate,msg_type>("ik_control/planning_done",1,boost::bind(&ik_planning_substate::callback, this, _1, "Just to use a boost::bind"));
 
     reset();
 }
