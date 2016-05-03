@@ -23,7 +23,6 @@ private:
     shared_memory& data_;
     bool fresh_data;
     ros::NodeHandle n;
-    ros::Publisher pub;
     ros::ServiceClient planner_client, gui_target_client, scene_object_client;
     ros::ServiceClient vision_client;
     ros::ServiceClient tracker_start_client,tracker_stop_client;
