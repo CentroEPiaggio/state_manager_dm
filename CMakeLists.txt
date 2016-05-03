@@ -15,13 +15,13 @@ else()
 endif()
 
 
-find_package(catkin REQUIRED COMPONENTS roscpp moveit_core dual_manipulation_shared kdl_conversions tf dual_manipulation_ik_control dual_manipulation_planner)
+find_package(catkin REQUIRED COMPONENTS roscpp moveit_core dual_manipulation_shared kdl_conversions tf dual_manipulation_ik_control dual_manipulation_planner lemon_ros)
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS dual_manipulation_shared
     dual_manipulation_ik_control dual_manipulation_planner
-  DEPENDS lemon
+#  DEPENDS lemon
 )
 
 include_directories(include ${catkin_INCLUDE_DIRS})
