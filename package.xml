@@ -16,8 +16,10 @@
   <build_depend>dual_manipulation_shared</build_depend>
   <build_depend>dual_manipulation_planner</build_depend>
   <build_depend>dual_manipulation_ik_control</build_depend>
+  <build_depend>lemon_ros</build_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>rviz</run_depend>
+  <run_depend>lemon_ros</run_depend>
   <run_depend>dual_manipulation_shared</run_depend>
   <run_depend>dual_manipulation_planner</run_depend>
   <run_depend>dual_manipulation_ik_control</run_depend>

@@ -128,8 +128,8 @@ namespace dual_manipulation{
                 arcWidthScale ( 0.0014 ).
                 drawArrows ( true ).
                 arrowWidth ( 3 ).
-                arcTexts(arcs_ids).
-                arcTextSize(3).
+                //arcTexts(arcs_ids).
+                //arcTextSize(3).
                 arrowLength ( 5 ).
                 //     enableParallel ( true ).
                 enableParallel().parArcDist(5).
