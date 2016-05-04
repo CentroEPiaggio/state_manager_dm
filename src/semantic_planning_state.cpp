@@ -13,6 +13,7 @@
 
 #define OBJ_GRASP_FACTOR 1000
 #define GRASP_TESTING 0
+#define DEBUG 0
 
 semantic_planning_state::semantic_planning_state(shared_memory& data):data(data),database(data.db_mapper),converter(data.db_mapper)
 {
@@ -102,10 +103,12 @@ void semantic_planning_state::run()
     }
     else
     {
-        std::cout << "#database.Grasp_transitions.at(" << data.source_grasp << ")=" << database.Grasp_transitions.at(data.source_grasp).size() << " | " << std::endl;
+        std::cout << "source: #database.Grasp_transitions.at(" << data.source_grasp << ")=" << database.Grasp_transitions.at(data.source_grasp).size() << " :" << std::endl;
         for (auto next_grasp_id :database.Grasp_transitions.at(data.source_grasp))
         {
-            std::cout << next_grasp_id << " | ";
+#if DEBUG>0
+            std::cout << " | " << next_grasp_id;
+#endif
             temp.next_grasp_id = next_grasp_id;
             temp.next_ee_id = std::get<1>(database.Grasps.at(next_grasp_id));
             if (database.Reachability.at(temp.next_ee_id).count(source))
@@ -119,7 +122,9 @@ void semantic_planning_state::run()
                 }
             }
         }
-        std::cout << std::endl;
+#if DEBUG>0
+        std::cout << " | " << std::endl;
+#endif
     }
     
     temp.next_ee_id = std::get<1>(database.Grasps.at(data.target_grasp));
@@ -136,8 +141,12 @@ void semantic_planning_state::run()
     }
     else
     {
+        std::cout << "target: #database.Grasp_transitions.at(" << data.target_grasp << ")=" << database.Grasp_transitions.at(data.target_grasp).size() << " :" << std::endl;
         for (auto current_grasp_id :database.Grasp_transitions.at(data.target_grasp))
         {
+#if DEBUG>0
+            std::cout << " | " << current_grasp_id;
+#endif
             temp.current_grasp_id = current_grasp_id;
             temp.current_ee_id = std::get<1>(database.Grasps.at(current_grasp_id));
             if (database.Reachability.at(temp.current_ee_id).count(target))
@@ -151,6 +160,9 @@ void semantic_planning_state::run()
                 }
             }
         }
+#if DEBUG>0
+        std::cout << " | " << std::endl;
+#endif
     }
     
     good_grasps_pub.publish(msg);
