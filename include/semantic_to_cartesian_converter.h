@@ -30,6 +30,8 @@ struct node_info
     endeffector_id current_ee_id=-1, next_ee_id=-1;
     workspace_id next_workspace_id=-1, current_workspace_id=-1;
     grasp_id current_grasp_id=-1, next_grasp_id=-1;
+    ros::Time current_t_start, next_t_start;
+    ros::Duration current_t_max_duration, next_t_max_duration;
     bool operator<(const node_info& a) const
     {
         uint64_t this_node_val = BIG_NR*BIG_NR*current_ee_id + BIG_NR*current_workspace_id + current_grasp_id;

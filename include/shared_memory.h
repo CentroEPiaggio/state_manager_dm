@@ -54,7 +54,7 @@ public:
 struct cartesian_command
 {
     cartesian_command(){};
-    cartesian_command(cartesian_commands command,int seq_num,grasp_id ee_grasp_id):command(command),seq_num(seq_num),ee_grasp_id(ee_grasp_id)
+    cartesian_command(cartesian_commands command,int seq_num,grasp_id ee_grasp_id,ros::Time t_start,ros::Duration t_max_duration):command(command),seq_num(seq_num),ee_grasp_id(ee_grasp_id),t_start(t_start.toSec()),t_max_duration(t_max_duration.toSec())
     {
         
     };
@@ -66,6 +66,14 @@ struct cartesian_command
      */
     int seq_num;
     grasp_id ee_grasp_id;
+    /**
+     * @brief allotted time for this command to be executed: start after t_start
+     */
+    ros::Time t_start;
+    /**
+     * @brief allotted time for this command to be executed: fail if the ending is after t_start+t_duration
+     */
+    ros::Duration t_max_duration;
 };
 
 std::ostream& operator<<(std::ostream &output, const cartesian_command &o);
