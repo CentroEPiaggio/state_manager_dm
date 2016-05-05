@@ -101,6 +101,7 @@ public:
   const object_id* obj_id;
   const std::string* object_name;
   std::atomic_bool robot_moving;
+  std::atomic_bool need_replan;
   std::atomic_bool move_failed;
   const databaseMapper& db_mapper;
 };

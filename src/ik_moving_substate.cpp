@@ -77,7 +77,11 @@ std::map< ik_transition, bool > ik_moving_substate::getResults()
 {
     std::unique_lock<std::mutex> lck(moving_executed_mutex);
     std::map< ik_transition, bool > results;
-    if(failed)
+    if(data_.need_replan.load())
+    {
+        results[ik_transition::need_replan]=true;
+    }
+    else if(failed)
     {
 	results[ik_transition::fail]=failed;
     }
@@ -99,7 +103,7 @@ bool ik_moving_substate::isComplete()
     if(data_.next_plan == data_.cartesian_plan->size()+1) moving_executed=0;
 
     // I can return if I executed the movement, I failed, or I sent the movement AND it's not the last one! (this only if I can parallelize, and NOT for grasping WPs..!)
-    return (moving_executed==0 || failed || (parallelize_planning && move_sent && !grasping && data_.next_plan < data_.cartesian_plan->size()));
+    return (data_.need_replan.load() || moving_executed==0 || failed || (parallelize_planning && move_sent && !grasping && data_.next_plan < data_.cartesian_plan->size()));
 }
 
 void ik_moving_substate::run()

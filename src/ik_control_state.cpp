@@ -76,9 +76,10 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data),subdata(data
 #endif
 	//----------------------------------+---------------------------------------------------------+-------------------- +
 	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::fail,true)                ,   failing           ),
-        std::make_tuple( ik_moving          , std::make_pair(ik_transition::fail,true)                ,   failing           ),
+	std::make_tuple( ik_moving          , std::make_pair(ik_transition::fail,true)                ,   failing           ),
 #if ALLOW_REPLANNING
 	std::make_tuple( ik_planning        , std::make_pair(ik_transition::fail,true)                ,   ik_need_replan    ),
+	std::make_tuple( ik_moving          , std::make_pair(ik_transition::need_replan,true)         ,   ik_need_replan    ),
 	std::make_tuple( ik_need_replan     , std::make_pair(ik_transition::fail,true)                ,   failing           ),
 #else
         std::make_tuple( ik_planning        , std::make_pair(ik_transition::fail,true)                ,   failing           ),
