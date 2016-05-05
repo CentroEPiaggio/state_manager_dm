@@ -5,6 +5,8 @@
 #include "state_machine.hpp"
 #include "dual_manipulation_shared/ik_service.h"
 #include "ros/ros.h"
+#include <std_msgs/String.h>
+#include <mutex>
 
 class ik_steady_substate : public abstract_state<ik_transition>
 {
@@ -60,6 +62,7 @@ private:
     void print_plan();
     void show_plan_with_tf();
     void show_plan_with_markers();
+    void force_replan(std_msgs::StringConstPtr s);
     ros::NodeHandle n;
     ros::ServiceClient client;
     dual_manipulation_shared::ik_service srv;
@@ -71,6 +74,9 @@ private:
     ros::Publisher planned_path_publisher_;
     ros::ServiceClient scene_object_client;
     ros::ServiceClient scene_client_;
+    ros::Publisher need_replan_pub_;
+    ros::Subscriber need_replan_sub_;
+    std::mutex client_mutex_;
 };
 
 #endif // IK_CONTROL_STATE_H
