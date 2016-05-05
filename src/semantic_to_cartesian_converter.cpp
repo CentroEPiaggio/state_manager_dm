@@ -26,6 +26,8 @@
 #define SHOW_IK 2
 #define MAX_ITER 100
 #define EPS 5e-3
+#define MULTI_OBJECT_PLANNING 1 // HOME commands should be blocking with multi-object planner
+#define SINGLE_MOVEMENT_DURATION 10 // consider 10 seconds for each movement... maybe less?
 
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
 std::map<node_info, KDL::JntArray> semantic_to_cartesian_converter::cache_ik_solutions;
@@ -331,6 +333,10 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     result.next_grasp_id=next_node->grasp_id;
     result.current_workspace_id=node->workspace_id;
     result.next_workspace_id=next_workspace_id;
+    result.current_t_start=node->departure_time;
+    result.current_t_max_duration=ros::Duration(SINGLE_MOVEMENT_DURATION);
+    result.next_t_start=next_node->departure_time;
+    result.next_t_max_duration=ros::Duration(SINGLE_MOVEMENT_DURATION);
     return result;
 }
 
@@ -669,10 +675,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         if (node.type==node_properties::LAST_EE_MOVABLE)
         {
 	    // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
-	    cartesian_command move_command;
-	    move_command.command=cartesian_commands::MOVE;
-	    move_command.seq_num = 1;
-	    move_command.ee_grasp_id=node.current_grasp_id;
+        cartesian_command move_command(cartesian_commands::MOVE,1,node.current_grasp_id,node.current_t_start,node.current_t_max_duration);
 	    KDL::Frame World_Object;
 	    tf::poseMsgToKDL(data.target_position,World_Object);
 	    tf::poseKDLToMsg(World_Object*Object.PostGraspFirstEE,move_command.cartesian_task);
@@ -695,15 +698,15 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             if (!checkSingleGrasp(World_Object,node,data,node_it==path.begin(),false,filtered_source_nodes,filtered_target_nodes))
                 return false;
             World_GraspSecondEE = World_Object*Object.PreGraspSecondEE;
-            cartesian_command move_command(cartesian_commands::MOVE_BEST_EFFORT, 1, node.next_grasp_id);
+            cartesian_command move_command(cartesian_commands::MOVE_BEST_EFFORT, 1, node.next_grasp_id,node.next_t_start,node.next_t_max_duration);
             tf::poseKDLToMsg(World_GraspSecondEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,move_command)); //move the next
 
             //From fixed to movable we will grasp the object
-            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id);
+            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id,node.next_t_start,node.next_t_max_duration);
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,grasp));
-	    // cartesian_command move_no_coll_command(cartesian_commands::MOVE_CLOSE_BEST_EFFORT, 1, node.next_grasp_id);
+            // cartesian_command move_no_coll_command(cartesian_commands::MOVE_CLOSE_BEST_EFFORT, 1, node.next_grasp_id,node.next_t_start,node.next_t_max_duration);
 	    // KDL::Frame World_postGraspSecondEE;
 	    // World_postGraspSecondEE = World_Object*Object.GraspFirstEE*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
 	    // tf::poseKDLToMsg(World_postGraspSecondEE,move_no_coll_command.cartesian_task);
@@ -714,11 +717,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
 #if DEBUG
 	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_FIXED" << std::endl;
 #endif
-            cartesian_command move_command;
-            move_command.command=cartesian_commands::MOVE_BEST_EFFORT;
-            move_command.ee_grasp_id=node.current_grasp_id;
-            move_command.seq_num=1;//do not parallelize with the fixed ee :)
-            cartesian_command move_no_coll_command(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, node.current_grasp_id);
+            //do not parallelize with the fixed ee :)
+            cartesian_command move_command(cartesian_commands::MOVE_BEST_EFFORT,1,node.current_grasp_id,node.current_t_start,node.current_t_max_duration);
+            cartesian_command move_no_coll_command(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, node.current_grasp_id,node.current_t_start,node.current_t_max_duration);
             // 3.6) compute a rough position of the place where the change of grasp will happen
             if (!checkSingleGrasp(World_Object,node,data,false,((next_node_it+1) == path.end()),filtered_source_nodes,filtered_target_nodes))
                 return false;
@@ -728,12 +729,13 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             KDL::Frame World_GraspSecondEE = World_Object*Object.PostGraspFirstEE;
             tf::poseKDLToMsg(World_GraspSecondEE,move_no_coll_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_no_coll_command)); //move the first
-            cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id);
+            cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id,node.current_t_start,node.current_t_max_duration);
 	    // TODO: check the following transformation, should be more precisely something like 
             // TODO: "World_Object*Object_PostGraspFirstEE*(Object_GraspFirstEE.Inverse())"
 	    tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
-            cartesian_command move_away(cartesian_commands::HOME,0,-1);
+            // NOTE: this may be too restrictive (ask to move, ungrasp, and go back home, all in t_max_duration
+            cartesian_command move_away(cartesian_commands::HOME,MULTI_OBJECT_PLANNING,-1,node.current_t_start,node.current_t_max_duration);
             result.push_back(std::make_pair(node.current_ee_id,move_away));
         }
         else if (node.type==node_properties::MOVABLE_TO_MOVABLE)
@@ -741,7 +743,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
 #if DEBUG
 	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_MOVABLE" << std::endl;
 #endif
-            cartesian_command move_command(cartesian_commands::MOVE,0,-1); // Care, we are parallelizing here!
+            cartesian_command move_command(cartesian_commands::MOVE,0,-1,node.current_t_start,node.current_t_max_duration); // Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
             bool intergrasp_ok = compute_intergrasp_orientation(World_Object,node,data.obj_id);
             if (!intergrasp_ok)
@@ -752,19 +754,19 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             KDL::Frame World_GraspFirstEE = World_Object*Object.PostGraspFirstEE;
             tf::poseKDLToMsg(World_GraspFirstEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_command)); //move the first
-            cartesian_command second_move_command(cartesian_commands::MOVE,1,-1); // do NOT parallelize;
+            cartesian_command second_move_command(cartesian_commands::MOVE,1,-1,node.current_t_start,node.current_t_max_duration); // do NOT parallelize;
             World_GraspSecondEE = World_Object*Object.PreGraspSecondEE;
             tf::poseKDLToMsg(World_GraspSecondEE,second_move_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,second_move_command)); //move the next
             //From movable to movable we will grasp the object and ungrasp it
-            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id);
+            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id,node.next_t_start,node.next_t_max_duration);
             // make sure that the grasp/ungrasp actions have the object frame
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,grasp));
-            cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id);
+            cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id,node.next_t_start,node.next_t_max_duration);
             tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
-            cartesian_command move_away(cartesian_commands::HOME,0,-1);
+            cartesian_command move_away(cartesian_commands::HOME,MULTI_OBJECT_PLANNING,-1,node.next_t_start,node.next_t_max_duration);
             result.push_back(std::make_pair(node.current_ee_id,move_away));
         }
         else 
