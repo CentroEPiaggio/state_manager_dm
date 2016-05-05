@@ -63,6 +63,17 @@ void ik_moving_substate::callback(const dual_manipulation_shared::ik_response::C
         }
         else
             ROS_WARN_STREAM("There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
+        
+        // if max time elapsed, communicate a replan is needed
+        if(data_.next_plan > 0)
+        {
+            ros::Time time_limit;
+            time_limit = data_.cartesian_plan->at(data_.next_plan-1).second.t_start + data_.cartesian_plan->at(data_.next_plan-1).second.t_max_duration;
+            if(ros::Time::now() > time_limit)
+            {
+                data_.need_replan.store(true);
+            }
+        }
     }
     else
     {
