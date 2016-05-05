@@ -193,7 +193,8 @@ void semantic_planning_state::run()
                 }
             }
         #else
-        if (data.planner.plan(data.source_grasp,source,data.target_grasp,target,srv.response.path))
+        // if (data.planner.plan(data.source_grasp,source,data.target_grasp,target,srv.response.path))
+        if (data.planner.remote_plan(data.source_grasp,source,data.target_grasp,target,srv.response.path))
         {
             {
                 data.planner.draw_path();
@@ -244,6 +245,12 @@ void semantic_planning_state::run()
                 ROS_ERROR_STREAM("Error converting semantic to cartesian! Maximum number of attempts reached!");
             }
             continue;
+        }
+        else
+        {
+            // send ack to the planner, wait for planner response after all have planned
+            // if the response was negative, continue;
+            if(!data.planner.barrier()) continue;
         }
         #endif
         std::cout << "=== Semantic and Cartesian plans print-out ===" << std::endl;
