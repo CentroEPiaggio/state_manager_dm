@@ -21,6 +21,7 @@
 #define BIMANUAL_IK_ATTEMPTS 3
 #define BIMANUAL_IK_TIMEOUT 0.005
 #define OBJ_GRASP_FACTOR 1000
+#define EXTRA_TIME_TO_GO_HOME 0.0
 
 #define DEBUG 0 // if 1, print some more information
 #define SHOW_IK 2
@@ -299,6 +300,11 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     endeffector_id next_ee_id=-1;
     workspace_id next_workspace_id=-1;
     bool next_movable=false;
+    
+    // initialize t_start with current node properties
+    result.current_t_start=node->departure_time;
+    result.current_t_max_duration=ros::Duration(SINGLE_MOVEMENT_DURATION);
+    
     while (!found && next_node!=path.end()) //Here we simplify (i.e. remove) all the transitions such that ee_id=next_ee_id and workspace_id != next_workspace_id
     {
         next_node++;
@@ -307,7 +313,14 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
             next_ee_id = std::get<1>(database.Grasps.at(next_node->grasp_id));
             next_workspace_id = next_node->workspace_id;
             next_movable=std::get<1>(database.EndEffectors.at(next_ee_id));
-            if (ee_id==next_ee_id) continue;
+            if (ee_id==next_ee_id)
+            {
+                // update departure time when considering change of workspace only
+                // NOTE: this is in the hypothesis that one SINGLE_MOVEMENT_DURATION is enough to perform change of workspace of any "length"
+                result.current_t_start=next_node->departure_time;
+                result.current_t_max_duration=ros::Duration(SINGLE_MOVEMENT_DURATION);
+                continue;
+            }
             else
             {
                 found=true;
@@ -333,8 +346,8 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     result.next_grasp_id=next_node->grasp_id;
     result.current_workspace_id=node->workspace_id;
     result.next_workspace_id=next_workspace_id;
-    result.current_t_start=node->departure_time;
-    result.current_t_max_duration=ros::Duration(SINGLE_MOVEMENT_DURATION);
+    // result.current_t_start=node->departure_time;
+    // result.current_t_max_duration=ros::Duration(SINGLE_MOVEMENT_DURATION);
     result.next_t_start=next_node->departure_time;
     result.next_t_max_duration=ros::Duration(SINGLE_MOVEMENT_DURATION);
     return result;
@@ -698,12 +711,12 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             if (!checkSingleGrasp(World_Object,node,data,node_it==path.begin(),false,filtered_source_nodes,filtered_target_nodes))
                 return false;
             World_GraspSecondEE = World_Object*Object.PreGraspSecondEE;
-            cartesian_command move_command(cartesian_commands::MOVE_BEST_EFFORT, 1, node.next_grasp_id,node.next_t_start,node.next_t_max_duration);
+            cartesian_command move_command(cartesian_commands::MOVE_BEST_EFFORT, 1, node.next_grasp_id,node.current_t_start,node.current_t_max_duration);
             tf::poseKDLToMsg(World_GraspSecondEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,move_command)); //move the next
 
             //From fixed to movable we will grasp the object
-            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id,node.next_t_start,node.next_t_max_duration);
+            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id,node.current_t_start,node.current_t_max_duration);
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,grasp));
             // cartesian_command move_no_coll_command(cartesian_commands::MOVE_CLOSE_BEST_EFFORT, 1, node.next_grasp_id,node.next_t_start,node.next_t_max_duration);
@@ -759,14 +772,14 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             tf::poseKDLToMsg(World_GraspSecondEE,second_move_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,second_move_command)); //move the next
             //From movable to movable we will grasp the object and ungrasp it
-            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id,node.next_t_start,node.next_t_max_duration);
+            cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id,node.current_t_start,node.current_t_max_duration);
             // make sure that the grasp/ungrasp actions have the object frame
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,grasp));
-            cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id,node.next_t_start,node.next_t_max_duration);
+            cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id,node.current_t_start,node.current_t_max_duration);
             tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
-            cartesian_command move_away(cartesian_commands::HOME,MULTI_OBJECT_PLANNING,-1,node.next_t_start,node.next_t_max_duration);
+            cartesian_command move_away(cartesian_commands::HOME,MULTI_OBJECT_PLANNING,-1,node.current_t_start,node.current_t_max_duration + ros::Duration(EXTRA_TIME_TO_GO_HOME));
             result.push_back(std::make_pair(node.current_ee_id,move_away));
         }
         else 
