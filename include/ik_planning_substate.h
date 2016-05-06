@@ -28,12 +28,14 @@ private:
     void callback(const dual_manipulation_shared::ik_response::ConstPtr& str, std::string type);
     void reset();
     int sequence_counter;
+    int next_plan_offset;
     std::set<int> pending_sequence_numbers;
     std::mutex plan_executed_mutex;
     const databaseMapper& db_mapper;
     bool plan_sent;
     bool failed;
     bool checking_grasp;
+    bool waiting_t_start;
     planning_cmd commands;
 };
 

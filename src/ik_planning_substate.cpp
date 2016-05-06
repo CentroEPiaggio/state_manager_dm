@@ -34,6 +34,7 @@ void ik_planning_substate::reset()
     failed=false;
     checking_grasp = false;
     pending_sequence_numbers.clear();
+    waiting_t_start = false;
 }
 
 void ik_planning_substate::callback(const dual_manipulation_shared::ik_response::ConstPtr& str, std::string type)
@@ -99,12 +100,6 @@ void ik_planning_substate::run()
     bool is_first_plan = true;
     cartesian_commands last_plan;
     std::string planning_ee_name = "";
-
-    srv.request.command = "";
-    srv.request.ee_name = "";
-    srv.request.ee_pose.clear();
-
-    int i=-1;
     
     if(data_.cartesian_plan->size()==0)
     {
@@ -112,8 +107,21 @@ void ik_planning_substate::run()
 	return;
     }
     
-    do
+    // cycle here only the first time I call this run() function
+    // either I send the plan, or I need to wait for t_start, and do nothing here but check again the time
+    if(!waiting_t_start)
     {
+        // clear the request, only the first time
+        // it will be filled in the do-while cycle
+        srv.request.command = "";
+        srv.request.ee_name = "";
+        srv.request.ee_pose.clear();
+        next_plan_offset = -1;
+        
+        int i = next_plan_offset;
+        
+        do
+        {
         i++;
 	auto item = data_.cartesian_plan->at(data_.next_plan+i);
 
@@ -222,7 +230,9 @@ void ik_planning_substate::run()
 	  srv.request.ee_pose.clear();
 	}
 
-    } while((data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0) && (data_.cartesian_plan->size() > data_.next_plan+i+1));
+        } while((data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0) && (data_.cartesian_plan->size() > data_.next_plan+i+1));
+        
+        next_plan_offset = i;
 
     // if the service had to be called (!empty), but I couldn't: ERROR
     if(!srv.request.command.empty() && !client.call(srv))
@@ -234,13 +244,28 @@ void ik_planning_substate::run()
     
     srv.request.command = commands.plan_command[data_.cartesian_plan->at(data_.next_plan+i).second.command];
     srv.request.ee_name = planning_ee_name;
+    }
+    
+    // if it is too early, wait some time here
+    ros::Time time_limit;
+    time_limit = data_.cartesian_plan->at(data_.next_plan+next_plan_offset).second.t_start;
+    if(ros::Time::now() < time_limit)
+    {
+        waiting_t_start = true;
+        return;
+    }
+    else
+    {
+        waiting_t_start = false;
+    }
     
     std::unique_lock<std::mutex> lck(plan_executed_mutex);
     plan_executed++;
     sequence_counter++;
     srv.request.seq=sequence_counter;
+    
+    std::cout << "data_.next_plan+next_plan_offset = " << data_.next_plan+next_plan_offset << std::endl;
 
-    std::cout << "data_.next_plan+i = " << data_.next_plan+i << std::endl;
     if(client.call(srv))
     {
         pending_sequence_numbers.insert(sequence_counter);
