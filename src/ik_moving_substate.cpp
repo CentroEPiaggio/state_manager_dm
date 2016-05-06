@@ -8,6 +8,7 @@
 #define CLASS_NAMESPACE "ik_moving_substate::"
 #define NUM_KUKAS 6
 #define NUM_EE_IN_VITO 3
+#define IS_FACTORY 0
 
 ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data),db_mapper(data.db_mapper)
 {
@@ -167,6 +168,7 @@ void ik_moving_substate::run()
                 
                 // make names coherent with the current urdf
                 // TODO: make this more general
+#if IS_FACTORY>0
                 if(db_mapper.EndEffectors.size() != NUM_EE_IN_VITO)
                     if(item.first <= NUM_KUKAS)
                     {
@@ -175,6 +177,7 @@ void ik_moving_substate::run()
                         for(auto& j:srv.request.grasp_trajectory.joint_names)
                             j = std::to_string((int)((item.first-1)/2)) + "_" + j;
                     }
+#endif
 			
 			    // change frame of reference of the grasp trajectory to the current object frame
 			    change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
