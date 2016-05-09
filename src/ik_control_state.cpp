@@ -20,6 +20,7 @@
 #define CLASS_NAMESPACE "ik_control_state::"
 #define NUM_EE_IN_VITO 3
 #define NUM_KUKAS 6
+#define IS_FACTORY 0
 
 #if ALLOW_REPLANNING
 #include "../include/ik_need_semantic_replan.h"
@@ -156,9 +157,11 @@ void ik_control_state::reset()
         deserialize_ik(grasp_msg,file_name);
         srv_obj.request.command = "attach";
         srv_obj.request.ee_name = source_ee_name;
+        srv_obj.request.attObject.link_name = grasp_msg.attObject.link_name;
         
         // make names coherent with the current urdf
         // TODO: make this more general
+#if IS_FACTORY>0
         if(data_.db_mapper.EndEffectors.size() != NUM_EE_IN_VITO)
             if(source_ee <= NUM_KUKAS)
             {
@@ -167,8 +170,7 @@ void ik_control_state::reset()
 //                 for(auto& j:srv.request.grasp_trajectory.joint_names)
 //                     j = std::to_string((int)((item.first-1)/2)) + "_" + j;
             }
-//             
-//         srv_obj.request.attObject.link_name = grasp_msg.attObject.link_name;
+#endif
     }
     srv_obj.request.object_db_id = data_.obj_id;
     // NOTE: this should be unique, while we can have more objects with the same "object_db_id"
