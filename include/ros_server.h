@@ -34,6 +34,7 @@ private:
     abstract_state<transition>* current_state;
     std::map<transition,bool> transition_map;
     ros::Publisher state_pub;
+    bool auto_moving_after_plan;
 };
 
 

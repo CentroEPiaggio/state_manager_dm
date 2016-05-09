@@ -8,6 +8,8 @@
 #include <exit_state.h>
 #include <std_msgs/String.h>
 
+#define AUTO_MOVING false
+
 using namespace dual_manipulation::state_manager;
 
 ros_server::ros_server() : aspin(1)
@@ -16,6 +18,10 @@ ros_server::ros_server() : aspin(1)
     init();
     service = node.advertiseService("state_manager_ros_service", &ros_server::state_manager_ros_service, this);
     state_pub  = node.advertise<std_msgs::String>("state_machine_change",5);
+    
+    node.param("dual_manipulation_parameters/auto_moving_after_plan",auto_moving_after_plan,AUTO_MOVING);
+    ROS_INFO_STREAM("ros_server" << (auto_moving_after_plan?" ":" NOT ") << "auto moving after planned!");
+    
     loop_thread=std::thread(&ros_server::loop,this);
 }
 
@@ -112,6 +118,13 @@ void ros_server::loop()
 	    transition_map.clear();
 	    break;
 	}
+    }
+    if(auto_moving_after_plan)
+    {
+        if(current_state->get_type()=="planned")
+        {
+            transition_map[transition::start_moving]=true;
+        }
     }
     }
 }
