@@ -250,7 +250,14 @@ void semantic_planning_state::run()
         {
             // send ack to the planner, wait for planner response after all have planned
             // if the response was negative, continue;
-            if(!data.planner.barrier()) continue;
+            if(!data.planner.barrier())
+            {
+                continue;
+            }
+            else
+            {
+                data.planner.draw_path();
+            }
         }
         #endif
         std::cout << "=== Semantic and Cartesian plans print-out ===" << std::endl;
