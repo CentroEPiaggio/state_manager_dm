@@ -20,6 +20,7 @@
 #define CLASS_NAMESPACE "ik_control_state::"
 #define NUM_EE_IN_VITO 3
 #define NUM_KUKAS 6
+#define IS_FACTORY 0
 
 #if ALLOW_REPLANNING
 #include "../include/ik_need_semantic_replan.h"
@@ -76,9 +77,10 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data),subdata(data
 #endif
 	//----------------------------------+---------------------------------------------------------+-------------------- +
 	std::make_tuple( ik_checking_grasp  , std::make_pair(ik_transition::fail,true)                ,   failing           ),
-        std::make_tuple( ik_moving          , std::make_pair(ik_transition::fail,true)                ,   failing           ),
+	std::make_tuple( ik_moving          , std::make_pair(ik_transition::fail,true)                ,   failing           ),
 #if ALLOW_REPLANNING
 	std::make_tuple( ik_planning        , std::make_pair(ik_transition::fail,true)                ,   ik_need_replan    ),
+	std::make_tuple( ik_moving          , std::make_pair(ik_transition::need_replan,true)         ,   ik_need_replan    ),
 	std::make_tuple( ik_need_replan     , std::make_pair(ik_transition::fail,true)                ,   failing           ),
 #else
         std::make_tuple( ik_planning        , std::make_pair(ik_transition::fail,true)                ,   failing           ),
@@ -98,6 +100,10 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data),subdata(data
     planned_path_publisher_ = n.advertise<visualization_msgs::MarkerArray>("cartesian_converted_semantic_path", 1000, true );
     scene_object_client = n.serviceClient<dual_manipulation_shared::scene_object_service>("scene_object_ros_service");
     scene_client_ = n.serviceClient<moveit_msgs::GetPlanningScene>(move_group::GET_PLANNING_SCENE_SERVICE_NAME);
+    
+    // publisher and subscriber to communicate with other state machines
+    need_replan_pub_ = n.advertise<std_msgs::String>("/state_manager_need_replan",100,true);
+    need_replan_sub_ = n.subscribe("/state_manager_need_replan",1,&ik_control_state::force_replan,this);
 }
 
 std::map< transition, bool > ik_control_state::getResults()
@@ -113,6 +119,7 @@ std::map< transition, bool > ik_control_state::getResults()
 void ik_control_state::reset()
 {
     srv.request.command = "free_all";
+    client_mutex_.lock();
     if(client.call(srv))
     {
 	ROS_INFO_STREAM("IK FREE_ALL Request accepted: (" << (int)srv.response.ack << ")");
@@ -121,10 +128,12 @@ void ik_control_state::reset()
     {
 	ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
     }
+    client_mutex_.unlock();
 
     subdata.next_plan=0;
     subdata.robot_moving.store(false);
     subdata.move_failed.store(false);
+    subdata.need_replan.store(false);
     complete=false;
     new_plan = true;
     need_replan = false;
@@ -148,9 +157,11 @@ void ik_control_state::reset()
         deserialize_ik(grasp_msg,file_name);
         srv_obj.request.command = "attach";
         srv_obj.request.ee_name = source_ee_name;
+        srv_obj.request.attObject.link_name = grasp_msg.attObject.link_name;
         
         // make names coherent with the current urdf
         // TODO: make this more general
+#if IS_FACTORY>0
         if(data_.db_mapper.EndEffectors.size() != NUM_EE_IN_VITO)
             if(source_ee <= NUM_KUKAS)
             {
@@ -159,8 +170,7 @@ void ik_control_state::reset()
 //                 for(auto& j:srv.request.grasp_trajectory.joint_names)
 //                     j = std::to_string((int)((item.first-1)/2)) + "_" + j;
             }
-//             
-//         srv_obj.request.attObject.link_name = grasp_msg.attObject.link_name;
+#endif
     }
     srv_obj.request.object_db_id = data_.obj_id;
     // NOTE: this should be unique, while we can have more objects with the same "object_db_id"
@@ -236,7 +246,11 @@ void ik_control_state::run()
     }
     else if(current_state->get_type()=="ik_need_semantic_replan")
     {
-	need_replan = true;
+        need_replan = true;
+        std_msgs::String s;
+        s.data = data_.object_name;
+        need_replan_pub_.publish(s);
+        ros::spinOnce();
     }
 
     if(new_plan || show_plan)
@@ -285,6 +299,27 @@ bool ik_control_state::isComplete()
 std::string ik_control_state::get_type()
 {
     return "ik_control_state";
+}
+
+void ik_control_state::force_replan(std_msgs::StringConstPtr s)
+{
+    // stop the robot
+    // this could be done if(subdata.object_name != s->data), but this behavior is safer anyway (one more stop request to ik_control)
+    srv.request.command = "stop";
+    srv.request.ee_name = "full_robot";
+    client_mutex_.lock();
+    if(client.call(srv))
+    {
+        ROS_INFO_STREAM(srv.request.command << " request accepted: (" << (int)srv.response.ack << ")");
+    }
+    else
+    {
+        ROS_ERROR_STREAM("Failed to call service " << client.getService() << ":: " << srv.request.command);
+    }
+    client_mutex_.unlock();
+    
+    // advertise to substates that a replan is needed
+    subdata.need_replan.store(true);
 }
 
 void ik_control_state::print_plan()

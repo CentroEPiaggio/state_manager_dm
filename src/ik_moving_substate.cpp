@@ -8,6 +8,7 @@
 #define CLASS_NAMESPACE "ik_moving_substate::"
 #define NUM_KUKAS 6
 #define NUM_EE_IN_VITO 3
+#define IS_FACTORY 0
 
 ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data),db_mapper(data.db_mapper)
 {
@@ -77,7 +78,11 @@ std::map< ik_transition, bool > ik_moving_substate::getResults()
 {
     std::unique_lock<std::mutex> lck(moving_executed_mutex);
     std::map< ik_transition, bool > results;
-    if(failed)
+    if(data_.need_replan.load())
+    {
+        results[ik_transition::need_replan]=true;
+    }
+    else if(failed)
     {
 	results[ik_transition::fail]=failed;
     }
@@ -99,7 +104,7 @@ bool ik_moving_substate::isComplete()
     if(data_.next_plan == data_.cartesian_plan->size()+1) moving_executed=0;
 
     // I can return if I executed the movement, I failed, or I sent the movement AND it's not the last one! (this only if I can parallelize, and NOT for grasping WPs..!)
-    return (moving_executed==0 || failed || (parallelize_planning && move_sent && !grasping && data_.next_plan < data_.cartesian_plan->size()));
+    return (data_.need_replan.load() || moving_executed==0 || failed || (parallelize_planning && move_sent && !grasping && data_.next_plan < data_.cartesian_plan->size()));
 }
 
 void ik_moving_substate::run()
@@ -163,6 +168,7 @@ void ik_moving_substate::run()
                 
                 // make names coherent with the current urdf
                 // TODO: make this more general
+#if IS_FACTORY>0
                 if(db_mapper.EndEffectors.size() != NUM_EE_IN_VITO)
                     if(item.first <= NUM_KUKAS)
                     {
@@ -171,6 +177,7 @@ void ik_moving_substate::run()
                         for(auto& j:srv.request.grasp_trajectory.joint_names)
                             j = std::to_string((int)((item.first-1)/2)) + "_" + j;
                     }
+#endif
 			
 			    // change frame of reference of the grasp trajectory to the current object frame
 			    change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
