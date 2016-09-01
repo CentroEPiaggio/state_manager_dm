@@ -344,33 +344,19 @@ void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, d
 
 bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame World_EE) const
 {
-  std::vector<geometry_msgs::Pose> ee_poses;
-  ee_poses.resize(1);
-  geometry_msgs::Pose &ee_pose = ee_poses.at(0);
-//   if(ee_name != "left_hand" && ee_name != "right_hand")
-//   {
-//     ROS_ERROR_STREAM("semantic_to_cartesian_converter::check_ik : unknown end-effector <" << ee_name << ">");
-//     ROS_ERROR("At now, only \"left_hand\" and \"right_hand\" are supported!");
-//     return false;
-//   }
+  geometry_msgs::Pose ee_pose;
   tf::poseKDLToMsg(World_EE,ee_pose);
   
 #if DEBUG
   std::cout << "check_ik: " << ee_name << " in " << ee_pose << std::endl;
 #endif
   
-  std::vector<std::vector<double>> results;
-  results.resize(1);
-  
+  std::vector<double> result;
   std::vector <double > initial_guess = std::vector<double>();
   bool check_collisions = true;
-//   bool return_approximate_solution = true;
-//   unsigned int attempts = 10;
-//   double timeout = 0.005;
-//   std::map <std::string, std::string > allowed_collisions = std::map< std::string, std::string >();
   
   ik_check_capability->reset_robot_state();
-  bool found_ik = ik_check_capability->find_group_ik(ee_name,ee_poses,results,initial_guess,check_collisions/*,return_approximate_solution,attempts,timeout,allowed_collisions*/);
+  bool found_ik = ik_check_capability->find_group_ik(ee_name,ee_pose,result,initial_guess,check_collisions);
   
   return found_ik;
 }
