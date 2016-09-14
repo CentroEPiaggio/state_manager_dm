@@ -11,18 +11,11 @@
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/tree.hpp>
 #include <ik_check_capability/ik_check_capability.h>
+#include <dual_manipulation_shared/node_transitions.h>
 
 #define BIG_NR 10000
 
-enum class node_properties
-{
-    UNGRASP,            //found, one is movable, change on ground
-    GRASP,              //found, one is movable, change on ground
-    EXCHANGE_GRASP,     //found, both ee are movable: change above ground
-    UNKNOWN,            //if (!movable && !next_movable)
-    LAST_EE_FIXED,             //3.4.1) if not found, than ee_id is the last end effector in the path //not found not movable
-    LAST_EE_MOVABLE            //else //not found->last e.e, movable
-};
+typedef dual_manipulation::shared::NodeTransitionTypes node_properties;
 
 struct node_info
 {
