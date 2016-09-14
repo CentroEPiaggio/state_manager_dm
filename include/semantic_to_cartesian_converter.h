@@ -16,17 +16,17 @@
 
 enum class node_properties
 {
-    MOVABLE_TO_FIXED,          //found, one is movable, change on ground
-    FIXED_TO_MOVABLE,          //found, one is movable, change on ground
-    MOVABLE_TO_MOVABLE,        //found, both ee are movable: change above ground
-    FIXED_TO_FIXED,            //if (!movable && !next_movable)
+    UNGRASP,            //found, one is movable, change on ground
+    GRASP,              //found, one is movable, change on ground
+    EXCHANGE_GRASP,     //found, both ee are movable: change above ground
+    UNKNOWN,            //if (!movable && !next_movable)
     LAST_EE_FIXED,             //3.4.1) if not found, than ee_id is the last end effector in the path //not found not movable
     LAST_EE_MOVABLE            //else //not found->last e.e, movable
 };
 
 struct node_info
 {
-    node_properties type=node_properties::FIXED_TO_FIXED;
+    node_properties type=node_properties::UNKNOWN;
     endeffector_id current_ee_id=-1, next_ee_id=-1;
     workspace_id next_workspace_id=-1, current_workspace_id=-1;
     grasp_id current_grasp_id=-1, next_grasp_id=-1;

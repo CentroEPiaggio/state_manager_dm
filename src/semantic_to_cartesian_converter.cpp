@@ -279,7 +279,7 @@ void semantic_to_cartesian_converter::compute_centroid(double& centroid_x,double
     }
     centroid_x=centroid_x/database.WorkspaceGeometry.at(w_id).size();
     centroid_y=centroid_y/database.WorkspaceGeometry.at(w_id).size();
-    if (node.type==node_properties::MOVABLE_TO_MOVABLE) //both ee are movable: change above ground
+    if (node.type==node_properties::EXCHANGE_GRASP) //both ee are movable: change above ground
     {centroid_z=HIGH;}
     else //one is movable, change on ground
     {centroid_z=LOW;}
@@ -315,10 +315,10 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     }
     if (found)
     {
-        if (movable && !next_movable) result.type=node_properties::MOVABLE_TO_FIXED;          //found, one is movable, change on ground
-        if (!movable && next_movable) result.type=node_properties::FIXED_TO_MOVABLE;          //found, one is movable, change on ground
-        if (movable && next_movable) result.type=node_properties::MOVABLE_TO_MOVABLE;        //found, both ee are movable: change above ground
-        if (!movable && !next_movable) result.type=node_properties::FIXED_TO_FIXED;            //if (!movable && !next_movable)
+        if (movable && !next_movable) result.type=node_properties::UNGRASP;          //found, one is movable, change on ground
+        if (!movable && next_movable) result.type=node_properties::GRASP;          //found, one is movable, change on ground
+        if (movable && next_movable) result.type=node_properties::EXCHANGE_GRASP;        //found, both ee are movable: change above ground
+        if (!movable && !next_movable) result.type=node_properties::UNKNOWN;            //if (!movable && !next_movable)
     }
     else
     {
@@ -371,7 +371,7 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
     auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
     auto next_ee_name=std::get<0>(database.EndEffectors.at(node.next_ee_id));
     if (!getGraspMatrixes(object, node, Object)) abort();
-    if (node.type==node_properties::MOVABLE_TO_MOVABLE)
+    if (node.type==node_properties::EXCHANGE_GRASP)
     {
         //New implementation //TODO: check for PreGrasp
         KDL::Chain First_Obj_Second;
@@ -489,11 +489,11 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
         }
         return found;
     }
-    else if (node.type==node_properties::FIXED_TO_MOVABLE)
+    else if (node.type==node_properties::GRASP)
     {
         abort();
     }
-    else if (node.type==node_properties::MOVABLE_TO_FIXED)
+    else if (node.type==node_properties::UNGRASP)
     {
         abort();
     }
@@ -552,10 +552,10 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
     double centroid_x=0, centroid_y=0, centroid_z=0;
     Object_GraspMatrixes Object;
     if (!getGraspMatrixes(data.obj_id, node, Object)) abort();
-    if (node.type==node_properties::FIXED_TO_MOVABLE)
+    if (node.type==node_properties::GRASP)
     {
 #if DEBUG
-        std::cout << "Semantic to cartesian: node.type==node_properties::FIXED_TO_MOVABLE" << std::endl;
+        std::cout << "Semantic to cartesian: node.type==node_properties::GRASP" << std::endl;
 #endif
         // 3.6) compute a rough position of the place where the change of grasp will happen
         compute_centroid(centroid_x,centroid_y,centroid_z,node);
@@ -584,10 +584,10 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
             return false;
         }
     }
-    else if (node.type==node_properties::MOVABLE_TO_FIXED)
+    else if (node.type==node_properties::UNGRASP)
     {
 #if DEBUG
-        std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_FIXED" << std::endl;
+        std::cout << "Semantic to cartesian: node.type==node_properties::UNGRASP" << std::endl;
 #endif
         // 3.6) compute a rough position of the place where the change of grasp will happen
         compute_centroid(centroid_x,centroid_y,centroid_z,node);
@@ -666,16 +666,16 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
 	    result.push_back(std::make_pair(node.current_ee_id,move_command));
 	    break; //This break jumps to 4)
         }
-        else if (node.type==node_properties::FIXED_TO_FIXED)
+        else if (node.type==node_properties::UNKNOWN)
         {
             //Error 3
-            std::cout<<"ERROR, the planner returned two nodes with not movable different ees!!"<<std::endl;
+            std::cout<<"ERROR, the planner returned two nodes for which no known transition is implemented!!"<<std::endl;
             return false;
         }
-        else if (node.type==node_properties::FIXED_TO_MOVABLE)
+        else if (node.type==node_properties::GRASP)
         {
 #if DEBUG
-	    std::cout << "Semantic to cartesian: node.type==node_properties::FIXED_TO_MOVABLE" << std::endl;
+	    std::cout << "Semantic to cartesian: node.type==node_properties::GRASP" << std::endl;
 #endif
             // 3.6) compute a rough position of the place where the change of grasp will happen
             if (!checkSingleGrasp(World_Object,node,data,node_it==path.begin(),false,filtered_source_nodes,filtered_target_nodes))
@@ -695,10 +695,10 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
 	    // tf::poseKDLToMsg(World_postGraspSecondEE,move_no_coll_command.cartesian_task);
 	    // result.push_back(std::make_pair(node.next_ee_id,move_no_coll_command));
         }
-        else if (node.type==node_properties::MOVABLE_TO_FIXED)
+        else if (node.type==node_properties::UNGRASP)
         {
 #if DEBUG
-	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_FIXED" << std::endl;
+	    std::cout << "Semantic to cartesian: node.type==node_properties::UNGRASP" << std::endl;
 #endif
             cartesian_command move_command;
             move_command.command=cartesian_commands::MOVE_BEST_EFFORT;
@@ -722,10 +722,10 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             cartesian_command move_away(cartesian_commands::HOME,0,-1);
             result.push_back(std::make_pair(node.current_ee_id,move_away));
         }
-        else if (node.type==node_properties::MOVABLE_TO_MOVABLE)
+        else if (node.type==node_properties::EXCHANGE_GRASP)
         {
 #if DEBUG
-	    std::cout << "Semantic to cartesian: node.type==node_properties::MOVABLE_TO_MOVABLE" << std::endl;
+	    std::cout << "Semantic to cartesian: node.type==node_properties::EXCHANGE_GRASP" << std::endl;
 #endif
             cartesian_command move_command(cartesian_commands::MOVE,0,-1); // Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen

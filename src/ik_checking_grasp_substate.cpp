@@ -194,7 +194,7 @@ void ik_checking_grasp_substate::run()
   bool first_node = true, last_node = false;
   KDL::Frame unused;
   // try at first to move next end-effector only
-  node.type = node_properties::FIXED_TO_MOVABLE;
+  node.type = node_properties::GRASP;
   if(converter_.checkSingleGrasp(unused,node,data,first_node,last_node,filtered_source_nodes,filtered_target_nodes))
   {
     ROS_INFO_STREAM("ik_checking_grasp_substate::run : OK to change only next grasp position!");
@@ -216,7 +216,7 @@ void ik_checking_grasp_substate::run()
   }
   
   // it didn't work: I can still try to move both end-effectors...
-  node.type = node_properties::MOVABLE_TO_MOVABLE;
+  node.type = node_properties::EXCHANGE_GRASP;
   KDL::Frame World_Object;
   if(converter_.compute_intergrasp_orientation(World_Object,node,data.obj_id))
   {
