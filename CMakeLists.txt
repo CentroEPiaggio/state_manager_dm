@@ -57,4 +57,8 @@ add_executable(test_conversion tests/test_semantic_to_cartesian.cpp src/semantic
 add_dependencies(test_conversion dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared lemon)
 target_link_libraries(test_conversion  ${catkin_LIBRARIES} dual_manipulation_ik_control_ik_check planning_lib lemon)
 
+add_executable(test_full_state_manager tests/test_full_state_manager.cpp)
+add_dependencies(test_full_state_manager dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared)
+target_link_libraries(test_full_state_manager ${catkin_LIBRARIES})
+
 install(TARGETS dual_manipulation_state_manager test_conversion test_draw RUNTIME DESTINATION bin)
