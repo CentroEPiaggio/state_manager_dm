@@ -66,11 +66,11 @@ public:
 class semantic_to_cartesian_converter
 {
 public:
-     semantic_to_cartesian_converter(const databaseMapper& database);
-     bool convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item & filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes) const;
-     bool checkSingleGrasp(KDL::Frame& World_Object, node_info node, const shared_memory& data, bool first_node, bool last_node, dual_manipulation_shared::planner_item & filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes) const;
-     bool compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object) const;
-     static bool getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& Object);
+    semantic_to_cartesian_converter(const databaseMapper& database);
+    bool convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item & filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes) const;
+    bool checkSingleGrasp(KDL::Frame& World_Object, node_info node, const shared_memory& data, bool first_node, bool last_node, dual_manipulation_shared::planner_item & filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes) const;
+    bool compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object) const;
+    static bool getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& Object);
 private:
     node_info find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node) const;
     void compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node) const;
@@ -86,24 +86,24 @@ private:
     static void setCachedIKSolution(const node_info& node, const KDL::JntArray& q_out);
     static void eraseCachedIKSolution(const node_info& node);
 private:
-     const databaseMapper& database;
-     std::map<int,KDL::Frame> fine_tuning;
-     std::vector<KDL::Rotation> sphere_sampling;
-     static std::map<std::pair<object_id,grasp_id>, Object_SingleGrasp> cache_matrixes;
-     static std::map<node_info, KDL::JntArray> cache_ik_solutions;
-     mutable dual_manipulation::ik_control::ikCheckCapability *ik_check_capability;
-     mutable chain_and_solvers double_arm_solver;
-     std::string robot_urdf;
-     urdf::Model urdf_model;
-     KDL::Tree robot_kdl;
-     mutable std::default_random_engine generator;
-     mutable std::uniform_real_distribution<double> distribution;
-     // managing external parameters
-     XmlRpc::XmlRpcValue ik_control_params;
-     std::vector<std::string> chain_names_list;
-     std::map<std::string,KDL::Chain> chains;
-     std::map<std::string,KDL::Chain> chains_reverse;
-     
+    const databaseMapper& database;
+    std::map<int,KDL::Frame> fine_tuning;
+    std::vector<KDL::Rotation> sphere_sampling;
+    static std::map<std::pair<object_id,grasp_id>, Object_SingleGrasp> cache_matrixes;
+    static std::map<node_info, KDL::JntArray> cache_ik_solutions;
+    mutable dual_manipulation::ik_control::ikCheckCapability *ik_check_capability;
+    mutable chain_and_solvers double_arm_solver;
+    std::string robot_urdf;
+    urdf::Model urdf_model;
+    KDL::Tree robot_kdl;
+    mutable std::default_random_engine generator;
+    mutable std::uniform_real_distribution<double> distribution;
+    // managing external parameters
+    XmlRpc::XmlRpcValue ik_control_params;
+    std::vector<std::string> chain_names_list;
+    std::map<std::string,KDL::Chain> chains;
+    std::map<std::string,KDL::Chain> chains_reverse;
+    
 };
 
 #endif // SEMANTIC_TO_CARTESIAN_CONVERTER_H

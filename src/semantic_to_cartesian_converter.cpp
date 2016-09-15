@@ -34,131 +34,129 @@ double eps = EPS;
 
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database):distribution(0.0,1.0),database(database)
 {
-//   this->database=database;
-
-  ik_check_capability = new dual_manipulation::ik_control::ikCheckCapability();
-  ros::NodeHandle nh;
-  std::string global_name, relative_name, default_param;
-  if (nh.getParam("/robot_description", global_name)) //The checks here are redundant, but they may provide more debug info
-  {
-      robot_urdf=global_name;
-  }
-  else if (nh.getParam("robot_description", relative_name))
-  {
-      robot_urdf=relative_name;
-  }
-  else 
-  {
-      ROS_ERROR_STREAM("semantic_to_cartesian_converter::constructor : cannot find robot_description");
-      abort();
-  }
-  if (!urdf_model.initParam("robot_description"))
-  {
-      ROS_ERROR_STREAM("semantic_to_cartesian_converter::constructor : cannot load robot_description");
-      abort();
-  }
-  
-  if (!kdl_parser::treeFromUrdfModel(urdf_model, robot_kdl))
-  {
-      ROS_ERROR_STREAM("Failed to construct kdl tree");
-      abort();
-  }
-  
-  if (nh.getParam("ik_control_parameters", ik_control_params))
-      parseParameters(ik_control_params);
-
-  KDL::Chain temp;
-  std::vector<std::string> link_names;
-  const moveit::core::JointModelGroup* jmg = ik_check_capability->get_robot_state().getRobotModel()->getJointModelGroup("full_robot");
-  jmg->getEndEffectorTips(link_names);
-  std::vector<std::string> ee_names = jmg->getAttachedEndEffectorNames();
-  std::string root = ik_check_capability->get_robot_state().getRobotModel()->getRootLinkName();
-  
-#if DEBUG
-  std::cout << "root: " << root << std::endl;
-#endif
-  
-  for (int i=0; i<link_names.size(); i++)
-  {
-    std::string end_effector = link_names.at(i);
-    robot_kdl.getChain(root,end_effector,temp);
-    std::string seg_fake_name;
-    bool fake_next=true;
-    for (auto s: temp.segments)
+    ik_check_capability = new dual_manipulation::ik_control::ikCheckCapability();
+    ros::NodeHandle nh;
+    std::string global_name, relative_name, default_param;
+    if (nh.getParam("/robot_description", global_name)) //The checks here are redundant, but they may provide more debug info
     {
-        KDL::Joint j = s.getJoint();
-
+        robot_urdf=global_name;
+    }
+    else if (nh.getParam("robot_description", relative_name))
+    {
+        robot_urdf=relative_name;
+    }
+    else 
+    {
+        ROS_ERROR_STREAM("semantic_to_cartesian_converter::constructor : cannot find robot_description");
+        abort();
+    }
+    if (!urdf_model.initParam("robot_description"))
+    {
+        ROS_ERROR_STREAM("semantic_to_cartesian_converter::constructor : cannot load robot_description");
+        abort();
+    }
+    
+    if (!kdl_parser::treeFromUrdfModel(urdf_model, robot_kdl))
+    {
+        ROS_ERROR_STREAM("Failed to construct kdl tree");
+        abort();
+    }
+    
+    if (nh.getParam("ik_control_parameters", ik_control_params))
+        parseParameters(ik_control_params);
+    
+    KDL::Chain temp;
+    std::vector<std::string> link_names;
+    const moveit::core::JointModelGroup* jmg = ik_check_capability->get_robot_state().getRobotModel()->getJointModelGroup("full_robot");
+    jmg->getEndEffectorTips(link_names);
+    std::vector<std::string> ee_names = jmg->getAttachedEndEffectorNames();
+    std::string root = ik_check_capability->get_robot_state().getRobotModel()->getRootLinkName();
+    
 #if DEBUG
-        std::cout << "s.getName(): " << s.getName() << std::endl;
-        std::cout << "s.getJoint().getName(): " << s.getJoint().getName() << std::endl;
-        std::cout << "s.getJoint().JointOrigin(): " << s.getJoint().JointOrigin().x() << " " << s.getJoint().JointOrigin().y() << " " << s.getJoint().JointOrigin().z() << std::endl;
-        std::cout << "s.getJoint().JointAxis(): " << s.getJoint().JointAxis().x() << " "<< s.getJoint().JointAxis().y() << " "<< s.getJoint().JointAxis().z() << std::endl;
-        std::cout << "s.getJoint().getType(): " << s.getJoint().getType() << std::endl;
-        KDL::Frame f = s.getFrameToTip();
-        std::cout << f.p.data[0] << " "<< f.p.data[1] << " "<< f.p.data[2] << std::endl;
-        double r,p,y; f.M.GetRPY(r,p,y);
-        std::cout << r << " " << p << " " << y << std::endl;
+    std::cout << "root: " << root << std::endl;
 #endif
-
-        if (fake_next)
+    
+    for (int i=0; i<link_names.size(); i++)
+    {
+        std::string end_effector = link_names.at(i);
+        robot_kdl.getChain(root,end_effector,temp);
+        std::string seg_fake_name;
+        bool fake_next=true;
+        for (auto s: temp.segments)
         {
-            if (s.getJoint().getType()==KDL::Joint::None)
+            KDL::Joint j = s.getJoint();
+            
+#if DEBUG
+            std::cout << "s.getName(): " << s.getName() << std::endl;
+            std::cout << "s.getJoint().getName(): " << s.getJoint().getName() << std::endl;
+            std::cout << "s.getJoint().JointOrigin(): " << s.getJoint().JointOrigin().x() << " " << s.getJoint().JointOrigin().y() << " " << s.getJoint().JointOrigin().z() << std::endl;
+            std::cout << "s.getJoint().JointAxis(): " << s.getJoint().JointAxis().x() << " "<< s.getJoint().JointAxis().y() << " "<< s.getJoint().JointAxis().z() << std::endl;
+            std::cout << "s.getJoint().getType(): " << s.getJoint().getType() << std::endl;
+            KDL::Frame f = s.getFrameToTip();
+            std::cout << f.p.data[0] << " "<< f.p.data[1] << " "<< f.p.data[2] << std::endl;
+            double r,p,y; f.M.GetRPY(r,p,y);
+            std::cout << r << " " << p << " " << y << std::endl;
+#endif
+            
+            if (fake_next)
             {
-                seg_fake_name=end_effector;
-                fake_next=true;
-                j=KDL::Joint(s.getJoint().getName()+end_effector);
+                if (s.getJoint().getType()==KDL::Joint::None)
+                {
+                    seg_fake_name=end_effector;
+                    fake_next=true;
+                    j=KDL::Joint(s.getJoint().getName()+end_effector);
+                }
+                else if (s.getJoint().getType()!=KDL::Joint::None && fake_next)
+                {
+                    seg_fake_name="";
+                    fake_next=false;
+                }
             }
-            else if (s.getJoint().getType()!=KDL::Joint::None && fake_next)
+            else
             {
                 seg_fake_name="";
                 fake_next=false;
             }
+            KDL::Segment b(s.getName()+seg_fake_name,j,s.getFrameToTip(),s.getInertia());
+            chains[ee_names.at(i)].addSegment(b);
         }
-        else
-        {
-            seg_fake_name="";
-            fake_next=false;
-        }
-        KDL::Segment b(s.getName()+seg_fake_name,j,s.getFrameToTip(),s.getInertia());
-        chains[ee_names.at(i)].addSegment(b);
-    }
-    KDL::Tree t("fake_root");
-    bool done = t.addChain(chains[ee_names.at(i)],"fake_root");
-    assert(done);
-    done = t.getChain(end_effector,"fake_root",chains_reverse[ee_names.at(i)]);
-    
+        KDL::Tree t("fake_root");
+        bool done = t.addChain(chains[ee_names.at(i)],"fake_root");
+        assert(done);
+        done = t.getChain(end_effector,"fake_root",chains_reverse[ee_names.at(i)]);
+        
 #if DEBUG
-    temp = chains_reverse.at(ee_names.at(i));
-    for (auto s: temp.segments)
-    {
-        
-        std::cout << "s.getName(): " << s.getName() << std::endl;
-        KDL::Joint j = s.getJoint();
-        
-        std::cout << "s.getJoint().getName(): " << s.getJoint().getName() << std::endl;
-        KDL::Frame f = s.getFrameToTip();
-        std::cout << f.p.data[0] << " "<< f.p.data[1] << " "<< f.p.data[2] << std::endl;
-        double r,p,y; f.M.GetRPY(r,p,y);
-        std::cout << r << " " << p << " " << y << std::endl;
-    }
-    std::cout << "t.getNrOfJoints(): " << t.getNrOfJoints() << std::endl;
-    std::cout << "chains_reverse[ee_names.at(i)].getNrOfJoints(): " << chains_reverse[ee_names.at(i)].getNrOfJoints() << std::endl;
-    std::cout << "chains[" << ee_names.at(i) << "].segments: | ";
-    for(auto segs:chains[ee_names.at(i)].segments)
-        std::cout << segs.getName() << " | ";
-    std::cout << std::endl;
-    std::cout << "t.segments: | ";
-    for(auto segs:t.getSegments())
-        std::cout << segs.first << " | ";
-    std::cout << std::endl;
-    if(!done)
-    {
-        std::cout << "semantic_to_cartesian_converter : unable to construct chains_reverse[" << ee_names.at(i) << "] - aborting" << std::endl;
-        abort();
-    }
+        temp = chains_reverse.at(ee_names.at(i));
+        for (auto s: temp.segments)
+        {
+            
+            std::cout << "s.getName(): " << s.getName() << std::endl;
+            KDL::Joint j = s.getJoint();
+            
+            std::cout << "s.getJoint().getName(): " << s.getJoint().getName() << std::endl;
+            KDL::Frame f = s.getFrameToTip();
+            std::cout << f.p.data[0] << " "<< f.p.data[1] << " "<< f.p.data[2] << std::endl;
+            double r,p,y; f.M.GetRPY(r,p,y);
+            std::cout << r << " " << p << " " << y << std::endl;
+        }
+        std::cout << "t.getNrOfJoints(): " << t.getNrOfJoints() << std::endl;
+        std::cout << "chains_reverse[ee_names.at(i)].getNrOfJoints(): " << chains_reverse[ee_names.at(i)].getNrOfJoints() << std::endl;
+        std::cout << "chains[" << ee_names.at(i) << "].segments: | ";
+        for(auto segs:chains[ee_names.at(i)].segments)
+            std::cout << segs.getName() << " | ";
+        std::cout << std::endl;
+        std::cout << "t.segments: | ";
+        for(auto segs:t.getSegments())
+            std::cout << segs.first << " | ";
+        std::cout << std::endl;
+        if(!done)
+        {
+            std::cout << "semantic_to_cartesian_converter : unable to construct chains_reverse[" << ee_names.at(i) << "] - aborting" << std::endl;
+            abort();
+        }
 #endif
-  }
-
+    }
+    
     // check whether I am using Vito
     std::string robot_name = urdf_model.getName();
     am_I_Vito = (robot_name == "vito");
@@ -198,10 +196,10 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
     int j=0;
     for (auto joint_name:container->joint_names)
     {
-        #if IGNORE_JOINT_LIMITS
+#if IGNORE_JOINT_LIMITS
         container->q_max(j)=M_PI/3.0;
         container->q_min(j)=-M_PI/3.0;
-        #else
+#else
         if(urdf_model.joints_.at(joint_name)->safety)
         {
             container->q_max(j)=urdf_model.joints_.at(joint_name)->safety->soft_upper_limit;
@@ -212,7 +210,7 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
             container->q_max(j)=urdf_model.joints_.at(joint_name)->limits->upper;
             container->q_min(j)=urdf_model.joints_.at(joint_name)->limits->lower;
         }
-        #endif
+#endif
         j++;
     }
     if (am_I_Vito) //Particular case of Vito robot
@@ -251,20 +249,20 @@ void semantic_to_cartesian_converter::initialize_solvers(chain_and_solvers* cont
 
 bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, grasp_id grasp, Object_SingleGrasp& Matrixes)
 {
-  dual_manipulation_shared::ik_service srv;
-  grasp = grasp%OBJ_GRASP_FACTOR;
-  bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
-  if (ok)
-  {
-      normalizePose(srv.request.ee_pose.front());
-      normalizePose(srv.request.ee_pose.back());
-      normalizePose(srv.request.attObject.object.mesh_poses.front());
-    tf::poseMsgToKDL(srv.request.ee_pose.front(),Matrixes.PreGrasp);
-    tf::poseMsgToKDL(srv.request.ee_pose.back(),Matrixes.Grasp);
-    tf::poseMsgToKDL(srv.request.attObject.object.mesh_poses.front(),Matrixes.PostGrasp);
-    Matrixes.PostGrasp = Matrixes.PostGrasp.Inverse();
-  }
-  return ok;
+    dual_manipulation_shared::ik_service srv;
+    grasp = grasp%OBJ_GRASP_FACTOR;
+    bool ok = deserialize_ik(srv.request,"object" + std::to_string(object) + "/grasp" + std::to_string(grasp));
+    if (ok)
+    {
+        normalizePose(srv.request.ee_pose.front());
+        normalizePose(srv.request.ee_pose.back());
+        normalizePose(srv.request.attObject.object.mesh_poses.front());
+        tf::poseMsgToKDL(srv.request.ee_pose.front(),Matrixes.PreGrasp);
+        tf::poseMsgToKDL(srv.request.ee_pose.back(),Matrixes.Grasp);
+        tf::poseMsgToKDL(srv.request.attObject.object.mesh_poses.front(),Matrixes.PostGrasp);
+        Matrixes.PostGrasp = Matrixes.PostGrasp.Inverse();
+    }
+    return ok;
 }
 
 void semantic_to_cartesian_converter::compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node) const
@@ -344,29 +342,29 @@ void semantic_to_cartesian_converter::addNewFilteredArc(const node_info& node, d
 
 bool semantic_to_cartesian_converter::check_ik(std::string ee_name, KDL::Frame World_EE) const
 {
-  geometry_msgs::Pose ee_pose;
-  tf::poseKDLToMsg(World_EE,ee_pose);
-  
+    geometry_msgs::Pose ee_pose;
+    tf::poseKDLToMsg(World_EE,ee_pose);
+    
 #if DEBUG
-  std::cout << "check_ik: " << ee_name << " in " << ee_pose << std::endl;
+    std::cout << "check_ik: " << ee_name << " in " << ee_pose << std::endl;
 #endif
-  
-  std::vector<double> result;
-  std::vector <double > initial_guess = std::vector<double>();
-  bool check_collisions = true;
-  
-  ik_check_capability->reset_robot_state();
-  bool found_ik = ik_check_capability->find_group_ik(ee_name,ee_pose,result,initial_guess,check_collisions);
-  
-  return found_ik;
+    
+    std::vector<double> result;
+    std::vector <double > initial_guess = std::vector<double>();
+    bool check_collisions = true;
+    
+    ik_check_capability->reset_robot_state();
+    bool found_ik = ik_check_capability->find_group_ik(ee_name,ee_pose,result,initial_guess,check_collisions);
+    
+    return found_ik;
 }
 
 bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object) const
 {
     double centroid_x,centroid_y,centroid_z;
     compute_centroid(centroid_x,centroid_y,centroid_z,node);
-//     KDL::Frame World_centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
-
+    //     KDL::Frame World_centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
+    
     Object_GraspMatrixes Object;
     auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
     auto next_ee_name=std::get<0>(database.EndEffectors.at(node.next_ee_id));
@@ -499,8 +497,8 @@ bool semantic_to_cartesian_converter::compute_intergrasp_orientation(KDL::Frame&
     }
     else 
     {
-      std::cout<<"SUPER ERROR"<<std::endl;
-      return false;
+        std::cout<<"SUPER ERROR"<<std::endl;
+        return false;
     }
 }
 
@@ -514,31 +512,31 @@ bool semantic_to_cartesian_converter::getGraspMatrixes(object_id object, node_in
     }
     else
     {
-      bool ok = getGraspMatrixes(object,node.current_grasp_id,temp);
-      if (!ok)
-      {
-	  std::cout<<"Error in getting grasp #" << node.current_grasp_id << " matrixes for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
-	  return false;
-      }
-      cache_matrixes[std::make_pair(object,node.current_grasp_id)]=temp;
+        bool ok = getGraspMatrixes(object,node.current_grasp_id,temp);
+        if (!ok)
+        {
+            std::cout<<"Error in getting grasp #" << node.current_grasp_id << " matrixes for object "<<object<<" and ee "<<node.current_ee_id<<std::endl;
+            return false;
+        }
+        cache_matrixes[std::make_pair(object,node.current_grasp_id)]=temp;
     }
     Object.GraspFirstEE = temp.Grasp;
     Object.PostGraspFirstEE = temp.PostGrasp;
     Object.PreGraspFirstEE = temp.PreGrasp;
-
+    
     if (cache_matrixes.count(std::make_pair(object,node.next_grasp_id)))
     {
         temp = cache_matrixes[std::make_pair(object,node.next_grasp_id)];
     }
     else
     {
-      bool ok = getGraspMatrixes(object,node.next_grasp_id,temp);
-      if (!ok)
-      {
-	  std::cout<<"Error in getting grasp #" << node.next_grasp_id << " matrixes for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
-	  return false;
-      }
-      cache_matrixes[std::make_pair(object,node.next_grasp_id)]=temp;
+        bool ok = getGraspMatrixes(object,node.next_grasp_id,temp);
+        if (!ok)
+        {
+            std::cout<<"Error in getting grasp #" << node.next_grasp_id << " matrixes for object "<<object<<" and ee "<<node.next_ee_id<<std::endl;
+            return false;
+        }
+        cache_matrixes[std::make_pair(object,node.next_grasp_id)]=temp;
     }
     Object.GraspSecondEE = temp.Grasp;
     Object.PostGraspSecondEE = temp.PostGrasp;
@@ -565,24 +563,24 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
         
         if (first_node)
         {
-            #if DEBUG
+#if DEBUG
             std::cout << "Semantic to cartesian: first ee is not movable, using fixed location to update the path..." << std::endl;
             std::cout << "Ee_name: " << next_ee_name << " | grasp_id: " << node.next_grasp_id << " | ws_id: " << node.next_workspace_id << std::endl;
-            #endif
+#endif
             tf::poseMsgToKDL(data.source_position,World_Object);
         }
         else
         {
-             World_Object = World_Centroid_f*(Object.PostGraspFirstEE.Inverse());
+            World_Object = World_Centroid_f*(Object.PostGraspFirstEE.Inverse());
         }
         if(check_ik(next_ee_name,World_Object*Object.PreGraspSecondEE))
             if(check_ik(next_ee_name,World_Object*Object.GraspSecondEE))
-		intergrasp_ok = true;
-        if (!intergrasp_ok)
-        {
-            addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
-            return false;
-        }
+                intergrasp_ok = true;
+            if (!intergrasp_ok)
+            {
+                addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
+                return false;
+            }
     }
     else if (node.type==node_properties::UNGRASP)
     {
@@ -601,11 +599,11 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
 #endif
             tf::poseMsgToKDL(data.target_position,World_Object);
             // NOTE: here there are two checks only cause ungrasp retreat is already best-effort!!
-
+            
         }
         else
         {
-	    // TODO: make this more general: now the two conditions are equivalent at the last_node only because, for a table, Grasp==PostGrasp!!!
+            // TODO: make this more general: now the two conditions are equivalent at the last_node only because, for a table, Grasp==PostGrasp!!!
             World_Object = World_Centroid_f*(Object.GraspSecondEE.Inverse());
         }
         if(check_ik(current_ee_name,World_Object*Object.PostGraspFirstEE))
@@ -613,11 +611,11 @@ bool semantic_to_cartesian_converter::checkSingleGrasp(KDL::Frame& World_Object,
             if(check_ik(current_ee_name,World_Object*Object.GraspSecondEE*(Object.PreGraspSecondEE.Inverse())*Object.PostGraspFirstEE))
                 // if(check_ik(current_ee_name,World_Object*Object_GraspFirstEE))
                 intergrasp_ok = true;
-        if (!intergrasp_ok)
-        {
-            addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
-            return false;
-        }
+            if (!intergrasp_ok)
+            {
+                addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
+                return false;
+            }
     }
     return true;
 }
@@ -626,10 +624,10 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
 {
     // 1) Clearing result vector
     result.clear();
-
+    
     // 2) Clear any previously found intergrasp configuration
     cache_ik_solutions.clear();
-
+    
     // 3) Start of the main conversion loop
     for (auto node_it=path.begin();node_it!=path.end();)//++node)
     {
@@ -637,34 +635,34 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         KDL::Frame World_Object;
         Object_GraspMatrixes Object;
         KDL::Frame World_GraspSecondEE;
-	
+        
         // 3.1) Getting preliminary info for the current node
         std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it=node_it;
         node_info node = find_node_properties(path,node_it,next_node_it);
         //---------------------------
         //From now on node is not the last in the path
-
-	if (node.type==node_properties::LAST_EE_FIXED)
+        
+        if (node.type==node_properties::LAST_EE_FIXED)
         {
             break;
         }
-
+        
         if (!getGraspMatrixes(data.obj_id, node, Object)) abort();
-
+        
         // 3.4) Beginning of real actions, depending on the result of 3.1
         if (node.type==node_properties::LAST_EE_MOVABLE)
         {
-	    // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
-	    cartesian_command move_command;
-	    move_command.command=cartesian_commands::MOVE;
-	    move_command.seq_num = 1;
-	    move_command.ee_grasp_id=node.current_grasp_id;
-	    KDL::Frame World_Object;
-	    tf::poseMsgToKDL(data.target_position,World_Object);
-	    tf::poseKDLToMsg(World_Object*Object.PostGraspFirstEE,move_command.cartesian_task);
-	    //TODO: what if this is not feasible? test other grasps? future work...
-	    result.push_back(std::make_pair(node.current_ee_id,move_command));
-	    break; //This break jumps to 4)
+            // 3.4.2) We move the last==current end effector in the final workspace centroid, equal to the final desired position
+            cartesian_command move_command;
+            move_command.command=cartesian_commands::MOVE;
+            move_command.seq_num = 1;
+            move_command.ee_grasp_id=node.current_grasp_id;
+            KDL::Frame World_Object;
+            tf::poseMsgToKDL(data.target_position,World_Object);
+            tf::poseKDLToMsg(World_Object*Object.PostGraspFirstEE,move_command.cartesian_task);
+            //TODO: what if this is not feasible? test other grasps? future work...
+            result.push_back(std::make_pair(node.current_ee_id,move_command));
+            break; //This break jumps to 4)
         }
         else if (node.type==node_properties::UNKNOWN)
         {
@@ -675,7 +673,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         else if (node.type==node_properties::GRASP)
         {
 #if DEBUG
-	    std::cout << "Semantic to cartesian: node.type==node_properties::GRASP" << std::endl;
+            std::cout << "Semantic to cartesian: node.type==node_properties::GRASP" << std::endl;
 #endif
             // 3.6) compute a rough position of the place where the change of grasp will happen
             if (!checkSingleGrasp(World_Object,node,data,node_it==path.begin(),false,filtered_source_nodes,filtered_target_nodes))
@@ -684,21 +682,21 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             cartesian_command move_command(cartesian_commands::MOVE_BEST_EFFORT, 1, node.next_grasp_id);
             tf::poseKDLToMsg(World_GraspSecondEE,move_command.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,move_command)); //move the next
-
+            
             //From fixed to movable we will grasp the object
             cartesian_command grasp(cartesian_commands::GRASP,1,node.next_grasp_id);
             tf::poseKDLToMsg(World_Object,grasp.cartesian_task);
             result.push_back(std::make_pair(node.next_ee_id,grasp));
-	    // cartesian_command move_no_coll_command(cartesian_commands::MOVE_CLOSE_BEST_EFFORT, 1, node.next_grasp_id);
-	    // KDL::Frame World_postGraspSecondEE;
-	    // World_postGraspSecondEE = World_Object*Object.GraspFirstEE*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
-	    // tf::poseKDLToMsg(World_postGraspSecondEE,move_no_coll_command.cartesian_task);
-	    // result.push_back(std::make_pair(node.next_ee_id,move_no_coll_command));
+            // cartesian_command move_no_coll_command(cartesian_commands::MOVE_CLOSE_BEST_EFFORT, 1, node.next_grasp_id);
+            // KDL::Frame World_postGraspSecondEE;
+            // World_postGraspSecondEE = World_Object*Object.GraspFirstEE*(Object.PreGraspFirstEE.Inverse())*Object.PostGraspSecondEE;
+            // tf::poseKDLToMsg(World_postGraspSecondEE,move_no_coll_command.cartesian_task);
+            // result.push_back(std::make_pair(node.next_ee_id,move_no_coll_command));
         }
         else if (node.type==node_properties::UNGRASP)
         {
 #if DEBUG
-	    std::cout << "Semantic to cartesian: node.type==node_properties::UNGRASP" << std::endl;
+            std::cout << "Semantic to cartesian: node.type==node_properties::UNGRASP" << std::endl;
 #endif
             cartesian_command move_command;
             move_command.command=cartesian_commands::MOVE_BEST_EFFORT;
@@ -715,9 +713,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
             tf::poseKDLToMsg(World_GraspSecondEE,move_no_coll_command.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,move_no_coll_command)); //move the first
             cartesian_command ungrasp(cartesian_commands::UNGRASP,1,node.current_grasp_id);
-	    // TODO: check the following transformation, should be more precisely something like 
+            // TODO: check the following transformation, should be more precisely something like 
             // TODO: "World_Object*Object_PostGraspFirstEE*(Object_GraspFirstEE.Inverse())"
-	    tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
+            tf::poseKDLToMsg(World_Object,ungrasp.cartesian_task);
             result.push_back(std::make_pair(node.current_ee_id,ungrasp));
             cartesian_command move_away(cartesian_commands::HOME,0,-1);
             result.push_back(std::make_pair(node.current_ee_id,move_away));
@@ -725,7 +723,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         else if (node.type==node_properties::EXCHANGE_GRASP)
         {
 #if DEBUG
-	    std::cout << "Semantic to cartesian: node.type==node_properties::EXCHANGE_GRASP" << std::endl;
+            std::cout << "Semantic to cartesian: node.type==node_properties::EXCHANGE_GRASP" << std::endl;
 #endif
             cartesian_command move_command(cartesian_commands::MOVE,0,-1); // Care, we are parallelizing here!
             // 3.6) compute a rough position of the place where the change of grasp will happen
