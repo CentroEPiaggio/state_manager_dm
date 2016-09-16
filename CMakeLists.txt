@@ -31,11 +31,12 @@ link_directories(${catkin_LIBRARY_DIRS})
 SET( STATES_FILES
 src/getting_info_state.cpp
 src/semantic_planning_state.cpp
+    src/semantic_to_cartesian_converter.cpp
+    src/s2c_ik_converter.cpp
 src/starting_state.cpp
 src/steady_state.cpp
 src/ik_control_state.cpp
 src/exit_state.cpp
- src/semantic_to_cartesian_converter.cpp
 src/ik_need_semantic_replan.cpp
 )
 
@@ -53,7 +54,7 @@ add_executable(test_draw tests/test_draw_state_machine.cpp)
 add_dependencies(test_draw dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared lemon)
 target_link_libraries(test_draw lemon)
 
-add_executable(test_conversion tests/test_semantic_to_cartesian.cpp src/semantic_to_cartesian_converter.cpp src/shared_memory.cpp src/semantic_planning_state.cpp)
+add_executable(test_conversion tests/test_semantic_to_cartesian.cpp src/semantic_to_cartesian_converter.cpp src/s2c_ik_converter.cpp src/shared_memory.cpp src/semantic_planning_state.cpp)
 add_dependencies(test_conversion dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared lemon)
 target_link_libraries(test_conversion  ${catkin_LIBRARIES} dual_manipulation_ik_control_ik_check planning_lib lemon)
 
