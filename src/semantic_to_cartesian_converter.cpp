@@ -27,6 +27,8 @@
 #define MAX_ITER 100
 #define EPS 5e-3
 
+#define CLASS_NAMESPACE "semantic_to_cartesian_converter::"
+
 std::map<std::pair<object_id,grasp_id >,Object_SingleGrasp> semantic_to_cartesian_converter::cache_matrixes;
 std::map<node_info, KDL::JntArray> semantic_to_cartesian_converter::cache_ik_solutions;
 bool am_I_Vito = false;
@@ -294,8 +296,9 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     bool found=false;
     endeffector_id next_ee_id=-1;
     workspace_id next_workspace_id=-1;
+    dual_manipulation::shared::NodeTransitionTypes transit_type = dual_manipulation::shared::NodeTransitionTypes::UNKNOWN;
     bool next_movable=false;
-    while (!found && next_node!=path.end()) //Here we simplify (i.e. remove) all the transitions such that ee_id=next_ee_id and workspace_id != next_workspace_id
+    while (!found && next_node!=path.end())
     {
         next_node++;
         if (next_node!=path.end())
@@ -303,7 +306,30 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
             next_ee_id = std::get<1>(database.Grasps.at(next_node->grasp_id));
             next_workspace_id = next_node->workspace_id;
             next_movable=std::get<1>(database.EndEffectors.at(next_ee_id));
-            if (ee_id==next_ee_id) continue;
+            
+            // check for supported cases:
+            // - supported type #1: change of workspace with the same grasp, movable end-effector
+            bool supported_node = ((node->workspace_id != next_workspace_id) && (node->grasp_id == next_node->grasp_id) && movable);
+            // - supported type #2: change of grasp with an allowed transition (not necessarily in the same workspace, as we are moving...)
+            supported_node = supported_node || (database.Grasp_transitions.count(node->grasp_id) && database.Grasp_transitions.at(node->grasp_id).count(next_node->grasp_id));
+            if(!supported_node)
+            {
+                std::cout << CLASS_NAMESPACE << __func__ << " : there was a change of grasp which was not present in the database: this is NOT supported!" << std::endl;
+                std::cout << CLASS_NAMESPACE << __func__ << " : source(g,w)=(" << node->grasp_id << "," << node->workspace_id << ") > target(g,w):(" << next_node->grasp_id << "," << next_node->workspace_id << ")" << std::endl;
+                abort();
+            }
+            
+            std::set<endeffector_id> tmp_ees;
+            // NOTE: transitions from database are only inside the same workspace
+            if(node->workspace_id==next_workspace_id)
+            {
+                database.getTransitionInfo(node->grasp_id, next_node->grasp_id, transit_type, tmp_ees);
+                result.type = transit_type;
+                result.busy_ees.insert(tmp_ees.begin(),tmp_ees.end());
+            }
+            // NOTE: simplify when a movable end-effector is changing workspace but keeping the same grasp
+            if ((ee_id==next_ee_id) && (node->workspace_id!=next_workspace_id) && movable && next_movable && (node->grasp_id == next_node->grasp_id))
+                continue;
             else
             {
                 found=true;
