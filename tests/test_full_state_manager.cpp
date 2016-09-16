@@ -123,6 +123,13 @@ int main(int argc, char **argv)
     srv.request.time = ros::Time::now().toSec();
     service_ret_print("State_manager ",srv.request.command, client.call(srv));
     
+    usleep(500000);
+    
+    // "exit"
+    srv.request.command = "exit";
+    srv.request.time = ros::Time::now().toSec();
+    service_ret_print("State_manager ",srv.request.command, client.call(srv));
+    
     for(int i=0; i<3; i++)
     {
         ROS_INFO_STREAM("Finishing #" << i << "...");
