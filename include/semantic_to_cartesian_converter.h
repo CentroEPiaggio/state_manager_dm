@@ -5,6 +5,7 @@
 #include <dual_manipulation_shared/planner_serviceResponse.h>
 #include <dual_manipulation_shared/node_transitions.h>
 #include "s2c_ik_converter.h"
+#include <functional>
 
 class semantic_to_cartesian_converter
 {
@@ -93,6 +94,10 @@ private:
     /// perform inverse kinematics and other "heavy" duties
     std::unique_ptr<s2c_ik_converter> s2cik;
     
+    /// type of function which manage a single transition
+    typedef decltype(&semantic_to_cartesian_converter::manage_transition_unknown) my_fun_t;
+    /// map containing information about correspondences between functions and transition types
+    std::map<dual_manipulation::shared::NodeTransitionTypes,my_fun_t> manage_transition_by_type;
 };
 
 #endif // SEMANTIC_TO_CARTESIAN_CONVERTER_H

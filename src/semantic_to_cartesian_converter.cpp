@@ -8,6 +8,14 @@
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database) : database(database)
 {
     s2cik.reset(new s2c_ik_converter(this->database));
+    
+    /// instantiate function pointers with associated transition type
+    manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::LAST_EE_FIXED] = &semantic_to_cartesian_converter::manage_transition_last_ee_fixed;
+    manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::LAST_EE_MOVABLE] = &semantic_to_cartesian_converter::manage_transition_last_ee_movable;
+    manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::UNKNOWN] = &semantic_to_cartesian_converter::manage_transition_unknown;
+    manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::GRASP] = &semantic_to_cartesian_converter::manage_transition_grasp;
+    manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::UNGRASP] = &semantic_to_cartesian_converter::manage_transition_ungrasp;
+    manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::EXCHANGE_GRASP] = &semantic_to_cartesian_converter::manage_transition_exchange_grasp;
 }
 
 node_info semantic_to_cartesian_converter::find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node) const
@@ -92,78 +100,25 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
     // 3) Start of the main conversion loop
     for (auto node_it=path.begin();node_it!=path.end();)//++node)
     {
-        // 3.1) Getting preliminary info for the current node
+        // get info for the current node
         std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it=node_it;
         node_info node = find_node_properties(path,node_it,next_node_it);
         //---------------------------
         
-        if (node.type==node_properties::LAST_EE_FIXED)
+        if(!manage_transition_by_type.count(node.type))
         {
-            if(manage_transition_last_ee_fixed(result,node,node_it,next_node_it,path,data,filtered_source_nodes,filtered_target_nodes))
-            {
-                // do nothing
-            }
-            else
-                return false;
+            std::cout << CLASS_NAMESPACE << __func__ << " : there is no implementation managing transitions of type \'" << node.type << "\'!" << std::endl;
+            return false;
         }
-        else if (node.type==node_properties::LAST_EE_MOVABLE)
-        {
-            if(manage_transition_last_ee_movable(result,node,node_it,next_node_it,path,data,filtered_source_nodes,filtered_target_nodes))
-            {
-                // do nothing
-            }
-            else
-                return false;
-        }
-        else if (node.type==node_properties::UNKNOWN)
-        {
-            if(manage_transition_unknown(result,node,node_it,next_node_it,path,data,filtered_source_nodes,filtered_target_nodes))
-            {
-                // do nothing
-            }
-            else
-                return false;
-        }
-        else if (node.type==node_properties::GRASP)
+        else
         {
 #if DEBUG
-            std::cout << "Semantic to cartesian: node.type==node_properties::GRASP" << std::endl;
+            std::cout << CLASS_NAMESPACE << __func__ << " : transition of type \'" << node.type << "\'" << std::endl;
 #endif
-            if(manage_transition_grasp(result,node,node_it,next_node_it,path,data,filtered_source_nodes,filtered_target_nodes))
-            {
-                // do nothing
-            }
-            else
+            if(!(this->*manage_transition_by_type.at(node.type))(result,node,node_it,next_node_it,path,data,filtered_source_nodes,filtered_target_nodes))
                 return false;
         }
-        else if (node.type==node_properties::UNGRASP)
-        {
-#if DEBUG
-            std::cout << "Semantic to cartesian: node.type==node_properties::UNGRASP" << std::endl;
-#endif
-            if(manage_transition_ungrasp(result,node,node_it,next_node_it,path,data,filtered_source_nodes,filtered_target_nodes))
-            {
-                // do nothing
-            }
-            else
-                return false;
-        }
-        else if (node.type==node_properties::EXCHANGE_GRASP)
-        {
-#if DEBUG
-            std::cout << "Semantic to cartesian: node.type==node_properties::EXCHANGE_GRASP" << std::endl;
-#endif
-            if(manage_transition_exchange_grasp(result,node,node_it,next_node_it,path,data,filtered_source_nodes,filtered_target_nodes))
-            {
-                // do nothing
-            }
-            else
-                return false;
-        }
-        else 
-        {
-            std::cout<<"SUPER ERROR!!"<<std::endl;
-        }
+        
         node_it=next_node_it;
     }
     // 4) return
