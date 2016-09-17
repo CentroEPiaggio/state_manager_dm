@@ -25,7 +25,7 @@ struct node_info
     endeffector_id current_ee_id=-1, next_ee_id=-1;
     workspace_id next_workspace_id=-1, current_workspace_id=-1;
     grasp_id current_grasp_id=-1, next_grasp_id=-1;
-    std::set<endeffector_id> busy_ees;
+    std::vector<endeffector_id> busy_ees;
     bool operator<(const node_info& a) const
     {
         uint64_t this_node_val = BIG_NR*BIG_NR*current_ee_id + BIG_NR*current_workspace_id + current_grasp_id;

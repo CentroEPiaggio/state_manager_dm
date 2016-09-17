@@ -50,13 +50,15 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
                 abort();
             }
             
-            std::set<endeffector_id> tmp_ees;
+            std::vector<endeffector_id> tmp_ees;
             // NOTE: transitions from database are only inside the same workspace
             if(node->workspace_id==next_workspace_id)
             {
-                database.getTransitionInfo(node->grasp_id, next_node->grasp_id, transit_type, tmp_ees);
+                // this won't be used here, just in planning
+                transition_cost_t tr_cost;
+                database.getTransitionInfo(node->grasp_id, next_node->grasp_id, transit_type, tr_cost, tmp_ees);
                 result.type = transit_type;
-                result.busy_ees.insert(tmp_ees.begin(),tmp_ees.end());
+                result.busy_ees.insert(result.busy_ees.end(),tmp_ees.begin(),tmp_ees.end());
             }
             // NOTE: simplify when a movable end-effector is changing workspace but keeping the same grasp
             if ((ee_id==next_ee_id) && (node->workspace_id!=next_workspace_id) && movable && next_movable && (node->grasp_id == next_node->grasp_id))
