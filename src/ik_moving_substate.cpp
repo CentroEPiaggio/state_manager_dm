@@ -1,14 +1,8 @@
 #include "ik_moving_substate.h"
-#include "dual_manipulation_shared/serialization_utils.h"
-#include <kdl_conversions/kdl_msg.h>
 
-#define OBJ_GRASP_FACTOR 1000
 #define PARALLELIZE_PLANNING false
 
 #define CLASS_NAMESPACE "ik_moving_substate::"
-#define NUM_KUKAS 6
-#define NUM_EE_IN_VITO 3
-#define IS_FACTORY 0
 
 ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data),db_mapper(data.db_mapper)
 {
@@ -40,7 +34,7 @@ void ik_moving_substate::reset()
     initialized = false;
     move_sent = false;
     failed=false;
-    grasping=false;
+    alone_execution=false;
     pending_sequence_numbers.clear();
 }
 
@@ -104,7 +98,7 @@ bool ik_moving_substate::isComplete()
     if(data_.next_plan == data_.cartesian_plan->size()+1) moving_executed=0;
     
     // I can return if I executed the movement, I failed, or I sent the movement AND it's not the last one! (this only if I can parallelize, and NOT for grasping WPs..!)
-    return (data_.need_replan.load() || moving_executed==0 || failed || (parallelize_planning && move_sent && !grasping && data_.next_plan < data_.cartesian_plan->size()));
+    return (data_.need_replan.load() || moving_executed==0 || failed || (parallelize_planning && move_sent && !alone_execution && data_.next_plan < data_.cartesian_plan->size()));
 }
 
 void ik_moving_substate::run()
@@ -140,7 +134,6 @@ void ik_moving_substate::run()
     {
         i++;
         auto item = data_.cartesian_plan->at(data_.next_plan+i);
-        //  ee_pose=item.second.cartesian_task;
         
         if(commands.is_exec_alone.count(item.second.command))
         {
@@ -150,47 +143,15 @@ void ik_moving_substate::run()
                 failed = true;
                 initialized = false;
             }
-            if(item.second.command==cartesian_commands::GRASP || item.second.command==cartesian_commands::UNGRASP)
-            {
-                int grasp = (int)item.second.ee_grasp_id;
-                grasp = grasp % OBJ_GRASP_FACTOR;
-                if(!deserialize_ik(srv.request,"object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp)))
-                {
-                    ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : failed to deserialize object" + std::to_string((int)*data_.obj_id) + "/grasp" + std::to_string(grasp));
-                    failed = true;
-                    initialized = false;
-                }
-                else
-                {
-                    srv.request.attObject.object.id = *data_.object_name;
-                    srv.request.object_db_id = (int)*data_.obj_id;
-                    ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
-                    
-                    // make names coherent with the current urdf
-                    // TODO: make this more general
-#if IS_FACTORY>0
-                    if(db_mapper.EndEffectors.size() != NUM_EE_IN_VITO)
-                        if(item.first <= NUM_KUKAS)
-                        {
-                            srv.request.attObject.link_name = std::to_string((int)((item.first-1)/2)) + "_" + srv.request.attObject.link_name;
-                            srv.request.attObject.object.header.frame_id = srv.request.attObject.link_name;
-                            for(auto& j:srv.request.grasp_trajectory.joint_names)
-                                j = std::to_string((int)((item.first-1)/2)) + "_" + j;
-                        }
-#endif
-                        
-                        // change frame of reference of the grasp trajectory to the current object frame
-                        change_frame_to_pose_vector(item.second.cartesian_task,srv.request.ee_pose);
-                        if(item.second.command == cartesian_commands::UNGRASP)
-                        {
-                            // invert the order to generate an ungrasp
-                            std::reverse(srv.request.ee_pose.begin(),srv.request.ee_pose.end());
-                            std::reverse(srv.request.grasp_trajectory.points.begin(),srv.request.grasp_trajectory.points.end());
-                        }
-                        grasping = true;
-                }
-            }
             
+            srv.request.grasp_trajectory.header.seq = (int)item.second.ee_grasp_id;
+            srv.request.attObject.object.id = *data_.object_name;
+            srv.request.object_db_id = (int)*data_.obj_id;
+            srv.request.ee_pose.clear();
+            srv.request.ee_pose.push_back(item.second.cartesian_task);
+            ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+            
+            alone_execution = true;
             // NOTE: this has to be executed ALONE!
             break;
         }
@@ -237,15 +198,4 @@ void ik_moving_substate::run()
 std::string ik_moving_substate::get_type()
 {
     return "ik_moving_substate";
-}
-
-void ik_moving_substate::change_frame_to_pose_vector(geometry_msgs::Pose object_pose_msg, std::vector< geometry_msgs::Pose >& ee_pose)
-{
-    KDL::Frame object_frame,ee_single_frame;
-    tf::poseMsgToKDL(object_pose_msg,object_frame);
-    for(int i=0; i<ee_pose.size(); ++i)
-    {
-        tf::poseMsgToKDL(ee_pose.at(i),ee_single_frame);
-        tf::poseKDLToMsg(object_frame*ee_single_frame,ee_pose.at(i));
-    }
 }
