@@ -31,8 +31,6 @@ public:
   std::map<cartesian_commands,std::string> plan_command;
   // all possible commands which can follow a given command
   std::map<cartesian_commands,std::set<cartesian_commands>> can_follow;
-  // says whether a command should "flush" previously received commands (apply them before continuing)
-  std::set<cartesian_commands> flushing;
   // says whether a command has to be planned
   std::set<cartesian_commands> is_to_be_planned;
   // says whether a command has to be checked

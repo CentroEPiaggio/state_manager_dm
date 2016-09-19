@@ -148,79 +148,32 @@ void ik_planning_substate::run()
             return;
         }
         
-        // flush old targets
-        if(commands.flushing.count(item.second.command))
-        {
-            // if the service had to be called (!empty), but I couldn't: ERROR
-            if(!srv.request.command.empty() && !client.call(srv))
-            {
-                ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : failed to call service ik_ros_service " << srv.request.command);
-                failed = true;
-                return;
-            }
-            
-            // clear the service request
-            srv.request.command = "";
-            srv.request.ee_name = "";
-            srv.request.ee_pose.clear();
-        }
-        
         // add new target at the request
         srv.request.command = commands.set_target_command.at(item.second.command);
         
-        std::string &ee_name(srv.request.ee_name);
-        std::string current_ee(std::get<0>(db_mapper.EndEffectors.at(item.first)));
-        //TODO: this code is very specific to our setup!!! make it more general...
-        if(!ee_name.empty() && ee_name != current_ee)
-        {
-            srv.request.ee_pose.resize(2);
-            
-            // if there was a right_hand target, move it to the second position
-            if(ee_name == "right_hand")
-                std::swap(srv.request.ee_pose.at(1),srv.request.ee_pose.at(0));
-            
-            // insert the new pose in the right place
-            if(current_ee == "left_hand")
-                srv.request.ee_pose.at(0) = item.second.cartesian_task;
-            else if(current_ee == "right_hand")
-                srv.request.ee_pose.at(1) = item.second.cartesian_task;
-            else
-            {
-                ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : current end-effector \'" << current_ee << "\' is NOT supported!");
-                failed = true;
-                return;
-            }
-            
-            ee_name = "both_hands";
-        }
-        else
-        {
-            ee_name = current_ee;
-            srv.request.ee_pose.clear();
-            srv.request.ee_pose.push_back(item.second.cartesian_task);
-        }
+        //NOTE: targets have to be set separately, the sequence of poses in the vector would otherwise be unknown
+        srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+        srv.request.ee_pose.clear();
+        srv.request.ee_pose.push_back(item.second.cartesian_task);
         
         if(planning_ee_name.empty())
-            planning_ee_name = ee_name;
-        else if(planning_ee_name != ee_name)
+            planning_ee_name = srv.request.ee_name;
+        else if(planning_ee_name != srv.request.ee_name)
             // if more than a single group has been considered, always plan for the full robot group
             planning_ee_name = "full_robot";
         
-        // flush newly set target
-        if(commands.flushing.count(item.second.command))
+        // flush newly set target - NOTE that all targets need to be set when they are received, cause composition of multiple ones is not allowed
+        if(!client.call(srv))
         {
-            if(!client.call(srv))
-            {
-                ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : failed to call service ik_ros_service " << srv.request.command);
-                failed = true;
-                return;
-            }
-            
-            // clear the service request
-            srv.request.command = "";
-            srv.request.ee_name = "";
-            srv.request.ee_pose.clear();
+            ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : failed to call service ik_ros_service " << srv.request.command);
+            failed = true;
+            return;
         }
+        
+        // clear the service request
+        srv.request.command = "";
+        srv.request.ee_name = "";
+        srv.request.ee_pose.clear();
         
     } while((data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0) && (data_.cartesian_plan->size() > data_.next_plan+i+1));
     

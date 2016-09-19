@@ -59,12 +59,6 @@ planning_cmd::planning_cmd()
   can_follow[cartesian_commands::HOME].insert(cartesian_commands::MOVE_BEST_EFFORT);
   can_follow[cartesian_commands::HOME].insert(cartesian_commands::HOME);
   
-  flushing.insert(cartesian_commands::HOME);
-  flushing.insert(cartesian_commands::MOVE);
-  flushing.insert(cartesian_commands::MOVE_BEST_EFFORT);
-  flushing.insert(cartesian_commands::MOVE_NO_COLLISION_CHECK);
-  flushing.insert(cartesian_commands::MOVE_CLOSE_BEST_EFFORT);
-  
   is_to_be_checked.insert(cartesian_commands::GRASP);
   
   is_to_be_planned.insert(cartesian_commands::MOVE);
