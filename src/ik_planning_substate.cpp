@@ -1,6 +1,4 @@
 #include "ik_planning_substate.h"
-#include <dual_manipulation_shared/ik_response.h>
-#include <mutex>
 
 #define CLASS_NAMESPACE "ik_planning_substate::"
 
