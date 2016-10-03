@@ -42,12 +42,14 @@ planning_cmd::planning_cmd()
   set_target_command[cartesian_commands::MOVE_BEST_EFFORT] = capabilities.name[ik_control_capabilities::SET_TARGET];
   set_target_command[cartesian_commands::MOVE_CLOSE_BEST_EFFORT] = capabilities.name[ik_control_capabilities::SET_TARGET];
   set_target_command[cartesian_commands::HOME] = capabilities.name[ik_control_capabilities::SET_HOME_TARGET];
+  set_target_command[cartesian_commands::SLIDE] = capabilities.name[ik_control_capabilities::SET_SLIDE_TARGET];
 
   plan_command[cartesian_commands::MOVE] = capabilities.name[ik_control_capabilities::PLAN];
   plan_command[cartesian_commands::MOVE_NO_COLLISION_CHECK] = capabilities.name[ik_control_capabilities::PLAN_NO_COLLISION];
   plan_command[cartesian_commands::MOVE_BEST_EFFORT] = capabilities.name[ik_control_capabilities::PLAN_BEST_EFFORT];
   plan_command[cartesian_commands::MOVE_CLOSE_BEST_EFFORT] = capabilities.name[ik_control_capabilities::PLAN_CLOSE_BEST_EFFORT];
   plan_command[cartesian_commands::HOME] = capabilities.name[ik_control_capabilities::PLAN];
+  plan_command[cartesian_commands::SLIDE] = capabilities.name[ik_control_capabilities::PLAN_SLIDE];
   
   can_follow[cartesian_commands::MOVE].insert(cartesian_commands::MOVE);
   can_follow[cartesian_commands::MOVE].insert(cartesian_commands::MOVE_BEST_EFFORT);
@@ -66,6 +68,7 @@ planning_cmd::planning_cmd()
   is_to_be_planned.insert(cartesian_commands::MOVE_BEST_EFFORT);
   is_to_be_planned.insert(cartesian_commands::MOVE_CLOSE_BEST_EFFORT);
   is_to_be_planned.insert(cartesian_commands::HOME);
+  is_to_be_planned.insert(cartesian_commands::SLIDE);
 }
 
 moving_cmd::moving_cmd()
@@ -77,6 +80,7 @@ moving_cmd::moving_cmd()
   command[cartesian_commands::GRASP] = capabilities.name[ik_control_capabilities::GRASP];
   command[cartesian_commands::UNGRASP] = capabilities.name[ik_control_capabilities::UNGRASP];
   command[cartesian_commands::HOME] = capabilities.name[ik_control_capabilities::MOVE];
+  command[cartesian_commands::SLIDE] = capabilities.name[ik_control_capabilities::MOVE];
   
   is_exec_alone.insert(cartesian_commands::GRASP);
   is_exec_alone.insert(cartesian_commands::UNGRASP);
