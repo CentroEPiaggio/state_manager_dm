@@ -27,7 +27,6 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     bool found=false;
     endeffector_id next_ee_id=-1;
     workspace_id next_workspace_id=-1;
-    dual_manipulation::shared::NodeTransitionTypes transit_type = dual_manipulation::shared::NodeTransitionTypes::UNKNOWN;
     bool next_movable=false;
     while (!found && next_node!=path.end())
     {
@@ -50,15 +49,15 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
                 abort();
             }
             
-            std::vector<endeffector_id> tmp_ees;
             // NOTE: transitions from database are only inside the same workspace
             if(node->workspace_id==next_workspace_id)
             {
-                // this won't be used here, just in planning
-                transition_cost_t tr_cost;
-                database.getTransitionInfo(node->grasp_id, next_node->grasp_id, transit_type, tr_cost, tmp_ees);
-                result.type = transit_type;
-                result.busy_ees.insert(result.busy_ees.end(),tmp_ees.begin(),tmp_ees.end());
+                transition_info t_info;
+                // constraint id, NOT used at the moment
+                constraint_id c_id = 0;
+                database.getTransitionInfo(object_state(node->grasp_id,node->workspace_id,c_id),object_state(next_node->grasp_id,next_node->workspace_id,c_id),t_info);
+                result.type = t_info.grasp_transition_type_;
+                result.busy_ees.insert(result.busy_ees.end(),t_info.ee_ids_.begin(),t_info.ee_ids_.end());
             }
             // NOTE: simplify when a movable end-effector is changing workspace but keeping the same grasp
             if ((ee_id==next_ee_id) && (node->workspace_id!=next_workspace_id) && movable && next_movable && (node->grasp_id == next_node->grasp_id))
@@ -70,14 +69,7 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
             }
         }
     }
-    if (found)
-    {
-        if (movable && !next_movable) result.type=node_properties::UNGRASP;          //found, one is movable, change on ground
-        if (!movable && next_movable) result.type=node_properties::GRASP;          //found, one is movable, change on ground
-        if (movable && next_movable) result.type=node_properties::EXCHANGE_GRASP;        //found, both ee are movable: change above ground
-        if (!movable && !next_movable) result.type=node_properties::UNKNOWN;            //if (!movable && !next_movable)
-    }
-    else
+    if (!found)
     {
         if (!movable) result.type=node_properties::LAST_EE_FIXED;             //3.4.1) if not found, than ee_id is the last end effector in the path //not found not movable
         else result.type=node_properties::LAST_EE_MOVABLE;            //else //not found->last e.e, movable
