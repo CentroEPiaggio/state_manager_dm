@@ -38,34 +38,25 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
             next_movable=std::get<1>(database.EndEffectors.at(next_ee_id));
             
             // check for supported cases:
-            // - supported type #1: change of workspace with the same grasp, movable end-effector
-            bool supported_node = ((node->workspace_id != next_workspace_id) && (node->grasp_id == next_node->grasp_id) && movable);
-            // - supported type #2: change of grasp with an allowed transition (not necessarily in the same workspace, as we are moving...)
-            supported_node = supported_node || (database.Grasp_transitions.count(node->grasp_id) && database.Grasp_transitions.at(node->grasp_id).count(next_node->grasp_id));
-            if(!supported_node)
+            // all supported cases come from databaseMapper::getTransitionInfo
+            transition_info t_info;
+            // constraint id, NOT used at the moment
+            constraint_id c_id = 0;
+            bool supported_node = database.getTransitionInfo(object_state(node->grasp_id,node->workspace_id,c_id),object_state(next_node->grasp_id,next_node->workspace_id,c_id),t_info);
+            if(supported_node)
             {
-                std::cout << CLASS_NAMESPACE << __func__ << " : there was a change of grasp which was not present in the database: this is NOT supported!" << std::endl;
+                result.type = t_info.grasp_transition_type_;
+                result.busy_ees.insert(result.busy_ees.end(),t_info.ee_ids_.begin(),t_info.ee_ids_.end());
+            }
+            else
+            {
+                std::cout << CLASS_NAMESPACE << __func__ << " : there was a change of grasp which is NOT supported and should NEVER happen!" << std::endl;
                 std::cout << CLASS_NAMESPACE << __func__ << " : source(g,w)=(" << node->grasp_id << "," << node->workspace_id << ") > target(g,w):(" << next_node->grasp_id << "," << next_node->workspace_id << ")" << std::endl;
                 abort();
             }
             
-            // transitions from database
-            {
-                transition_info t_info;
-                // constraint id, NOT used at the moment
-                constraint_id c_id = 0;
-                database.getTransitionInfo(object_state(node->grasp_id,node->workspace_id,c_id),object_state(next_node->grasp_id,next_node->workspace_id,c_id),t_info);
-                result.type = t_info.grasp_transition_type_;
-                result.busy_ees.insert(result.busy_ees.end(),t_info.ee_ids_.begin(),t_info.ee_ids_.end());
-            }
-            // NOTE: simplify when a movable end-effector is changing workspace but keeping the same grasp
-            if ((ee_id==next_ee_id) && (node->workspace_id!=next_workspace_id) && movable && next_movable && (node->grasp_id == next_node->grasp_id))
-                continue;
-            else
-            {
-                found=true;
-                break;
-            }
+            found=true;
+            break;
         }
     }
     if (!found)
