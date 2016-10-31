@@ -297,9 +297,9 @@ bool s2c_ik_converter::check_ik(std::string ee_name, KDL::Frame World_EE) const
 void s2c_ik_converter::addNewFilteredArc(const node_info& node, dual_manipulation_shared::planner_item& filtered_source_node, dual_manipulation_shared::planner_item& filtered_target_node) const
 {
     filtered_source_node.grasp_id=node.current_grasp_id;
-    filtered_source_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
+    filtered_source_node.workspace_id=node.current_workspace_id;
     filtered_target_node.grasp_id=node.next_grasp_id;
-    filtered_target_node.workspace_id=node.next_workspace_id;//THIS IS INTENTIONAL!! We remove the intergrasp transition arc in the target workspace
+    filtered_target_node.workspace_id=node.next_workspace_id;
 }
 
 bool s2c_ik_converter::compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const

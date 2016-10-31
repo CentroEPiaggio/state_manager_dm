@@ -16,6 +16,7 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::GRASP] = &semantic_to_cartesian_converter::manage_transition_grasp;
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::UNGRASP] = &semantic_to_cartesian_converter::manage_transition_ungrasp;
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::EXCHANGE_GRASP] = &semantic_to_cartesian_converter::manage_transition_exchange_grasp;
+    manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::MOVE_NONBLOCKING] = &semantic_to_cartesian_converter::manage_transition_move_nonblocking;
 }
 
 node_info semantic_to_cartesian_converter::find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node) const
@@ -248,6 +249,24 @@ bool semantic_to_cartesian_converter::manage_transition_exchange_grasp(std::vect
     result.push_back(std::make_pair(node.current_ee_id,ungrasp));
     cartesian_command move_away(cartesian_commands::HOME,0,-1);
     result.push_back(std::make_pair(node.current_ee_id,move_away));
+    
+    return true;
+}
+
+bool semantic_to_cartesian_converter::manage_transition_move_nonblocking(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+{
+    Object_GraspMatrixes Object;
+    getGraspMatrixesFatal(data,node,Object);
+    
+    // move the end-effector in a non-blocking way (i.e., set the target and possibly set new ones later on
+    cartesian_command move_command;
+    move_command.command=cartesian_commands::MOVE;
+    move_command.seq_num = 0;
+    move_command.ee_grasp_id=node.current_grasp_id;
+    KDL::Frame World_Object;
+    tf::poseMsgToKDL(data.target_position,World_Object);
+    tf::poseKDLToMsg(World_Object*Object.PostGraspFirstEE,move_command.cartesian_task);
+    result.push_back(std::make_pair(node.current_ee_id,move_command));
     
     return true;
 }
