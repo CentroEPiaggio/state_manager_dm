@@ -217,13 +217,6 @@ void semantic_planning_state::run()
             completed=true;
             return;
         }
-        if (srv.response.path.size()<3)
-        {
-            ROS_INFO("The planner returned a path with less than 3 nodes, should we handle this in a different way??");
-            internal_state.insert(std::make_pair(transition::failed_plan,true));
-            completed=true;
-            return;
-        }
         std::vector<std::pair<endeffector_id,cartesian_command>> result;
         bool converted=converter.convert(result,srv.response.path,data,data.filtered_source_nodes,data.filtered_target_nodes);
         #if GRASP_TESTING
