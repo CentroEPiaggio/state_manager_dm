@@ -93,7 +93,7 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         if(!manage_transition_by_type.count(node.type))
         {
             std::cout << CLASS_NAMESPACE << __func__ << " : there is no implementation managing transitions of type \'" << node.type << "\'!" << std::endl;
-            return false;
+            abort();
         }
         else
         {
