@@ -49,8 +49,7 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
                 abort();
             }
             
-            // NOTE: transitions from database are only inside the same workspace
-            if(node->workspace_id==next_workspace_id)
+            // transitions from database
             {
                 transition_info t_info;
                 // constraint id, NOT used at the moment
