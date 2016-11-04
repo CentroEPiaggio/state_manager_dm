@@ -659,3 +659,80 @@ void s2c_ik_converter::clearCachedIkSolutions()
 {
     cache_ik_solutions.clear();
 }
+
+bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, node_info node, const shared_memory& data, bool first_node, bool last_node, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes, const std::vector<KDL::Frame>& Object_ee_poses, const std::string& ee_name) const
+{
+        
+    Object_GraspMatrixes Object;
+    if (!getGraspMatrixes(data.obj_id, node, Object)) abort();
+    
+    KDL::Frame World_Current_Object;
+    KDL::Frame World_Target_Object;
+    
+    bool intergrasp_ok =  false;
+        
+    if (first_node)
+    {
+        tf::poseMsgToKDL(data.source_position,World_Current_Object);
+    }
+    else
+    {
+        double centroid_x=0, centroid_y=0, centroid_z=0;
+        
+        centroid_x=0;
+        centroid_y=0;
+        for (auto workspace: database.WorkspaceGeometry.at(node.current_workspace_id))
+        {
+            centroid_x+=workspace.first;
+            centroid_y+=workspace.second;
+        }
+        centroid_x=centroid_x/database.WorkspaceGeometry.at(node.current_workspace_id).size();
+        centroid_y=centroid_y/database.WorkspaceGeometry.at(node.current_workspace_id).size();
+        centroid_z=LOW;
+        KDL::Frame World_Current_Centroid(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
+        
+        World_Current_Object = World_Current_Centroid*(Object.PostGraspFirstEE.Inverse());
+    }
+    
+    if (last_node)
+    {
+        tf::poseMsgToKDL(data.target_position,World_Target_Object);
+    }
+    else
+    {
+        double centroid_x=0, centroid_y=0, centroid_z=0;
+        compute_centroid(centroid_x, centroid_y, centroid_z, node);
+        KDL::Frame World_Target_Centroid(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
+        World_Target_Object = World_Target_Centroid*(Object.GraspSecondEE.Inverse());
+    }
+    
+    assert(Object_ee_poses.size() == 2 && "Poses need to be 2: PreSlide and Slide");
+    std::cout << "Sliding IK" << std::endl;
+    if(check_ik(ee_name, World_Current_Object*Object_ee_poses.at(0))) // 0 - preslide
+    {
+        std::cout << "Preslide" << std::endl;
+        if(check_ik(ee_name,World_Current_Object*Object_ee_poses.at(1)))
+        {
+            std::cout << "Slide Source" << std::endl;
+            if(check_ik(ee_name,World_Target_Object*Object_ee_poses.at(1)))
+            {
+                std::cout << "Slide target" << std::endl;
+                intergrasp_ok = true;
+            }
+        }
+    }
+    
+    if (!intergrasp_ok)
+    {
+        addNewFilteredArc(node,filtered_source_nodes,filtered_target_nodes);
+        return false;
+    }
+    
+    World_Object.clear();
+    World_Object.push_back(World_Current_Object);
+    World_Object.push_back(World_Target_Object);
+    return true;
+
+    
+}
+

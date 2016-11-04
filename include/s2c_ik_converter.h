@@ -71,6 +71,7 @@ class s2c_ik_converter
 public:
     s2c_ik_converter(const databaseMapper& database);
     bool checkSingleGrasp(KDL::Frame& World_Object, node_info node, const shared_memory& data, bool first_node, bool last_node, dual_manipulation_shared::planner_item & filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes) const;
+    bool checkSlidePoses(std::vector<KDL::Frame>& World_Object, node_info node, const shared_memory& data, bool first_node, bool last_node, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes, const std::vector<KDL::Frame>& Object_ee_poses, const std::string& ee_name) const;
     bool compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object) const;
     bool compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object, dual_manipulation_shared::planner_item & filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes) const;
     static bool getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& Object);
