@@ -123,6 +123,8 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     int best_grasp = -1;
     double closeness = -1.0;
     
+    std::cout << "Pose: " << std::endl << pose << std::endl;
+    
     for (auto item:db_mapper_.Grasps)
     {
 	auto ee_id_tmp = std::get<1>(item.second);
@@ -145,18 +147,25 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
 	      ROS_WARN_STREAM("Unable to deserialize grasp entry : object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
 	    
 	    // get residual rotation and its quaternion representation
-	    KDL::Rotation Rresidual = grasp_frame.M.Inverse()*(obj_frame.M);
+// 	    KDL::Rotation Rresidual = grasp_frame.M.Inverse()*(obj_frame.M); // old_method
+        KDL::Rotation Rresidual = grasp_frame.M*(obj_frame.M);
 	    Rresidual.GetQuaternion(x,y,z,w);
+        
+        std::cout << "Grasp ID: " << grasp << std::endl;
+        std::cout << "Last waypoint" << std::endl << srv.request.ee_pose.back() << std::endl;
+        std::cout << "quaternion: x=" << x << " y=" << y << " z=" << z << " w=" << w << std::endl;
 	  
 	    // the higher the w (in abs value) the better (smaller rotation angles around any axis)
 	    if((closeness < 0) || (std::abs(w) > closeness))
 	    {
-		closeness = std::abs(w);
-		best_grasp = item.first;
+            closeness = std::abs(w);
+            best_grasp = item.first;
+            std::cout << "Getting closer " << closeness << std::endl; 
 	    }
+	    
 	}
     }
-    
+    std::cout << "Best grasp found: " << best_grasp << std::endl;
     ROS_INFO_STREAM("Best grasp found: " << best_grasp);
     return best_grasp;
 }
