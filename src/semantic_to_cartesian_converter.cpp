@@ -17,6 +17,7 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::UNGRASP] = &semantic_to_cartesian_converter::manage_transition_ungrasp;
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::EXCHANGE_GRASP] = &semantic_to_cartesian_converter::manage_transition_exchange_grasp;
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::MOVE_NONBLOCKING] = &semantic_to_cartesian_converter::manage_transition_move_nonblocking;
+    manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::SLIDE] = &semantic_to_cartesian_converter::manage_transition_slide;
 }
 
 node_info semantic_to_cartesian_converter::find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node) const
@@ -97,9 +98,9 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         }
         else
         {
-#if DEBUG
+// #if DEBUG
             std::cout << CLASS_NAMESPACE << __func__ << " : transition of type \'" << node.type << "\'" << std::endl;
-#endif
+// #endif
             if(!(this->*manage_transition_by_type.at(node.type))(result,node,node_it,next_node_it,path,data,filtered_source_nodes,filtered_target_nodes))
                 return false;
         }
@@ -269,4 +270,53 @@ bool semantic_to_cartesian_converter::manage_transition_move_nonblocking(std::ve
     result.push_back(std::make_pair(node.current_ee_id,move_command));
     
     return true;
+}
+
+bool semantic_to_cartesian_converter::manage_transition_slide(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+{
+    KDL::Frame World_Object,World_GraspSecondEE;
+    Object_GraspMatrixes Object;
+    
+    endeffector_id ee_id_to_use = 0;
+    
+    for (endeffector_id ee:node.busy_ees)
+    {
+        if (    data.db_mapper.Reachability.count(ee) && data.db_mapper.Reachability.at(ee).count(node.current_workspace_id) 
+                && data.db_mapper.Reachability.at(ee).count(node.next_workspace_id) )
+        {
+            ee_id_to_use = ee;
+            break;
+        }
+    }
+    
+    assert(ee_id_to_use != 0);
+    
+    KDL::Frame Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(0.0,7.0*M_PI/8.0,0.0), KDL::Vector(0.08,0.0,0.25));
+    KDL::Frame Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(0.0,7.0*M_PI/8.0,0.0), KDL::Vector(0.08,0.0,0.20));
+    
+    std::vector<KDL::Frame> object_ee_poses({Object_PreSlide, Object_Slide});
+    std::vector<KDL::Frame> World_Object_Poses;
+    
+    std::string ee_name = std::get<0>(data.db_mapper.EndEffectors.at(ee_id_to_use));
+    if (!s2cik->checkSlidePoses(World_Object_Poses,node,data,node_it==path.begin(),((next_node_it+1) == path.end()),filtered_source_nodes,filtered_target_nodes, object_ee_poses, ee_name))
+        return false;
+    
+    cartesian_command move_command(cartesian_commands::MOVE_BEST_EFFORT, 1, -1);
+    tf::poseKDLToMsg(World_Object_Poses.at(0)*Object_PreSlide ,move_command.cartesian_task);
+    result.push_back(std::make_pair(ee_id_to_use, move_command)); //move to PreSliding 
+    
+    cartesian_command move_command_2(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, -1);
+    tf::poseKDLToMsg(World_Object_Poses.at(0)*Object_Slide ,move_command_2.cartesian_task);
+    result.push_back(std::make_pair(ee_id_to_use, move_command_2)); //move to pose for Sliding 
+    
+    cartesian_command slide_command(cartesian_commands::SLIDE, 1, -1);
+    tf::poseKDLToMsg(World_Object_Poses.at(1)*Object_Slide ,slide_command.cartesian_task);
+    result.push_back(std::make_pair(ee_id_to_use, slide_command)); //do Sliding
+    
+    cartesian_command move_away(cartesian_commands::HOME,0,-1);
+    result.push_back(std::make_pair(ee_id_to_use,move_away));
+     
+   
+    return true;
+    
 }
