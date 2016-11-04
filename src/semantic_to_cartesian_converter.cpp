@@ -292,7 +292,7 @@ bool semantic_to_cartesian_converter::manage_transition_slide(std::vector< std::
     assert(ee_id_to_use != 0);
     
     KDL::Frame Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(0.0,7.0*M_PI/8.0,0.0), KDL::Vector(0.08,0.0,0.25));
-    KDL::Frame Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(0.0,7.0*M_PI/8.0,0.0), KDL::Vector(0.08,0.0,0.20));
+    KDL::Frame Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(0.0,7.0*M_PI/8.0,0.0), KDL::Vector(0.08,0.0,0.17));
     
     std::vector<KDL::Frame> object_ee_poses({Object_PreSlide, Object_Slide});
     std::vector<KDL::Frame> World_Object_Poses;
