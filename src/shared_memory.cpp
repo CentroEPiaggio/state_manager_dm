@@ -26,7 +26,15 @@ void shared_memory::reset()
 
 std::ostream& operator<<(std::ostream& output, const cartesian_commands& command)
 {
-  output << (command==cartesian_commands::HOME?"home":command==cartesian_commands::MOVE?"move":command==cartesian_commands::MOVE_NO_COLLISION_CHECK?"move w/o collision check":command==cartesian_commands::MOVE_BEST_EFFORT?"move best-effort":command==cartesian_commands::MOVE_CLOSE_BEST_EFFORT?"move close best-effort":command==cartesian_commands::GRASP?"grasp":command==cartesian_commands::UNGRASP?"ungrasp":"");
+  output << (   command==cartesian_commands::HOME?"home":
+                command==cartesian_commands::MOVE?"move":
+                command==cartesian_commands::MOVE_NO_COLLISION_CHECK?"move w/o collision check":
+                command==cartesian_commands::MOVE_BEST_EFFORT?"move best-effort":
+                command==cartesian_commands::MOVE_CLOSE_BEST_EFFORT?"move close best-effort":
+                command==cartesian_commands::GRASP?"grasp":
+                command==cartesian_commands::UNGRASP?"ungrasp":
+                command==cartesian_commands::SLIDE?"slide":
+                "(I don't know how to write this cartesian_command!!)");
 }
 
 std::ostream& operator<<(std::ostream &output, const cartesian_command &o) {
