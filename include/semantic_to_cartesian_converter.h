@@ -100,6 +100,9 @@ private:
     typedef decltype(&semantic_to_cartesian_converter::manage_transition_unknown) my_fun_t;
     /// map containing information about correspondences between functions and transition types
     std::map<dual_manipulation::shared::NodeTransitionTypes,my_fun_t> manage_transition_by_type;
+    
+    bool use_slide =  true;
+    KDL::Frame Object_PreSlide, Object_Slide;
 };
 
 #endif // SEMANTIC_TO_CARTESIAN_CONVERTER_H

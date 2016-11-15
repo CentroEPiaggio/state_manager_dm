@@ -1,5 +1,6 @@
 #include "semantic_to_cartesian_converter.h"
 #include <tf_conversions/tf_kdl.h>
+#include <ros/ros.h>
 
 #define DEBUG 0 // if 1, print some more information
 
@@ -18,6 +19,22 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::EXCHANGE_GRASP] = &semantic_to_cartesian_converter::manage_transition_exchange_grasp;
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::MOVE_NONBLOCKING] = &semantic_to_cartesian_converter::manage_transition_move_nonblocking;
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::SLIDE] = &semantic_to_cartesian_converter::manage_transition_slide;
+    
+    ros::NodeHandle node;
+    std::vector<double> pOP(6,0), pOS(6,0); //Parameters for Object_Preslide and Object_Slide
+    use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide", pOP);
+    use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide", pOS);
+    use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+    if( use_slide )
+    {
+        Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+        Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+    }
+    else    
+        std::cout << CLASS_NAMESPACE << __func__ << " Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+    
+    
 }
 
 node_info semantic_to_cartesian_converter::find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node) const
@@ -274,6 +291,8 @@ bool semantic_to_cartesian_converter::manage_transition_move_nonblocking(std::ve
 
 bool semantic_to_cartesian_converter::manage_transition_slide(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
 {
+    if (!use_slide)
+        return false;
     KDL::Frame World_Object,World_GraspSecondEE;
     Object_GraspMatrixes Object;
     
@@ -290,10 +309,7 @@ bool semantic_to_cartesian_converter::manage_transition_slide(std::vector< std::
     }
     
     assert(ee_id_to_use != 0);
-    
-    KDL::Frame Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(0.0,7.0*M_PI/8.0,0.0), KDL::Vector(0.08,0.0,0.25));
-    KDL::Frame Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(0.0,7.0*M_PI/8.0,0.0), KDL::Vector(0.08,0.0,0.17));
-    
+
     std::vector<KDL::Frame> object_ee_poses({Object_PreSlide, Object_Slide});
     std::vector<KDL::Frame> World_Object_Poses;
     
