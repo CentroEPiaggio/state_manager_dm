@@ -153,6 +153,8 @@ void ik_planning_substate::run()
         srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
         srv.request.ee_pose.clear();
         srv.request.ee_pose.push_back(item.second.cartesian_task);
+        srv.request.attObject.object.id = *data_.object_name;
+        srv.request.object_db_id = (int)*data_.obj_id;
         
         if(planning_ee_name.empty())
             planning_ee_name = srv.request.ee_name;
@@ -172,6 +174,7 @@ void ik_planning_substate::run()
         srv.request.command = "";
         srv.request.ee_name = "";
         srv.request.ee_pose.clear();
+        srv.request.attObject.object.id.clear();
         
     } while((data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0) && (data_.cartesian_plan->size() > data_.next_plan+i+1));
     
@@ -185,6 +188,8 @@ void ik_planning_substate::run()
     
     srv.request.command = commands.plan_command[data_.cartesian_plan->at(data_.next_plan+i).second.command];
     srv.request.ee_name = planning_ee_name;
+    srv.request.attObject.object.id = *data_.object_name;
+    srv.request.object_db_id = (int)*data_.obj_id;
     
     std::unique_lock<std::mutex> lck(plan_executed_mutex);
     plan_executed++;
