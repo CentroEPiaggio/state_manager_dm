@@ -255,17 +255,13 @@ bool s2c_ik_converter::getGraspMatrixes(object_id object, grasp_id grasp, Object
     return ok;
 }
 
-void s2c_ik_converter::compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node) const
+void s2c_ik_converter::compute_centroid(KDL::Frame& ws_centroid, const node_info& node) const
 {
     auto w_id=node.next_workspace_id;
     bool high_centroid(false);
     if (node.type==node_properties::EXCHANGE_GRASP) //both ee are movable: change above ground
         high_centroid = true;
-    KDL::Frame ws_centroid;
     bool res = database.getWorkspaceCentroid(w_id,high_centroid,ws_centroid);
-    centroid_x = ws_centroid.p.x();
-    centroid_y = ws_centroid.p.y();
-    centroid_z = ws_centroid.p.z();
     
     return;
 }
@@ -309,9 +305,8 @@ bool s2c_ik_converter::compute_intergrasp_orientation(KDL::Frame& World_Object, 
 
 bool s2c_ik_converter::compute_intergrasp_orientation(KDL::Frame& World_Object, const node_info& node, object_id object) const
 {
-    double centroid_x,centroid_y,centroid_z;
-    compute_centroid(centroid_x,centroid_y,centroid_z,node);
-    //     KDL::Frame World_centroid(KDL::Vector(centroid_x,centroid_y,centroid_z));
+    KDL::Frame World_centroid;
+    compute_centroid(World_centroid,node);
     
     Object_GraspMatrixes Object;
     auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
@@ -386,7 +381,7 @@ bool s2c_ik_converter::compute_intergrasp_orientation(KDL::Frame& World_Object, 
                     KDL::Frame World_FirstEE;
                     temp_fk.JntToCart(temp,World_FirstEE);
                     World_Object=World_FirstEE*Object.PostGraspFirstEE.Inverse();
-                    found = KDL::Equal(World_Object.p,KDL::Vector(centroid_x,centroid_y,centroid_z),BOX_CONSTR_SIDE/2.0);
+                    found = KDL::Equal(World_Object.p,World_centroid.p,BOX_CONSTR_SIDE/2.0);
                 }
                 else
                 {
@@ -511,8 +506,8 @@ bool s2c_ik_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node
         std::cout << "Semantic to cartesian: node.type==node_properties::GRASP" << std::endl;
 #endif
         // 3.6) compute a rough position of the place where the change of grasp will happen
-        compute_centroid(centroid_x,centroid_y,centroid_z,node);
-        KDL::Frame World_Centroid_f(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
+        KDL::Frame World_Centroid_f;
+        compute_centroid(World_Centroid_f,node);
         bool intergrasp_ok = false;
         auto next_ee_name=std::get<0>(database.EndEffectors.at(node.next_ee_id));
         
@@ -543,8 +538,8 @@ bool s2c_ik_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node
         std::cout << "Semantic to cartesian: node.type==node_properties::UNGRASP" << std::endl;
 #endif
         // 3.6) compute a rough position of the place where the change of grasp will happen
-        compute_centroid(centroid_x,centroid_y,centroid_z,node);
-        KDL::Frame World_Centroid_f(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
+        KDL::Frame World_Centroid_f;
+        compute_centroid(World_Centroid_f,node);
         bool intergrasp_ok =false;
         auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
         if (last_node)
@@ -684,9 +679,8 @@ bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, no
     }
     else
     {
-        double centroid_x=0, centroid_y=0, centroid_z=0;
-        compute_centroid(centroid_x, centroid_y, centroid_z, node);
-        KDL::Frame World_Target_Centroid(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
+        KDL::Frame World_Target_Centroid;
+        compute_centroid(World_Target_Centroid,node);
         World_Target_Object = World_Target_Centroid*(Object.GraspSecondEE.Inverse());
     }
     
