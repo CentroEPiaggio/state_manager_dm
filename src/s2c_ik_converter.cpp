@@ -257,20 +257,15 @@ bool s2c_ik_converter::getGraspMatrixes(object_id object, grasp_id grasp, Object
 
 void s2c_ik_converter::compute_centroid(double& centroid_x,double& centroid_y,double& centroid_z, const node_info& node) const
 {
-    centroid_x=0;
-    centroid_y=0;
     auto w_id=node.next_workspace_id;
-    for (auto workspace: database.WorkspaceGeometry.at(w_id))
-    {
-        centroid_x+=workspace.first;
-        centroid_y+=workspace.second;
-    }
-    centroid_x=centroid_x/database.WorkspaceGeometry.at(w_id).size();
-    centroid_y=centroid_y/database.WorkspaceGeometry.at(w_id).size();
+    bool high_centroid(false);
     if (node.type==node_properties::EXCHANGE_GRASP) //both ee are movable: change above ground
-    {centroid_z=HIGH;}
-    else //one is movable, change on ground
-    {centroid_z=LOW;}
+        high_centroid = true;
+    KDL::Frame ws_centroid;
+    bool res = database.getWorkspaceCentroid(w_id,high_centroid,ws_centroid);
+    centroid_x = ws_centroid.p.x();
+    centroid_y = ws_centroid.p.y();
+    centroid_z = ws_centroid.p.z();
     
     return;
 }
@@ -677,19 +672,8 @@ bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, no
     }
     else
     {
-        double centroid_x=0, centroid_y=0, centroid_z=0;
-        
-        centroid_x=0;
-        centroid_y=0;
-        for (auto workspace: database.WorkspaceGeometry.at(node.current_workspace_id))
-        {
-            centroid_x+=workspace.first;
-            centroid_y+=workspace.second;
-        }
-        centroid_x=centroid_x/database.WorkspaceGeometry.at(node.current_workspace_id).size();
-        centroid_y=centroid_y/database.WorkspaceGeometry.at(node.current_workspace_id).size();
-        centroid_z=LOW;
-        KDL::Frame World_Current_Centroid(KDL::Frame(KDL::Vector(centroid_x,centroid_y,centroid_z)));
+        KDL::Frame World_Current_Centroid;
+        bool res = database.getWorkspaceCentroid(node.current_workspace_id,false,World_Current_Centroid);
         
         World_Current_Object = World_Current_Centroid*(Object.PostGraspFirstEE.Inverse());
     }
