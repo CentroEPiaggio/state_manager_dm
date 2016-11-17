@@ -153,29 +153,17 @@ void ik_checking_grasp_substate::run()
   node.next_grasp_id = data_.cartesian_plan->at(data_.next_plan).second.ee_grasp_id;
   
   // are we still inside the workspace?
-  double xs,ys;
-  xs = World_RealObjPose.p.x();
-  ys = World_RealObjPose.p.y();
-  bool ws_found = false;
-  for (auto workspace: database_.WorkspaceGeometry)
-  {
-      std::vector<Point> temp;
-      for (auto point : workspace.second)
-	  temp.emplace_back(point.first,point.second);
-      if (geom.point_in_ordered_polygon(xs,ys,temp))
-      {
-	  node.next_workspace_id = workspace.first;
-	  node.current_workspace_id = workspace.first;
-	  ws_found = true;
-	  break;
-      }
-  }
+  workspace_id ws_id = database_.getWorkspaceIDFromPose(World_RealObjPose);
+  bool ws_found = (ws_id != -1);
+  
   if(!ws_found)
   {
     ROS_ERROR_STREAM("ik_checking_grasp_substate::run : actual object pose is out of the semantic workspace! returning...");
     failed_ = true;
     return;
   }
+  node.next_workspace_id = ws_id;
+  node.current_workspace_id = ws_id;
   
   // if current end-effector is not movable, it's the table
   if(data_.cartesian_plan->at(data_.next_plan+1).second.command != cartesian_commands::UNGRASP)

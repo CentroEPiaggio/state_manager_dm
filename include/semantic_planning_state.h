@@ -4,7 +4,6 @@
 #include "abstract_state.h"
 #include "semantic_to_cartesian_converter.h"
 #include <dual_manipulation_shared/databasemapper.h>
-#include <dual_manipulation_shared/geometry_tools.h>
 #include <dual_manipulation_shared/planner_service.h>
 #include <ros/node_handle.h>
 
@@ -30,7 +29,6 @@ private:
     ros::Publisher good_grasps_pub;
     dual_manipulation_shared::planner_service srv;
     const databaseMapper& database;
-    geometry_tools geom;
     shared_memory& data;
     bool completed;
     std::map< transition, bool > internal_state;

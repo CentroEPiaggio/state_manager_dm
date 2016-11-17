@@ -1,6 +1,5 @@
 #include "../include/semantic_planning_state.h"
 #include "dual_manipulation_planner/planner_lib.h"
-#include <dual_manipulation_shared/geometry_tools.h>
 #include <ros/init.h>
 #include <dual_manipulation_shared/stream_utils.h>
 #include "dual_manipulation_shared/ik_service.h"
@@ -47,24 +46,14 @@ void semantic_planning_state::run()
     double xt=data.target_position.position.x;
     double yt=data.target_position.position.y;
     
-    for (auto workspace: database.WorkspaceGeometry)
-    {
-        std::vector<Point> temp;
-        for (auto point : workspace.second)
-            temp.emplace_back(point.first,point.second);
-        if (geom.point_in_ordered_polygon(xs,ys,temp))
-        {
-            std::cout<<"source position is in workspace "<<workspace.first<<std::endl;
-            source_found=true;
-            source=workspace.first;
-        }
-        if (geom.point_in_ordered_polygon(xt,yt,temp))
-        {
-            std::cout<<"target position is in workspace "<<workspace.first<<std::endl;
-            target_found=true;
-            target=workspace.first;
-        }
-    }
+    KDL::Frame tmp;
+    tf::poseMsgToKDL(data.source_position,tmp);
+    source = database.getWorkspaceIDFromPose(tmp);
+    tf::poseMsgToKDL(data.target_position,tmp);
+    target = database.getWorkspaceIDFromPose(tmp);
+    source_found = source != -1;
+    target_found = target != -1;
+    
     if (!source_found)
         std::cout<<"source position is outside the workspaces!!!"<<std::endl;
     if (!target_found)
@@ -75,6 +64,8 @@ void semantic_planning_state::run()
         completed=true;
         return;
     }
+    std::cout << "source position is in workspace " << source << std::endl;
+    std::cout << "target position is in workspace " << target << std::endl;
     //Filtering source and target grasps in order to reduce the graph size during planning
     KDL::Frame fake;
     dual_manipulation_shared::good_grasp_msg msg;
