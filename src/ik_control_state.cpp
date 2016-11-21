@@ -370,7 +370,7 @@ void ik_control_state::show_plan_with_markers()
   visualization_msgs::MarkerArray markers;
   std::string path_r = "package://soft_hand_description/meshes/palm_right.stl";
   std::string path_l = "package://soft_hand_description/meshes/palm_left.stl";
-  std::string path_obj = std::get<1>(db_mapper.Objects.at( obj_id ));
+  std::string path_obj = db_mapper.Objects.at( obj_id ).mesh_path;
 
   marker.action=3; //delete all
   marker.header.frame_id = "world";
