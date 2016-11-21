@@ -83,7 +83,11 @@ void semantic_planning_state::run()
         return;
     }
     
-    //TODO: check grasps only if source is a table grasp
+    // TODO: outline a more defined condition for when to check transitions from source and to target states
+    object_state source_state(temp.current_grasp_id,temp.current_workspace_id);
+    object_state target_state(0,temp.next_workspace_id);
+    transition_info t_info;
+    // check grasps only if source is a table grasp
     bool source_ee_movable = std::get<1>(database.EndEffectors.at(temp.current_ee_id));
     if(source_ee_movable)
     {
@@ -101,7 +105,10 @@ void semantic_planning_state::run()
 #endif
             temp.next_grasp_id = next_grasp_id;
             temp.next_ee_id = std::get<1>(database.Grasps.at(next_grasp_id));
-            if (database.Reachability.at(temp.next_ee_id).count(source))
+            target_state.grasp_id_ = temp.next_grasp_id;
+            database.getTransitionInfo(source_state,target_state,t_info);
+            // only check grasps here...
+            if (t_info.grasp_transition_type_ == dual_manipulation::shared::NodeTransitionTypes::GRASP && database.Reachability.at(temp.next_ee_id).count(source))
             {
                 if(converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes))
                     msg.good_source_grasps.push_back(temp.next_grasp_id);
@@ -122,8 +129,11 @@ void semantic_planning_state::run()
     temp.current_workspace_id = target;
     temp.next_workspace_id = target;
     temp.type=node_properties::UNGRASP;
+    target_state.grasp_id_ = temp.next_grasp_id;
+    source_state.workspace_id_ = temp.current_workspace_id;
+    target_state.workspace_id_ = temp.next_workspace_id;
     
-    //TODO: check grasps only if target is a table grasp
+    // check grasps only if target is a table grasp
     bool target_ee_movable = std::get<1>(database.EndEffectors.at(temp.next_ee_id));
     if(target_ee_movable)
     {
@@ -139,7 +149,10 @@ void semantic_planning_state::run()
 #endif
             temp.current_grasp_id = current_grasp_id;
             temp.current_ee_id = std::get<1>(database.Grasps.at(current_grasp_id));
-            if (database.Reachability.at(temp.current_ee_id).count(target))
+            source_state.grasp_id_ = temp.current_grasp_id;
+            database.getTransitionInfo(source_state,target_state,t_info);
+            // only check ungrasps here...
+            if (t_info.grasp_transition_type_ == dual_manipulation::shared::NodeTransitionTypes::UNGRASP && database.Reachability.at(temp.current_ee_id).count(target))
             {
                 if(converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes))
                     msg.good_target_grasps.push_back(temp.current_grasp_id);
