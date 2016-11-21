@@ -152,13 +152,13 @@ void semantic_to_cartesian_converter::getGraspMatrixesFatal(const shared_memory&
     }
 }
 
-bool semantic_to_cartesian_converter::manage_transition_unknown(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_unknown)
 {
     std::cout << CLASS_NAMESPACE << " : ERROR, the planner returned two nodes for which no known transition is implemented!!"<<std::endl;
     return false;
 }
 
-bool semantic_to_cartesian_converter::manage_transition_last_ee_movable(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_last_ee_movable)
 {
     Object_GraspMatrixes Object;
     getGraspMatrixesFatal(data,node,Object);
@@ -177,12 +177,12 @@ bool semantic_to_cartesian_converter::manage_transition_last_ee_movable(std::vec
     return true;
 }
 
-bool semantic_to_cartesian_converter::manage_transition_last_ee_fixed(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_last_ee_fixed)
 {
     return true;
 }
 
-bool semantic_to_cartesian_converter::manage_transition_grasp(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_grasp)
 {
     KDL::Frame World_Object,World_GraspSecondEE;
     Object_GraspMatrixes Object;
@@ -209,7 +209,7 @@ bool semantic_to_cartesian_converter::manage_transition_grasp(std::vector< std::
     return true;
 }
 
-bool semantic_to_cartesian_converter::manage_transition_ungrasp(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_ungrasp)
 {
     KDL::Frame World_Object;
     Object_GraspMatrixes Object;
@@ -240,7 +240,7 @@ bool semantic_to_cartesian_converter::manage_transition_ungrasp(std::vector< std
     return true;
 }
 
-bool semantic_to_cartesian_converter::manage_transition_exchange_grasp(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_exchange_grasp)
 {
     KDL::Frame World_Object,World_GraspSecondEE;
     Object_GraspMatrixes Object;
@@ -271,7 +271,7 @@ bool semantic_to_cartesian_converter::manage_transition_exchange_grasp(std::vect
     return true;
 }
 
-bool semantic_to_cartesian_converter::manage_transition_move_nonblocking(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_move_nonblocking)
 {
     Object_GraspMatrixes Object;
     getGraspMatrixesFatal(data,node,Object);
@@ -289,7 +289,7 @@ bool semantic_to_cartesian_converter::manage_transition_move_nonblocking(std::ve
     return true;
 }
 
-bool semantic_to_cartesian_converter::manage_transition_slide(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_slide)
 {
     if (!use_slide)
         return false;
