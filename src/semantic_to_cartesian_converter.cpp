@@ -60,11 +60,11 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
             // check for supported cases:
             // all supported cases come from databaseMapper::getTransitionInfo
             transition_info t_info;
-            // constraint id, NOT used at the moment
-            constraint_id c_id = 0;
-            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source: " << object_state(node->grasp_id,node->workspace_id,c_id));
-            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : target: " << object_state(next_node->grasp_id,next_node->workspace_id,c_id));
-            bool supported_node = database.getTransitionInfo(object_state(node->grasp_id,node->workspace_id,c_id),object_state(next_node->grasp_id,next_node->workspace_id,c_id),t_info);
+            object_state source_state(node->grasp_id,node->workspace_id);
+            object_state target_state(next_node->grasp_id,next_node->workspace_id);
+            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source: " << source_state);
+            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : target: " << target_state);
+            bool supported_node = database.getTransitionInfo(source_state,target_state,t_info);
             if(supported_node)
             {
                 ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : I'm supported! Type:" << t_info.grasp_transition_type_);
