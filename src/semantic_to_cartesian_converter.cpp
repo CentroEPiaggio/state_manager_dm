@@ -43,57 +43,42 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     node_info result;
     auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
     bool movable=std::get<1>(database.EndEffectors.at(ee_id));
-    // 3.3) Searching for the next node with a different end effector than the current one
-    bool found=false;
-    endeffector_id next_ee_id=-1;
-    workspace_id next_workspace_id=-1;
-    bool next_movable=false;
-    while (!found && next_node!=path.end())
+    
+    if(++next_node != path.end())
     {
-        next_node++;
-        if (next_node!=path.end())
+        // check for supported cases:
+        // all supported cases come from databaseMapper::getTransitionInfo
+        transition_info t_info;
+        object_state source_state(node->grasp_id,node->workspace_id);
+        object_state target_state(next_node->grasp_id,next_node->workspace_id);
+        ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source: " << source_state);
+        ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : target: " << target_state);
+        bool supported_node = database.getTransitionInfo(source_state,target_state,t_info);
+        if(supported_node)
         {
-            next_ee_id = std::get<1>(database.Grasps.at(next_node->grasp_id));
-            next_workspace_id = next_node->workspace_id;
-            next_movable=std::get<1>(database.EndEffectors.at(next_ee_id));
-            
-            // check for supported cases:
-            // all supported cases come from databaseMapper::getTransitionInfo
-            transition_info t_info;
-            object_state source_state(node->grasp_id,node->workspace_id);
-            object_state target_state(next_node->grasp_id,next_node->workspace_id);
-            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source: " << source_state);
-            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : target: " << target_state);
-            bool supported_node = database.getTransitionInfo(source_state,target_state,t_info);
-            if(supported_node)
-            {
-                ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : I'm supported! Type:" << t_info.grasp_transition_type_);
-                result.type = t_info.grasp_transition_type_;
-                result.busy_ees.insert(result.busy_ees.end(),t_info.ee_ids_.begin(),t_info.ee_ids_.end());
-            }
-            else
-            {
-                ROS_FATAL_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : there was a change of grasp which is NOT supported and should NEVER happen!");
-                ROS_FATAL_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source(g,w)=(" << node->grasp_id << "," << node->workspace_id << ") > target(g,w):(" << next_node->grasp_id << "," << next_node->workspace_id << ")");
-                usleep(5000);
-                abort();
-            }
-            
-            found=true;
-            break;
+            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : I'm supported! Type:" << t_info.grasp_transition_type_);
+            result.type = t_info.grasp_transition_type_;
+            result.busy_ees.insert(result.busy_ees.end(),t_info.ee_ids_.begin(),t_info.ee_ids_.end());
+        }
+        else
+        {
+            ROS_FATAL_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : there was a change of grasp which is NOT supported and should NEVER happen!");
+            ROS_FATAL_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source(g,w)=(" << node->grasp_id << "," << node->workspace_id << ") > target(g,w):(" << next_node->grasp_id << "," << next_node->workspace_id << ")");
+            usleep(5000);
+            abort();
         }
     }
-    if (!found)
+    else
     {
         if (!movable) result.type=node_properties::LAST_EE_FIXED;             //3.4.1) if not found, than ee_id is the last end effector in the path //not found not movable
         else result.type=node_properties::LAST_EE_MOVABLE;            //else //not found->last e.e, movable
     }
     result.current_ee_id=ee_id;
-    result.next_ee_id=next_ee_id;
+    result.next_ee_id=std::get<1>(database.Grasps.at(next_node->grasp_id));
     result.current_grasp_id=node->grasp_id;
     result.next_grasp_id=next_node->grasp_id;
     result.current_workspace_id=node->workspace_id;
-    result.next_workspace_id=next_workspace_id;
+    result.next_workspace_id=next_node->workspace_id;
     return result;
 }
 
