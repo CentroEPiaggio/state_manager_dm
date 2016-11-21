@@ -13,6 +13,7 @@
 
 #define OBJ_GRASP_FACTOR 1000
 #define CLASS_NAMESPACE "getting_info_state::"
+#define CLASS_LOGNAME "getting_info_state"
 
 getting_info_state::getting_info_state(shared_memory& data):data_(data),db_mapper_(data.db_mapper),target_set(false)
 {
@@ -99,9 +100,11 @@ void getting_info_state::get_start_position_from_vision(pacman_vision_comm::peAr
     }
     else
     {
-	ROS_ERROR("getting_info_state::get_start_position_from_vision : Failed to call service pacman_vision_comm::estimate");
-	if(use_vision)
-	  failed = true;
+        if(use_vision)
+        {
+            ROS_ERROR_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Failed to call service " << vision_client.getService());
+            failed = true;
+        }
     }
     
     source_set = !failed;
@@ -123,7 +126,7 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     int best_grasp = -1;
     double closeness = -1.0;
     
-    std::cout << "Pose: " << std::endl << pose << std::endl;
+    ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Pose: " << std::endl << pose);
     
     for (auto item:db_mapper_.Grasps)
     {
@@ -144,29 +147,21 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
 	    if (ok)
 	      tf::poseMsgToKDL(srv.request.ee_pose.back(),grasp_frame);
 	    else
-	      ROS_WARN_STREAM("Unable to deserialize grasp entry : object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
+	      ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Unable to deserialize grasp entry : object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
 	    
 	    // get residual rotation and its quaternion representation
-// 	    KDL::Rotation Rresidual = grasp_frame.M.Inverse()*(obj_frame.M); // old_method
         KDL::Rotation Rresidual = grasp_frame.M*(obj_frame.M);
 	    Rresidual.GetQuaternion(x,y,z,w);
-        
-        std::cout << "Grasp ID: " << grasp << std::endl;
-        std::cout << "Last waypoint" << std::endl << srv.request.ee_pose.back() << std::endl;
-        std::cout << "quaternion: x=" << x << " y=" << y << " z=" << z << " w=" << w << std::endl;
 	  
 	    // the higher the w (in abs value) the better (smaller rotation angles around any axis)
 	    if((closeness < 0) || (std::abs(w) > closeness))
 	    {
             closeness = std::abs(w);
             best_grasp = item.first;
-            std::cout << "Getting closer " << closeness << std::endl; 
 	    }
-	    
 	}
     }
-    std::cout << "Best grasp found: " << best_grasp << std::endl;
-    ROS_INFO_STREAM("Best grasp found: " << best_grasp);
+    ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Best grasp found: " << best_grasp);
     return best_grasp;
 }
 
@@ -184,7 +179,8 @@ int getting_info_state::get_object_id(std::string obj_name)
 void getting_info_state::gui_target_set_callback(const dual_manipulation_shared::gui_target_response::ConstPtr& msg)
 {
     if (target_set.load()) return;
-    ROS_INFO_STREAM("Target set to "<<msg->target_pose.position.x<<' '<<msg->target_pose.position.y<<' '<<msg->target_pose.position.z<<' '<<msg->target_pose.orientation.x<<' '<<msg->target_pose.orientation.y<<' '<<msg->target_pose.orientation.z<<' '<<msg->target_pose.orientation.w);
+    
+    ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME, CLASS_NAMESPACE << __func__ << " : Target set to "<<msg->target_pose.position.x<<' '<<msg->target_pose.position.y<<' '<<msg->target_pose.position.z<<' '<<msg->target_pose.orientation.x<<' '<<msg->target_pose.orientation.y<<' '<<msg->target_pose.orientation.z<<' '<<msg->target_pose.orientation.w);
 
     data_.source_position = msg->source_pose; //user selects which detected object is the source from the gui
     data_.target_position = msg->target_pose;
@@ -199,7 +195,10 @@ void getting_info_state::gui_target_set_callback(const dual_manipulation_shared:
 
     if(!tracker_start_client.call(srv))
     {
-      ROS_ERROR_STREAM("getting_info_state::gui_target_set_callback : unable to call track_object client...");
+        if(use_vision)
+        {
+            ROS_ERROR_STREAM_NAMED(CLASS_LOGNAME, CLASS_NAMESPACE << __func__ << " : unable to call service " << tracker_start_client.getService());
+        }
     }
     target_set.store(true);
 }
@@ -213,12 +212,13 @@ void getting_info_state::get_target_position_from_user(pacman_vision_comm::peArr
 
     if (gui_target_client.call(srv))
     {
-        ROS_INFO_STREAM("Answer: ("<<(bool)srv.response.ack<<")");
-	if(srv.response.ack) ROS_INFO_STREAM("Waiting for target from user");
+        ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Answer: ("<<(bool)srv.response.ack<<")");
+        if(srv.response.ack)
+            ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Waiting for target from user");
     }
     else
     {
-        ROS_ERROR("Failed to call service dual_manipulation_shared::gui_target_service");
+        ROS_ERROR_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Failed to call service " << gui_target_client.getService());
 	// whichever the error is, the source needs to be set again: instead of going through a loop of vision calls, fail and revert to steady
 	failed = true;
         return;
@@ -246,31 +246,33 @@ void getting_info_state::run()
     
     if(target_set.load())
     {
-
-	dual_manipulation_shared::planner_service srv;
-	srv.request.command="set object";
-	srv.request.time = ros::Time::now().toSec();
-	srv.request.object_id=data_.obj_id;
-	srv.request.object_name=data_.object_name;
-        data_.planner.set_object(data_.obj_id,data_.object_name);
-	if (!planner_client.exists())
-	{
-	    ROS_ERROR("Service does not exist: dual_manipulation_shared::planner_service");
-// 	    failed=true;
-// 	    return;
-	}
-	else if (planner_client.call(srv))
-	{
-	    ROS_INFO("Object id set to %d, planner returned %d", (int)srv.request.object_id, (int)srv.response.ack);
-	    data_.obj_id=srv.request.object_id;
-	}
-	else
-	{
-	    ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service");
-	    failed=true;
-	    return;
-	}
-	
+        // try setting the object directly in the planner object
+        if(!data_.planner.set_object(data_.obj_id,data_.object_name))
+        {
+            dual_manipulation_shared::planner_service srv;
+            srv.request.command="set object";
+            srv.request.time = ros::Time::now().toSec();
+            srv.request.object_id=data_.obj_id;
+            srv.request.object_name=data_.object_name;
+                
+            if (!planner_client.exists())
+            {
+                ROS_ERROR_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Service does not exist: " << planner_client.getService());
+                failed = true;
+                return;
+            }
+            else if (planner_client.call(srv))
+            {
+                ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Object id set to " << srv.request.object_id << ", planner returned " << srv.response.ack);
+            }
+            else
+            {
+                ROS_ERROR_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Failed to call service " << planner_client.getService());
+                failed=true;
+                return;
+            }
+        }
+        
 	//NOTE: the following behavior is needed when more than a single object is in the scene: remove the one we are planning for in order to do sem2cart conversion,
 	//      then insert the object back in the scene
 	dual_manipulation_shared::scene_object_service srv_obj;
@@ -280,11 +282,11 @@ void getting_info_state::run()
 	srv_obj.request.attObject.object.id = data_.object_name;
 	if (scene_object_client.call(srv_obj))
 	{
-	    ROS_INFO("IK_control:test_grasping : %s object %s request accepted: %d", srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str(), (int)srv_obj.response.ack);
+        ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : " << srv_obj.request.command << " object " << srv_obj.request.attObject.object.id << " request accepted: " << (int)srv_obj.response.ack);
 	}
 	else
 	{
-	    ROS_ERROR("IK_control:test_grasping : Failed to call service dual_manipulation_shared::scene_object_service: %s %s",srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str());
+        ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Failed to call service " << scene_object_client.getService() << ": " << srv_obj.request.command << " " << srv_obj.request.attObject.object.id);
 	}
 
 	fresh_data = true;

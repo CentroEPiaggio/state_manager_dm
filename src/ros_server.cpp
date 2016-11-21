@@ -9,6 +9,10 @@
 #include <std_msgs/String.h>
 
 #define AUTO_MOVING false
+#define CLASS_NAMESPACE "state_manager::"
+#define CLASS_LOGNAME "state_manager"
+#define GREEN "\033[0;32m"
+#define NC "\033[0m"
 
 using namespace dual_manipulation::state_manager;
 
@@ -34,7 +38,7 @@ void ros_server::init()
       double eps;
       node.getParam("ik_control_parameters/epsilon",eps);
       n.setParam("epsilon",eps);
-      ROS_INFO_STREAM("Private epsilon (used by KDLKinematicsPlugin) set! epsilon:=" << eps);
+      ROS_DEBUG_STREAM("state_manager ros_server::" << __func__ << " : Private epsilon (used by KDLKinematicsPlugin) set! epsilon:=" << eps);
     }
 
     auto starting=new starting_state(data);
@@ -114,7 +118,7 @@ void ros_server::loop()
             std_msgs::String s;
             s.data=current_state->get_type();
             state_pub.publish(s);
-	    std::cout<<"- new state type: "<<current_state->get_type()<<std::endl;
+            ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,GREEN << CLASS_NAMESPACE << __func__ << " : new state type: " << current_state->get_type() << NC);
 	    transition_map.clear();
 	    break;
 	}

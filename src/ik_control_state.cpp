@@ -21,6 +21,8 @@
 #define NUM_EE_IN_VITO 3
 #define NUM_KUKAS 6
 #define IS_FACTORY 0
+#define GREEN "\033[0;32m"
+#define NC "\033[0m"
 
 #if ALLOW_REPLANNING
 #include "../include/ik_need_semantic_replan.h"
@@ -122,11 +124,11 @@ void ik_control_state::reset()
     client_mutex_.lock();
     if(client.call(srv))
     {
-	ROS_INFO_STREAM("IK FREE_ALL Request accepted: (" << (int)srv.response.ack << ")");
+        ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : " << client.getService() << " " << srv.request.command << " request accepted: (" << (int)srv.response.ack << ")");
     }
     else
     {
-	ROS_ERROR("Failed to call service dual_manipulation_shared::ik_service");
+        ROS_ERROR_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Failed to call service " << client.getService());
     }
     client_mutex_.unlock();
 
@@ -179,11 +181,11 @@ void ik_control_state::reset()
     srv_obj.request.attObject.object.header.frame_id = "world";
     if (scene_object_client.call(srv_obj))
     {
-        ROS_INFO("IK_control:test_grasping : %s object %s request accepted: %d", srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str(), (int)srv_obj.response.ack);
+        ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : " << srv_obj.request.command << " object " << srv_obj.request.attObject.object.id << " request accepted: " << (int)srv_obj.response.ack);
     }
     else
     {
-        ROS_ERROR("IK_control:test_grasping : Failed to call service dual_manipulation_shared::scene_object_service: %s %s",srv_obj.request.command.c_str(),srv_obj.request.attObject.object.id.c_str());
+        ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Failed to call service " << scene_object_client.getService() << ": " << srv_obj.request.command << " " << srv_obj.request.attObject.object.id);
     }
     
     //NOTE: try to check for object in the scene, and wait for a while for them being set: if they aren't, the planner will not take them into account!
@@ -201,7 +203,7 @@ void ik_control_state::reset()
             objects = moveit_msgs::PlanningSceneComponents::ROBOT_STATE_ATTACHED_OBJECTS;
         srv.request.components.components = objects;
         if(!scene_client_.call(srv))
-            std::cout << CLASS_NAMESPACE << __func__ << " : unable to call /get_planning_scene service while looking for objects in the scene..." << std::endl;
+            ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : unable to call " << scene_client_.getService() << " service while looking for objects in the scene...");
         else
         {
             if(!ee_movable)
@@ -228,12 +230,13 @@ void ik_control_state::reset()
         
         if(!object_attached)
         {
-            std::cout << CLASS_NAMESPACE << __func__ << " : object \'" << srv_obj.request.attObject.object.id << "\' NOT FOUND in the planning scene!!! Sleeping 50ms and checking again for " << attempts_left << " times..." << std::endl;
+            ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : object \'" << srv_obj.request.attObject.object.id << "\' NOT FOUND in the planning scene!!! Sleeping 50ms and checking again for " << attempts_left << " times...");
             usleep(50000);
         }
         else
-            std::cout << CLASS_NAMESPACE << __func__ << " : object \'" << srv_obj.request.attObject.object.id << "\' FOUND in the planning scene!!!" << std::endl;
-        
+        {
+            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : object \'" << srv_obj.request.attObject.object.id << "\' FOUND in the planning scene!!!");
+        }
     }
 }
 
@@ -264,7 +267,7 @@ void ik_control_state::run()
     
     if (current_state->isComplete())
     {
-	ROS_INFO_STREAM("current_state " << current_state->get_type() << " is complete!");
+        ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : current_state " << current_state->get_type() << " is complete!");
 	auto temp_map = current_state->getResults();
 	for (auto temp:temp_map)
 	    transition_map[temp.first]=temp.second;
@@ -276,7 +279,7 @@ void ik_control_state::run()
 	{
 	    current_state=temp_state;
             current_state->reset();
-	    std::cout<<"- new substate type: "<<current_state->get_type()<<std::endl;
+            ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,GREEN << CLASS_NAMESPACE << __func__ << " : new substate type: " << current_state->get_type() << NC);
 	    // std::cout << "press 'y' key and enter to proceed" << std::endl;
 	    // char tmp = 'n';
 	    // while (tmp!='y')

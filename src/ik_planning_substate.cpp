@@ -1,6 +1,7 @@
 #include "ik_planning_substate.h"
 
 #define CLASS_NAMESPACE "ik_planning_substate::"
+#define CLASS_LOGNAME "ik_planning_substate"
 
 ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data),db_mapper(data.db_mapper)
 {
@@ -42,7 +43,7 @@ void ik_planning_substate::callback(const dual_manipulation_shared::ik_response:
     if(plan_executed >= 9999)
         return;
     
-    ROS_INFO_STREAM(str->group_name.c_str()<<" " << str->data << " | plan_executed = " << plan_executed);
+    ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : " << str->group_name.c_str()<<" " << str->data << " | plan_executed = " << plan_executed);
     if(str->data=="done")
     {
         if (pending_sequence_numbers.count(str->seq))
@@ -50,11 +51,11 @@ void ik_planning_substate::callback(const dual_manipulation_shared::ik_response:
             plan_executed--;
         }
         else
-            ROS_WARN_STREAM("There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
+            ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
     }
     else
     {
-        ROS_WARN_STREAM("There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
+        ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
         failed=true;
         initialized=false;
     }
@@ -196,16 +197,15 @@ void ik_planning_substate::run()
     sequence_counter++;
     srv.request.seq=sequence_counter;
     
-    std::cout << "data_.next_plan+i = " << data_.next_plan+i << std::endl;
     if(client.call(srv))
     {
         pending_sequence_numbers.insert(sequence_counter);
-        ROS_INFO_STREAM("IK Plan Request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan);
+        ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : " << client.getService() << " " << srv.request.command << " request accepted: (" << (int)srv.response.ack << ") - seq: "<<data_.next_plan << " | data_.next_plan+i = " << data_.next_plan+i);
         plan_sent = true;
     }
     else
     {
-        ROS_ERROR_STREAM(CLASS_NAMESPACE << __func__ << " : failed to call service ik_ros_service " << srv.request.command);
+        ROS_ERROR_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : failed to call service " << client.getService() << " " << srv.request.command << " | data_.next_plan+i = " << data_.next_plan+i);
         failed=true;
         initialized=false;
     }

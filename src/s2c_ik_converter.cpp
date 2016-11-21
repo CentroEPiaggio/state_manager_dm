@@ -16,6 +16,7 @@
 #define EPS 5e-3
 
 #define CLASS_NAMESPACE "s2c_ik_converter::"
+#define CLASS_LOGNAME "s2c_ik_converter"
 
 bool am_I_Vito = false;
 double eps = EPS;
@@ -685,16 +686,16 @@ bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, no
     }
     
     assert(Object_ee_poses.size() == 2 && "Poses need to be 2: PreSlide and Slide");
-    std::cout << "Sliding IK" << std::endl;
+    ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Sliding IK");
     if(check_ik(ee_name, World_Current_Object*Object_ee_poses.at(0))) // 0 - preslide
     {
-        std::cout << "Preslide" << std::endl;
+        ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Preslide");
         if(check_ik(ee_name,World_Current_Object*Object_ee_poses.at(1)))
         {
-            std::cout << "Slide Source" << std::endl;
+            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Slide source");
             if(check_ik(ee_name,World_Target_Object*Object_ee_poses.at(1)))
             {
-                std::cout << "Slide target" << std::endl;
+                ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Slide target");
                 intergrasp_ok = true;
             }
         }

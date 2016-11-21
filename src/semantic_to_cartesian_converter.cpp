@@ -5,6 +5,7 @@
 #define DEBUG 0 // if 1, print some more information
 
 #define CLASS_NAMESPACE "semantic_to_cartesian_converter::"
+#define CLASS_LOGNAME "semantic_to_cartesian_converter"
 
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database) : database(database)
 {
@@ -61,16 +62,20 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
             transition_info t_info;
             // constraint id, NOT used at the moment
             constraint_id c_id = 0;
+            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source: " << object_state(node->grasp_id,node->workspace_id,c_id));
+            ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : target: " << object_state(next_node->grasp_id,next_node->workspace_id,c_id));
             bool supported_node = database.getTransitionInfo(object_state(node->grasp_id,node->workspace_id,c_id),object_state(next_node->grasp_id,next_node->workspace_id,c_id),t_info);
             if(supported_node)
             {
+                ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : I'm supported! Type:" << t_info.grasp_transition_type_);
                 result.type = t_info.grasp_transition_type_;
                 result.busy_ees.insert(result.busy_ees.end(),t_info.ee_ids_.begin(),t_info.ee_ids_.end());
             }
             else
             {
-                std::cout << CLASS_NAMESPACE << __func__ << " : there was a change of grasp which is NOT supported and should NEVER happen!" << std::endl;
-                std::cout << CLASS_NAMESPACE << __func__ << " : source(g,w)=(" << node->grasp_id << "," << node->workspace_id << ") > target(g,w):(" << next_node->grasp_id << "," << next_node->workspace_id << ")" << std::endl;
+                ROS_FATAL_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : there was a change of grasp which is NOT supported and should NEVER happen!");
+                ROS_FATAL_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source(g,w)=(" << node->grasp_id << "," << node->workspace_id << ") > target(g,w):(" << next_node->grasp_id << "," << next_node->workspace_id << ")");
+                usleep(5000);
                 abort();
             }
             
@@ -110,7 +115,8 @@ bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffecto
         
         if(!manage_transition_by_type.count(node.type))
         {
-            std::cout << CLASS_NAMESPACE << __func__ << " : there is no implementation managing transitions of type \'" << node.type << "\'!" << std::endl;
+            ROS_FATAL_STREAM_NAMED(CLASS_LOGNAME, CLASS_NAMESPACE << __func__ << " : there is no implementation managing transitions of type \'" << node.type << "\'!");
+            usleep(5000);
             abort();
         }
         else

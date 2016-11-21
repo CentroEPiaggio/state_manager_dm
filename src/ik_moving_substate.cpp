@@ -3,6 +3,7 @@
 #define PARALLELIZE_PLANNING false
 
 #define CLASS_NAMESPACE "ik_moving_substate::"
+#define CLASS_LOGNAME "ik_moving_substate"
 
 ik_moving_substate::ik_moving_substate(ik_shared_memory& data):data_(data),db_mapper(data.db_mapper)
 {
@@ -46,7 +47,7 @@ void ik_moving_substate::callback(const dual_manipulation_shared::ik_response::C
     if(moving_executed >= 9999)
         return;
     
-    ROS_INFO_STREAM(type.c_str() << ": " << str->group_name.c_str() << " " << str->data << " | moving_executed = " << moving_executed);
+    ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : " << type.c_str() << ": " << str->group_name.c_str() << " " << str->data << " | moving_executed = " << moving_executed);
     if(str->data=="done")
     {
         if (pending_sequence_numbers.count(str->seq))
@@ -56,11 +57,11 @@ void ik_moving_substate::callback(const dual_manipulation_shared::ik_response::C
                 data_.robot_moving.store(false);
         }
         else
-            ROS_WARN_STREAM("There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
+            ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
     }
     else
     {
-        ROS_WARN_STREAM("There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
+        ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : There was an error, ik_control (seq. #" << str->seq << ") returned msg.data : " << str->data);
         failed=true;
         initialized=false;
         data_.robot_moving.store(false);

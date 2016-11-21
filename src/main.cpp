@@ -10,6 +10,8 @@ int main(int argc, char *argv[])
     std::cout<<std::endl;
     std::cout<<"|Dual manipulation| -> State manager running"<<std::endl;
     std::cout<<std::endl;
+    ros::AsyncSpinner aspin(1);
+    aspin.start();
     
     dual_manipulation::state_manager::ros_server server;
     server.join();

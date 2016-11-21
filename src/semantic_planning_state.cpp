@@ -13,6 +13,8 @@
 #define OBJ_GRASP_FACTOR 1000
 #define GRASP_TESTING 0
 #define DEBUG 0
+#define CLASS_NAMESPACE "semantic_planning_state::"
+#define CLASS_LOGNAME "semantic_planning_state"
 
 semantic_planning_state::semantic_planning_state(shared_memory& data):data(data),database(data.db_mapper),converter(data.db_mapper)
 {
@@ -54,18 +56,15 @@ void semantic_planning_state::run()
     source_found = source != -1;
     target_found = target != -1;
     
-    if (!source_found)
-        std::cout<<"source position is outside the workspaces!!!"<<std::endl;
-    if (!target_found)
-        std::cout<<"target position is outside the workspaces!!!"<<std::endl;
     if (!source_found || !target_found)
     {
+        ROS_ERROR_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : " << (source_found?"":"source ") << (source_found | target_found ?"":"AND ") << (target_found?"":"target ") << "position" << (source_found | target_found?" is":"s are") << " outside the workspaces!!!");
         internal_state.insert(std::make_pair(transition::failed_plan,true));
         completed=true;
         return;
     }
-    std::cout << "source position is in workspace " << source << std::endl;
-    std::cout << "target position is in workspace " << target << std::endl;
+    ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source position is in workspace " << source);
+    ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : target position is in workspace " << target);
     //Filtering source and target grasps in order to reduce the graph size during planning
     KDL::Frame fake;
     dual_manipulation_shared::good_grasp_msg msg;
