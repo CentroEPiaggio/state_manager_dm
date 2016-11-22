@@ -70,7 +70,7 @@ void semantic_planning_state::run()
     dual_manipulation_shared::good_grasp_msg msg;
     
     node_info temp;
-    temp.current_ee_id = std::get<1>(database.Grasps.at(data.source_grasp));
+    temp.current_ee_id = database.Grasps.at(data.source_grasp).ee_id;
     temp.current_grasp_id = data.source_grasp;
     temp.current_workspace_id = source;
     temp.next_workspace_id = source;
@@ -104,7 +104,7 @@ void semantic_planning_state::run()
             std::cout << " | " << next_grasp_id;
 #endif
             temp.next_grasp_id = next_grasp_id;
-            temp.next_ee_id = std::get<1>(database.Grasps.at(next_grasp_id));
+            temp.next_ee_id = database.Grasps.at(next_grasp_id).ee_id;
             target_state.grasp_id_ = temp.next_grasp_id;
             database.getTransitionInfo(source_state,target_state,t_info);
             // only check grasps here...
@@ -124,7 +124,7 @@ void semantic_planning_state::run()
 #endif
     }
     
-    temp.next_ee_id = std::get<1>(database.Grasps.at(data.target_grasp));
+    temp.next_ee_id = database.Grasps.at(data.target_grasp).ee_id;
     temp.next_grasp_id = data.target_grasp;
     temp.current_workspace_id = target;
     temp.next_workspace_id = target;
@@ -148,7 +148,7 @@ void semantic_planning_state::run()
             std::cout << " | " << current_grasp_id;
 #endif
             temp.current_grasp_id = current_grasp_id;
-            temp.current_ee_id = std::get<1>(database.Grasps.at(current_grasp_id));
+            temp.current_ee_id = database.Grasps.at(current_grasp_id).ee_id;
             source_state.grasp_id_ = temp.current_grasp_id;
             database.getTransitionInfo(source_state,target_state,t_info);
             // only check ungrasps here...

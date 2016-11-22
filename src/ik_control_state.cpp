@@ -145,8 +145,8 @@ void ik_control_state::reset()
     bool ee_movable;
     endeffector_id source_ee;
     std::string source_ee_name;
-    source_ee = std::get<1>(data_.db_mapper.Grasps.at(data_.source_grasp));
-    source_ee_name = std::get<2>(data_.db_mapper.Grasps.at(data_.source_grasp));
+    source_ee = data_.db_mapper.Grasps.at(data_.source_grasp).ee_id;
+    source_ee_name = data_.db_mapper.Grasps.at(data_.source_grasp).name;
     ee_movable = std::get<1>(data_.db_mapper.EndEffectors.at(source_ee));
     //NOTE: add back the object in the scene which was taken out at set_target
     dual_manipulation_shared::scene_object_service srv_obj;

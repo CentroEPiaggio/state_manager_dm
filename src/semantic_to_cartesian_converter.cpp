@@ -41,7 +41,7 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
 node_info semantic_to_cartesian_converter::find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node) const
 {
     node_info result;
-    auto ee_id = std::get<1>(database.Grasps.at(node->grasp_id));
+    auto ee_id = database.Grasps.at(node->grasp_id).ee_id;
     bool movable=std::get<1>(database.EndEffectors.at(ee_id));
     
     if(++next_node != path.end())
@@ -69,7 +69,7 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
         }
         
         // updating what depends on next_node
-        result.next_ee_id = std::get<1>(database.Grasps.at(next_node->grasp_id));
+        result.next_ee_id = database.Grasps.at(next_node->grasp_id).ee_id;
         result.next_grasp_id = next_node->grasp_id;
         result.next_workspace_id = next_node->workspace_id;
     }
