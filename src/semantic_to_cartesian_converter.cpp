@@ -67,18 +67,26 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
             usleep(5000);
             abort();
         }
+        
+        // updating what depends on next_node
+        result.next_ee_id = std::get<1>(database.Grasps.at(next_node->grasp_id));
+        result.next_grasp_id = next_node->grasp_id;
+        result.next_workspace_id = next_node->workspace_id;
     }
     else
     {
+        // there is no next_node, use meaningless values for its find_node_properties
+        result.next_ee_id = -1;
+        result.next_grasp_id = -1;
+        result.next_workspace_id = -1;
+        
         if (!movable) result.type=node_properties::LAST_EE_FIXED;             //3.4.1) if not found, than ee_id is the last end effector in the path //not found not movable
         else result.type=node_properties::LAST_EE_MOVABLE;            //else //not found->last e.e, movable
     }
+    
     result.current_ee_id=ee_id;
-    result.next_ee_id=std::get<1>(database.Grasps.at(next_node->grasp_id));
     result.current_grasp_id=node->grasp_id;
-    result.next_grasp_id=next_node->grasp_id;
     result.current_workspace_id=node->workspace_id;
-    result.next_workspace_id=next_node->workspace_id;
     return result;
 }
 
