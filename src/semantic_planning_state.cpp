@@ -88,7 +88,7 @@ void semantic_planning_state::run()
     object_state target_state(0,temp.next_workspace_id);
     transition_info t_info;
     // check grasps only if source is a table grasp
-    bool source_ee_movable = std::get<1>(database.EndEffectors.at(temp.current_ee_id));
+    bool source_ee_movable = database.EndEffectors.at(temp.current_ee_id).movable;
     if(source_ee_movable)
     {
         //DO NOT CHECK GRASPS!!!
@@ -134,7 +134,7 @@ void semantic_planning_state::run()
     target_state.workspace_id_ = temp.next_workspace_id;
     
     // check grasps only if target is a table grasp
-    bool target_ee_movable = std::get<1>(database.EndEffectors.at(temp.next_ee_id));
+    bool target_ee_movable = database.EndEffectors.at(temp.next_ee_id).movable;
     if(target_ee_movable)
     {
         //DO NOT CHECK GRASPS!!!

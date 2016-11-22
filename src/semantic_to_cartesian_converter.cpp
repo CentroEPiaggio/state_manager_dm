@@ -42,7 +42,7 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
 {
     node_info result;
     auto ee_id = database.Grasps.at(node->grasp_id).ee_id;
-    bool movable=std::get<1>(database.EndEffectors.at(ee_id));
+    bool movable = database.EndEffectors.at(ee_id).movable;
     
     if(++next_node != path.end())
     {
@@ -312,7 +312,7 @@ MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_s
     std::vector<KDL::Frame> object_ee_poses({Object_PreSlide, Object_Slide});
     std::vector<KDL::Frame> World_Object_Poses;
     
-    std::string ee_name = std::get<0>(data.db_mapper.EndEffectors.at(ee_id_to_use));
+    std::string ee_name = data.db_mapper.EndEffectors.at(ee_id_to_use).name;
     if (!s2cik->checkSlidePoses(World_Object_Poses,node,data,node_it==path.begin(),((next_node_it+1) == path.end()),filtered_source_nodes,filtered_target_nodes, object_ee_poses, ee_name))
         return false;
     

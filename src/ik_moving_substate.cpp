@@ -150,7 +150,7 @@ void ik_moving_substate::run()
             srv.request.object_db_id = (int)*data_.obj_id;
             srv.request.ee_pose.clear();
             srv.request.ee_pose.push_back(item.second.cartesian_task);
-            ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+            ee_name = db_mapper.EndEffectors.at(item.first).name;
             
             alone_execution = true;
             // NOTE: this has to be executed ALONE!
@@ -159,10 +159,10 @@ void ik_moving_substate::run()
         else
         {
             move_num++;
-            if(!ee_name.empty() && ee_name != std::get<0>(db_mapper.EndEffectors.at(item.first)))
+            if(!ee_name.empty() && ee_name != db_mapper.EndEffectors.at(item.first).name)
                 ee_name = "full_robot";
             else
-                ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+                ee_name = db_mapper.EndEffectors.at(item.first).name;
         }
     }
     while((data_.cartesian_plan->at(data_.next_plan+i).second.seq_num==0) && (data_.cartesian_plan->size() > data_.next_plan+i+1));

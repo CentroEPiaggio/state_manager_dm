@@ -310,8 +310,8 @@ bool s2c_ik_converter::compute_intergrasp_orientation(KDL::Frame& World_Object, 
     compute_centroid(World_centroid,node);
     
     Object_GraspMatrixes Object;
-    auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
-    auto next_ee_name=std::get<0>(database.EndEffectors.at(node.next_ee_id));
+    auto current_ee_name = database.EndEffectors.at(node.current_ee_id).name;
+    auto next_ee_name = database.EndEffectors.at(node.next_ee_id).name;
     if (!getGraspMatrixes(object, node, Object)) abort();
     if (node.type==node_properties::EXCHANGE_GRASP)
     {
@@ -510,7 +510,7 @@ bool s2c_ik_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node
         KDL::Frame World_Centroid_f;
         compute_centroid(World_Centroid_f,node);
         bool intergrasp_ok = false;
-        auto next_ee_name=std::get<0>(database.EndEffectors.at(node.next_ee_id));
+        auto next_ee_name = database.EndEffectors.at(node.next_ee_id).name;
         
         if (first_node)
         {
@@ -542,7 +542,7 @@ bool s2c_ik_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node
         KDL::Frame World_Centroid_f;
         compute_centroid(World_Centroid_f,node);
         bool intergrasp_ok =false;
-        auto current_ee_name=std::get<0>(database.EndEffectors.at(node.current_ee_id));
+        auto current_ee_name = database.EndEffectors.at(node.current_ee_id).name;
         if (last_node)
         {
 #if DEBUG>1

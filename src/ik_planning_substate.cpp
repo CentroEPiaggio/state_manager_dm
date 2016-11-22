@@ -151,7 +151,7 @@ void ik_planning_substate::run()
         srv.request.command = commands.set_target_command.at(item.second.command);
         
         //NOTE: targets have to be set separately, the sequence of poses in the vector would otherwise be unknown
-        srv.request.ee_name = std::get<0>(db_mapper.EndEffectors.at(item.first));
+        srv.request.ee_name = db_mapper.EndEffectors.at(item.first).name;
         srv.request.ee_pose.clear();
         srv.request.ee_pose.push_back(item.second.cartesian_task);
         srv.request.attObject.object.id = *data_.object_name;
