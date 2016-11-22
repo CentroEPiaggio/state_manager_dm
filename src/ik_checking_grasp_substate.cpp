@@ -62,11 +62,9 @@ int ik_checking_grasp_substate::get_grasp_id_from_database(int object_id, geomet
     
     for (auto item:database_.Grasps)
     {
-	auto ee_id_tmp = std::get<1>(item.second);
-	auto obj_id_tmp = std::get<0>(item.second);
-	//auto grasp_name = std::get<2>(item.second);
-	//std::cout << "grasp name : " << grasp_name << std::endl;
-	
+        auto ee_id_tmp = item.second.ee_id;
+        auto obj_id_tmp = item.second.obj_id;
+
 	// for each grasp, if the end-effector is the right one
 	if (((int)ee_id_tmp == ee_id) && ((int)obj_id_tmp == object_id))
 	{

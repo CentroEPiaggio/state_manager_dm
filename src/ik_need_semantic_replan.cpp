@@ -90,9 +90,9 @@ int ik_need_semantic_replan::get_grasp_id_from_db(int object_id, const geometry_
     
     for (auto item:database_.Grasps)
     {
-	auto ee_id_tmp = std::get<1>(item.second);
-	auto obj_id_tmp = std::get<0>(item.second);
-	
+        auto ee_id_tmp = item.second.ee_id;
+        auto obj_id_tmp = item.second.obj_id;
+
 	// for each grasp, if the end-effector is the right one
 	if (((int)ee_id_tmp == ee_id) && ((int)obj_id_tmp == object_id))
 	{

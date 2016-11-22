@@ -130,11 +130,9 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
     
     for (auto item:db_mapper_.Grasps)
     {
-	auto ee_id_tmp = std::get<1>(item.second);
-	auto obj_id_tmp = std::get<0>(item.second);
-	//auto grasp_name = std::get<2>(item.second);
-	//std::cout << "grasp name : " << grasp_name << std::endl;
-	
+        auto ee_id_tmp = item.second.ee_id;
+        auto obj_id_tmp = item.second.obj_id;
+
 	// for each grasp, if the end-effector is the right one
 	if (((int)ee_id_tmp == ee_id) && ((int)obj_id_tmp == object_id))
 	{
@@ -169,7 +167,7 @@ int getting_info_state::get_object_id(std::string obj_name)
 {
   for(auto item:db_mapper_.Objects)
   {
-    std::string db_obj_name(std::get<0>(item.second));
+    std::string db_obj_name(item.second.name);
     if(obj_name.compare(db_obj_name) == 0)
       return item.first;
   }
