@@ -258,11 +258,7 @@ bool s2c_ik_converter::getGraspMatrixes(object_id object, grasp_id grasp, Object
 
 void s2c_ik_converter::compute_centroid(KDL::Frame& ws_centroid, const node_info& node) const
 {
-    auto w_id=node.next_workspace_id;
-    bool high_centroid(false);
-    if (node.type==node_properties::EXCHANGE_GRASP) //both ee are movable: change above ground
-        high_centroid = true;
-    bool res = database.getWorkspaceCentroid(w_id,high_centroid,ws_centroid);
+    bool res = database.getTargetPose(object_state(node.current_grasp_id, node.current_workspace_id), object_state(node.next_grasp_id, node.next_workspace_id), ws_centroid);
     assert(res);
     
     last_computed_target_pose = ws_centroid;
@@ -509,9 +505,6 @@ bool s2c_ik_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node
 #if DEBUG>1
         std::cout << "Semantic to cartesian: node.type==node_properties::GRASP" << std::endl;
 #endif
-        // 3.6) compute a rough position of the place where the change of grasp will happen
-        KDL::Frame World_Centroid_f;
-        compute_centroid(World_Centroid_f,node);
         bool intergrasp_ok = false;
         auto next_ee_name = database.EndEffectors.at(node.next_ee_id).name;
         
@@ -525,6 +518,7 @@ bool s2c_ik_converter::checkSingleGrasp(KDL::Frame& World_Object, node_info node
         }
         else
         {
+            const KDL::Frame& World_Centroid_f(last_computed_target_pose);
             World_Object = World_Centroid_f*(Object.PostGraspFirstEE.Inverse());
         }
         if(check_ik(next_ee_name,World_Object*Object.PreGraspSecondEE))
@@ -672,9 +666,6 @@ bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, no
     else
     {
         const KDL::Frame& World_Current_Centroid(last_computed_target_pose);
-        KDL::Frame World_Current_Centroid;
-        bool res = database.getWorkspaceCentroid(node.current_workspace_id,false,World_Current_Centroid);
-        
         World_Current_Object = World_Current_Centroid*(Object.PostGraspFirstEE.Inverse());
     }
     
