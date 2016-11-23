@@ -104,6 +104,7 @@ private:
     XmlRpc::XmlRpcValue ik_control_params;
     std::map<std::string,KDL::Chain> chains;
     std::map<std::string,KDL::Chain> chains_reverse;
+    mutable KDL::Frame last_computed_target_pose;
     
 };
 

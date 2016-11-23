@@ -263,6 +263,9 @@ void s2c_ik_converter::compute_centroid(KDL::Frame& ws_centroid, const node_info
     if (node.type==node_properties::EXCHANGE_GRASP) //both ee are movable: change above ground
         high_centroid = true;
     bool res = database.getWorkspaceCentroid(w_id,high_centroid,ws_centroid);
+    assert(res);
+    
+    last_computed_target_pose = ws_centroid;
     
     return;
 }
@@ -668,6 +671,7 @@ bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, no
     }
     else
     {
+        const KDL::Frame& World_Current_Centroid(last_computed_target_pose);
         KDL::Frame World_Current_Centroid;
         bool res = database.getWorkspaceCentroid(node.current_workspace_id,false,World_Current_Centroid);
         
