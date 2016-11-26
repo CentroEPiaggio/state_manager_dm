@@ -27,8 +27,6 @@ std::map<node_info, KDL::JntArray> s2c_ik_converter::cache_ik_solutions;
 
 s2c_ik_converter::s2c_ik_converter(const databaseMapper& database) : distribution(0.0,1.0), database(database)
 {
-    ik_check_capability = new dual_manipulation::ik_control::ikCheckCapability();
-    ros::NodeHandle nh;
     std::string global_name, relative_name, default_param;
     if (nh.getParam("/robot_description", global_name)) //The checks here are redundant, but they may provide more debug info
     {
@@ -55,8 +53,11 @@ s2c_ik_converter::s2c_ik_converter(const databaseMapper& database) : distributio
         abort();
     }
     
-    if (nh.getParam("ik_control_parameters", ik_control_params))
-        parseParameters(ik_control_params);
+    ik_control_params = std::shared_ptr<XmlRpc::XmlRpcValue>(new XmlRpc::XmlRpcValue());
+    if (nh.getParam("ik_control_parameters", *ik_control_params))
+        parseParameters(*ik_control_params);
+    
+    ik_check_capability = std::shared_ptr<dual_manipulation::ik_control::ikCheckCapability>(new dual_manipulation::ik_control::ikCheckCapability(*ik_control_params));
     
     KDL::Chain temp;
     std::vector<std::string> link_names;

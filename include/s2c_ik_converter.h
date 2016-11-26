@@ -15,6 +15,7 @@
 #include <dual_manipulation_shared/databasemapper.h>
 #include <dual_manipulation_shared/planner_item.h>
 #include <ik_check_capability/ik_check_capability.h>
+#include <dual_manipulation_ik_control/shared_ik_memory.h>
 
 /// keep @p node_info out of any namespace for compatibility...
 #define BIG_NR 10000
@@ -93,7 +94,7 @@ private:
     const databaseMapper& database;
     static std::map<std::pair<object_id,grasp_id>, Object_SingleGrasp> cache_matrixes;
     static std::map<node_info, KDL::JntArray> cache_ik_solutions;
-    mutable dual_manipulation::ik_control::ikCheckCapability *ik_check_capability;
+    std::shared_ptr<dual_manipulation::ik_control::ikCheckCapability> ik_check_capability;
     mutable chain_and_solvers double_arm_solver;
     std::string robot_urdf;
     urdf::Model urdf_model;
@@ -101,7 +102,8 @@ private:
     mutable std::default_random_engine generator;
     mutable std::uniform_real_distribution<double> distribution;
     // managing external parameters
-    XmlRpc::XmlRpcValue ik_control_params;
+    ros::NodeHandle nh;
+    std::shared_ptr<XmlRpc::XmlRpcValue> ik_control_params;
     std::map<std::string,KDL::Chain> chains;
     std::map<std::string,KDL::Chain> chains_reverse;
     mutable KDL::Frame last_computed_target_pose;
