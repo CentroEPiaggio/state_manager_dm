@@ -50,19 +50,15 @@ src/ik_checking_grasp_substate.cpp
 )
 
 add_executable(dual_manipulation_state_manager ${STATES_FILES} ${SUBSTATES_FILES} src/debug_utility.cpp src/shared_memory.cpp  src/ros_server.cpp src/main.cpp)
-add_dependencies(dual_manipulation_state_manager dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared lemon)
 target_link_libraries(dual_manipulation_state_manager ${catkin_LIBRARIES} planning_lib dual_manipulation_ik_control_ik_check lemon)
 
 add_executable(test_draw tests/test_draw_state_machine.cpp)
-add_dependencies(test_draw dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared lemon)
 target_link_libraries(test_draw lemon)
 
 add_executable(test_conversion tests/test_semantic_to_cartesian.cpp src/semantic_to_cartesian_converter.cpp src/s2c_ik_converter.cpp src/shared_memory.cpp src/semantic_planning_state.cpp)
-add_dependencies(test_conversion dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared lemon)
 target_link_libraries(test_conversion  ${catkin_LIBRARIES} dual_manipulation_ik_control_ik_check planning_lib lemon)
 
 add_executable(test_full_state_manager tests/test_full_state_manager.cpp)
-add_dependencies(test_full_state_manager dual_manipulation_shared_generate_messages_cpp dual_manipulation_shared)
 target_link_libraries(test_full_state_manager ${catkin_LIBRARIES})
 
 install(TARGETS dual_manipulation_state_manager test_conversion test_draw RUNTIME DESTINATION bin)
