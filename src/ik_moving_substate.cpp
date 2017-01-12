@@ -145,6 +145,7 @@ void ik_moving_substate::run()
                 initialized = false;
             }
             
+            // NOTE: this has to be coherent to where the request is performed... see e.g. performRequest in ik_control::GraspingCapability
             srv.request.grasp_trajectory.header.seq = (int)item.second.ee_grasp_id;
             srv.request.attObject.object.id = *data_.object_name;
             srv.request.object_db_id = (int)*data_.obj_id;
