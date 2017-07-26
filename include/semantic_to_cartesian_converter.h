@@ -47,7 +47,7 @@
 #include <functional>
 
 // A function macro to make sure all functions to handle transitions have the same signature
-#define MANAGE_TRANSITION_FUN_MACRO(function_name) bool function_name(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+#define MANAGE_TRANSITION_FUN_MACRO(function_name) bool function_name(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const node_info& node, const std::vector< dual_manipulation_shared::planner_item >::const_iterator node_it, const std::vector< dual_manipulation_shared::planner_item >::const_iterator next_node_it, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes)
 
 class semantic_to_cartesian_converter
 {
@@ -63,7 +63,7 @@ public:
      * 
      * @return false if the conversion failed, true otherwise
      */
-    bool convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item & filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes) const;
+    bool convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item & filtered_source_nodes, dual_manipulation_shared::planner_item & filtered_target_nodes);
     
     /**
      * @brief Check a single grasp, knowing the object pose, information about the grasp, whether it is the first or last in the sequence, and sets filter nodes for the next planning, if any
