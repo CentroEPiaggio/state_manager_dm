@@ -31,6 +31,9 @@ private:
     const databaseMapper& database_;
     semantic_to_cartesian_converter converter_;
     int table_ee_id=3;
+    int edge_ee_id=4;
+    int ext_ee_id=5;
+    int wall_ee_id=6;
 };
 
 #endif // IK_CHECKING_GRASP_SUBSTATE_H
