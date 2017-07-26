@@ -112,20 +112,45 @@ void getting_info_state::get_start_position_from_vision(pacman_vision_comm::peAr
 
 int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs::Pose pose, int ee_id)
 {
-    // make sure we are considering only table grasps
-    if(ee_id != table_ee_id)
-    {
-        ROS_WARN_STREAM(CLASS_NAMESPACE << __func__ << " : only considering table grasps for now with id " << table_ee_id << ", specified id was " << ee_id << " instead");
-        ee_id = table_ee_id;
+    // make sure we are considering only non movable ee grasps for now (as of 10/07/2017)
+    
+    ROS_WARN_STREAM(CLASS_NAMESPACE << __func__ << " : Only considering non movable end-effector grasps for now with ids " << table_ee_id << ", " << edge_ee_id << ", " << wall_ee_id << "and" << ext_ee_id << ", specified id is " << ee_id << ".");
+    // If current grasp is not of movable ee then according to the current ws set to corresponding ee.
+    KDL::Frame temporary_frame;
+    tf::poseMsgToKDL(pose,temporary_frame);
+    // Get current workspaceID (after converting pose msg to KDL frame).
+    workspace_id current_ws = db_mapper_.getWorkspaceIDFromPose(temporary_frame);
+    switch (current_ws) {
+        case 1: ee_id = wall_ee_id; break;
+        case 2: ee_id = edge_ee_id; break;
+        case 3: ee_id = table_ee_id; break;
+        case 4: ee_id = table_ee_id; break;
+        case 5: ee_id = table_ee_id; break;
+        case 6: ee_id = table_ee_id; break;
+        case 7: ee_id = edge_ee_id; break;
+        case 8: ee_id = ext_ee_id; break;
+        default: ee_id = table_ee_id; break; // Set table grasp by default.
     }
-
+    
+    // Two frames: one for the current object pose and the other for the grasp pose (pose of ee for that grasp).
     KDL::Frame obj_frame,grasp_frame;
     tf::poseMsgToKDL(pose,obj_frame);
-    double x,y,z,w;
     
     int best_grasp = -1;
-    double closeness = -1.0;
-    
+    double closeness = -2.0;
+    double other_closeness = -2.0;
+
+    /*
+    The following grasp detection works well also if there is only one grasp defined per object side.
+    */
+
+    // Recall that a table grasp is defined by the axis which is perpendicular to the table.
+    double global_dot_product_x;
+    double global_dot_product_y;
+    double global_dot_product_z;
+    double local_dot_product; // To be used once the perpendicular axis is found.
+    double other_dot_product; // To be used to distinguish between grasps with same main axis.
+
     ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Pose: " << std::endl << pose);
     
     for (auto item:db_mapper_.Grasps)
@@ -147,16 +172,95 @@ int getting_info_state::get_grasp_id_from_database(int object_id, geometry_msgs:
 	    else
 	      ROS_WARN_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Unable to deserialize grasp entry : object" + std::to_string(object_id) + "/grasp" + std::to_string((int)item.first));
 	    
-	    // get residual rotation and its quaternion representation
-        KDL::Rotation Rresidual = grasp_frame.M*(obj_frame.M);
-	    Rresidual.GetQuaternion(x,y,z,w);
-	  
-	    // the higher the w (in abs value) the better (smaller rotation angles around any axis)
-	    if((closeness < 0) || (std::abs(w) > closeness))
-	    {
-            closeness = std::abs(w);
-            best_grasp = item.first;
-	    }
+        // Modification: Get the two rotations from the grasp and object frames.
+        KDL::Rotation R_object = obj_frame.M;
+        KDL::Rotation R_grasp = grasp_frame.M;
+
+        // Compute global z axis and all axes from each rotation.
+        KDL::Vector global_z_axis(0, 0, 1);
+        KDL::Vector x_obj = R_object.UnitX(); // x axis of object pose.
+        KDL::Vector x_grasp = R_grasp.UnitX(); // x axis of current grasp pose.
+        KDL::Vector y_obj = R_object.UnitY(); // y axis of object pose.
+        KDL::Vector y_grasp = R_grasp.UnitY(); // y axis of current grasp pose.
+        KDL::Vector z_obj = R_object.UnitZ(); // z axis of object pose.
+        KDL::Vector z_grasp = R_grasp.UnitZ(); // z axis of current grasp pose.
+
+        // Dot products between global z axis and object x, y and z axes.
+        global_dot_product_x = std::abs(dot(global_z_axis, x_obj));
+        global_dot_product_y = std::abs(dot(global_z_axis, y_obj));
+        global_dot_product_z = std::abs(dot(global_z_axis, z_obj));
+
+        // Looking for the best dot product to choose the case.
+        // Case 1) x_obj perpendicular to table
+        if(global_dot_product_x > global_dot_product_y && global_dot_product_x > global_dot_product_z)
+        {
+            std::cout << "I ENTERED x_obj" << std::endl;
+            local_dot_product= dot(x_obj, x_grasp);
+            if((closeness < -1.0) || (local_dot_product > closeness))
+            {
+                closeness = local_dot_product;
+                other_dot_product = dot(y_obj, y_grasp);
+                other_closeness = other_dot_product;
+                best_grasp = item.first;
+            }
+            else if((closeness < -1.0) || (local_dot_product == closeness))
+            {
+                closeness = local_dot_product;
+                other_dot_product = dot(y_obj, y_grasp);
+                if((other_closeness < -1.0) || (other_dot_product > other_closeness)){
+                    other_closeness = other_dot_product;
+                    best_grasp = item.first;
+                }
+            }
+        }
+        // Case 2) y_obj perpendicular to table
+        else if(global_dot_product_y > global_dot_product_x && global_dot_product_y > global_dot_product_z)
+        {
+            std::cout << "I ENTERED y_obj" << std::endl;
+            local_dot_product= dot(y_obj, y_grasp);
+            if((closeness < -1.0) || (local_dot_product > closeness))
+            {
+                closeness = local_dot_product;
+                other_dot_product = dot(z_obj, z_grasp);
+                other_closeness = other_dot_product;
+                best_grasp = item.first;
+            }
+            else if((closeness < -1.0) || (local_dot_product == closeness))
+            {
+                closeness = local_dot_product;
+                other_dot_product = dot(z_obj, z_grasp);
+                if((other_closeness < -1.0) || (other_dot_product > other_closeness)){
+                    other_closeness = other_dot_product;
+                    best_grasp = item.first;
+                }
+            }
+        }
+        // Case 3) z_obj perpendicular to table
+        else if(global_dot_product_z > global_dot_product_x && global_dot_product_z > global_dot_product_y)
+        {
+            std::cout << "I ENTERED z_obj" << std::endl;
+            local_dot_product= dot(z_obj, z_grasp);
+            if((closeness < -1.0) || (local_dot_product > closeness))
+            {
+                closeness = local_dot_product;
+                other_dot_product = dot(x_obj, x_grasp);
+                other_closeness = other_dot_product;
+                best_grasp = item.first;
+            }
+            else if((closeness < -1.0) || (local_dot_product == closeness))
+            {
+                closeness = local_dot_product;
+                other_dot_product = dot(x_obj, x_grasp);
+                if((other_closeness < -1.0) || (other_dot_product > other_closeness)){
+                    other_closeness = other_dot_product;
+                    best_grasp = item.first;
+                }
+            }
+        }
+        else
+        {
+            ROS_ERROR("The given object pose is ambigous for grasp detection, please change object pose a little bit.");
+        }
 	}
     }
     ROS_INFO_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Best grasp found: " << best_grasp);
@@ -185,8 +289,10 @@ void getting_info_state::gui_target_set_callback(const dual_manipulation_shared:
     data_.obj_id = msg->obj_id;
     data_.object_name = msg->name;
     // TODO: ask for desired target end-effector; maybe even for desired final grasp?
+    // 
     data_.source_grasp=get_grasp_id_from_database(data_.obj_id,data_.source_position);
     data_.target_grasp=get_grasp_id_from_database(data_.obj_id,data_.target_position);
+    data_.bad_checksinglegrasp = false;
 
     pacman_vision_comm::track_object srv;
     srv.request.name = data_.object_name;
