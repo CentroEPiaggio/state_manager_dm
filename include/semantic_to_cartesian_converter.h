@@ -101,9 +101,48 @@ public:
      * @return true on success (matrix have been found)
      */
     static bool getGraspMatrixes(object_id object, node_info node, Object_GraspMatrixes& Object);
+
+    /// adding information about s and t positions for correct hand positioning during sliding
+    /// Note: the following are correctly assigned only in semantic_planning_state::run before converter is called
+    geometry_msgs::Pose source_position = geometry_msgs::Pose();
+    geometry_msgs::Pose target_position = geometry_msgs::Pose();
+
+    // current source grasp id
+    int current_source_grasp = -1;
+
+    // adding info about the two main table and edge grasp ids for sliding
+    int sCbt = 401641; // side C bottom table
+    int sCtt = 401644; // side C top table
+    int sCbe = 401841; // side C bottom edge
+    int sCte = 401844; // side C top edge
+
+    // Info on if current transition is TILT
+    bool current_transition_tilting = false;
     
 private:
-    
+
+    /**
+     * @brief Sets Object_PreSlide and Object_Slide of the class according to best hand position for achieving good sliding
+     *        using a dot product test
+     * 
+     * @param source_position a geometry_msg Pose with info on source position and orientation
+     * @param target_position a geometry_msg Pose with info on target position and orientation
+     * 
+     * @return true if the two KDL Frames were set correctly, false otherwise
+     */
+    bool set_hand_pose_sliding(geometry_msgs::Pose source_position, geometry_msgs::Pose target_position);
+
+    /**
+     * @brief Sets Object_PreTilt and Object_Tilt of the class according to best hand position for achieving good tilting
+     *        using a dot product test (same as sliding)
+     * 
+     * @param source_position a geometry_msg Pose with info on source position and orientation
+     * @param target_position a geometry_msg Pose with info on target position and orientation
+     * 
+     * @return true if the two KDL Frames were set correctly, false otherwise
+     */
+    bool set_hand_pose_tilting(geometry_msgs::Pose source_position, geometry_msgs::Pose target_position);
+        
     /**
      * @brief Find properties associated to the next node
      * 
