@@ -111,9 +111,16 @@ void semantic_planning_state::run()
             if (t_info.grasp_transition_type_ == dual_manipulation::shared::NodeTransitionTypes::GRASP && database.Reachability.at(temp.next_ee_id).count(source))
             {
                 if(converter.checkSingleGrasp(fake, temp, data, true, false, data.filtered_source_nodes, data.filtered_target_nodes))
-                    msg.good_source_grasps.push_back(temp.next_grasp_id);
+                    {
+                        // boolean bad_checksinglegrasp added to prevent reinsertion of self transition in case of same ws but with bad poses for grasp
+                        data.bad_checksinglegrasp = false;
+                        msg.good_source_grasps.push_back(temp.next_grasp_id);
+                    }
                 else
                 {
+                    // boolean bad_checksinglegrasp added to prevent reinsertion of self transition in case of same ws but with bad poses for grasp
+                    data.bad_checksinglegrasp = true;
+                    std::cout << "A source arc from: (" << temp.next_grasp_id << ") has been filtered by checkSingleGrasp even before starting to plan!"<< std::endl;
                     msg.bad_source_grasps.push_back(temp.next_grasp_id);
                     data.planner.add_filtered_arc(data.source_grasp,source,next_grasp_id,source);
                 }
@@ -155,9 +162,16 @@ void semantic_planning_state::run()
             if (t_info.grasp_transition_type_ == dual_manipulation::shared::NodeTransitionTypes::UNGRASP && database.Reachability.at(temp.current_ee_id).count(target))
             {
                 if(converter.checkSingleGrasp(fake, temp, data, false, true, data.filtered_source_nodes, data.filtered_target_nodes))
-                    msg.good_target_grasps.push_back(temp.current_grasp_id);
+                    {
+                        // boolean bad_checksinglegrasp added to prevent reinsertion of self transition in case of same ws but with bad poses for grasp
+                        data.bad_checksinglegrasp = false;
+                        msg.good_target_grasps.push_back(temp.current_grasp_id);
+                    }
                 else
                 {
+                    // boolean bad_checksinglegrasp added to prevent reinsertion of self transition in case of same ws but with bad poses for grasp
+                    data.bad_checksinglegrasp = true;
+                    std::cout << "A target arc from: (" << temp.current_grasp_id << ")  has been filtered by checkSingleGrasp even before starting to plan!"<< std::endl;
                     msg.bad_target_grasps.push_back(temp.current_grasp_id);
                     data.planner.add_filtered_arc(current_grasp_id,target,data.target_grasp,target);
                 }
@@ -196,7 +210,7 @@ void semantic_planning_state::run()
                 }
             }
         #else
-        if (data.planner.plan(data.source_grasp,source,data.target_grasp,target,srv.response.path))
+        if (data.planner.plan(data.source_grasp,source,data.target_grasp,target,srv.response.path, data.bad_checksinglegrasp))
         {
             {
                 data.planner.draw_path();
@@ -205,7 +219,7 @@ void semantic_planning_state::run()
         #endif
         else
         {
-            ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service");
+            ROS_ERROR("Failed to call service dual_manipulation_shared::planner_service ***** - Dijkstra could not find a path in the high level graph - There may be no path or the algorithm failed to find one");
             internal_state.insert(std::make_pair(transition::failed_plan,true));
             completed=true;
             return;
@@ -221,6 +235,12 @@ void semantic_planning_state::run()
             return;
         }
         std::vector<std::pair<endeffector_id,cartesian_command>> result;
+
+        /// giving information about s (source grasp) and t poses to semantic_to_cartesian_converter converter for correct hand positioning
+        converter.source_position = data.source_position;
+        converter.target_position = data.target_position;
+        converter.current_source_grasp = data.source_grasp;
+
         bool converted=converter.convert(result,srv.response.path,data,data.filtered_source_nodes,data.filtered_target_nodes);
         #if GRASP_TESTING
         if(result.empty())
@@ -231,6 +251,8 @@ void semantic_planning_state::run()
         #else
         if (!converted)
         {
+            // boolean bad_checksinglegrasp added to prevent reinsertion of self transition in case of same ws but with bad poses for grasp
+            data.bad_checksinglegrasp = true;
             data.planner.add_filtered_arc(data.filtered_source_nodes.grasp_id,data.filtered_source_nodes.workspace_id,data.filtered_target_nodes.grasp_id, data.filtered_target_nodes.workspace_id);
             if(max_counter > 0)
                 ROS_WARN_STREAM("Error converting semantic to cartesian! I will try again for " << max_counter << " times");
@@ -242,13 +264,20 @@ void semantic_planning_state::run()
             continue;
         }
         #endif
+
+        // boolean bad_checksinglegrasp added to prevent reinsertion of self transition in case of same ws but with bad poses for grasp
+        data.bad_checksinglegrasp = false;
+        // boolean info about if there is a TILT transition in the current planning
+        // there are limitations for this approach, in future need to add a tilting_capability in ik_control
+        data.current_transition_tilting = converter.current_transition_tilting;
+
         std::cout << "=== Semantic and Cartesian plans print-out ===" << std::endl;
         std::cout << "( Note that grasp/ungrasp poses are the object poses, not the end-effector ones )" << std::endl;
         data.cartesian_plan = result;
         for (auto node:srv.response.path)
             std::cout<<node.grasp_id<<" "<<node.workspace_id<<std::endl;
-        for (auto i:result)
-            std::cout<<i<<std::endl;
+        // for (auto i:result)
+            // std::cout<<i<<std::endl;
         std::cout << "=== end of plans print-out ===" << std::endl;
         
         break;
