@@ -65,6 +65,9 @@ struct cartesian_command
      */
     int seq_num;
     grasp_id ee_grasp_id;
+
+    // bool to know if this cartesian command is about a TILT transition
+    bool tilt_only_now = false;
 };
 
 std::ostream& operator<<(std::ostream &output, const cartesian_command &o);
@@ -78,6 +81,13 @@ shared_memory();
 // void get_object_pose(geometry_msgs::Pose& object_pose);
 geometry_msgs::Pose source_position, target_position;
 grasp_id source_grasp, target_grasp;
+
+// adding boolean information about whether checksinglegrasp returned true or false
+bool bad_checksinglegrasp = false;
+
+// adding boolean information about if tilting is going to be used
+bool current_transition_tilting = false;
+
 object_id obj_id;
 std::string object_name;
 std::vector<std::pair<endeffector_id,cartesian_command>> cartesian_plan;
