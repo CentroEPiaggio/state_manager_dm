@@ -267,6 +267,25 @@ void s2c_ik_converter::compute_centroid(KDL::Frame& ws_centroid, const node_info
     return;
 }
 
+void s2c_ik_converter::compute_centroid_slide(KDL::Frame& ws_centroid, const node_info& node, const shared_memory& data, bool is_first_node) const
+{
+    bool res = database.getTargetPose(object_state(node.current_grasp_id, node.current_workspace_id), object_state(node.next_grasp_id, node.next_workspace_id), ws_centroid);
+    assert(res);
+    
+    // if(is_first_node){
+    //     KDL::Frame source_current_planning;
+    //     tf::poseMsgToKDL(data.source_position, source_current_planning);
+    //     ws_centroid.M = source_current_planning.M;
+    // }
+    // else{
+    //     ws_centroid.M = last_computed_target_pose.M;
+    // }
+    
+    last_computed_target_pose = ws_centroid;
+    
+    return;
+}
+
 bool s2c_ik_converter::check_ik(std::string ee_name, KDL::Frame World_EE) const
 {
     geometry_msgs::Pose ee_pose;
@@ -677,8 +696,29 @@ bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, no
     else
     {
         KDL::Frame World_Target_Centroid;
-        compute_centroid(World_Target_Centroid,node);
+        compute_centroid_slide(World_Target_Centroid,node,data,first_node);
         World_Target_Object = World_Target_Centroid*(Object.GraspSecondEE.Inverse());
+        double roll, pitch, yaw;
+        World_Target_Centroid.M.GetEulerZYX(yaw, pitch, roll);
+        std::cout << "Target centroid is (ZYX): ROLL: " << roll << " PITCH: " << pitch << " YAW: " << yaw << " at position: " << World_Target_Centroid.p << std::endl;
+        Object.GraspSecondEE.M.GetEulerZYX(yaw, pitch, roll);
+        std::cout << "Multiplying on right with the inverso of (ZYX) ROLL: " << roll << " PITCH: " << pitch << " YAW: " << yaw << " at position: " << Object.GraspSecondEE.p << std::endl;
+        World_Target_Object.M.GetEulerZYX(yaw, pitch, roll);
+        std::cout << "Target object is (ZYX): ROLL: " << roll << " PITCH: " << pitch << " YAW: " << yaw << " at position: " << World_Target_Object.p << std::endl;
+        KDL::Rotation World_Target_Object_tmp = World_Target_Centroid.M*(Object.GraspSecondEE.M.Inverse());
+        World_Target_Object_tmp.GetEulerZYX(yaw, pitch, roll);
+        std::cout << "Target object (WITH ONLY ROTATION) is (ZYX): ROLL: " << roll << " PITCH: " << pitch << " YAW: " << yaw << std::endl;
+        std::cout << "--------------------------------------" << std::endl;
+        KDL::Vector d_pos(-0.68, -0.47, 0.17);
+        KDL::Rotation d_rot = KDL::Rotation::EulerZYX(-0.94, 1.57, 0.00);
+        KDL::Frame Desired;
+        Desired.p = d_pos;
+        Desired.M = d_rot;
+        Desired.M.GetEulerZYX(yaw, pitch, roll);
+        std::cout << "Desired object is: ROLL: " << roll << " PITCH: " << pitch << " YAW: " << yaw << " at position: " << Desired.p << std::endl;
+        KDL::Rotation NeededWSC = (Desired.M)*(Object.GraspSecondEE.M);
+        NeededWSC.GetEulerZYX(yaw, pitch, roll);
+        std::cout << "Needed WS centroid is: ROLL: " << roll << " PITCH: " << pitch << " YAW: " << yaw << std::endl;
     }
     
     assert(Object_ee_poses.size() == 2 && "Poses need to be 2: PreSlide and Slide");
