@@ -47,6 +47,10 @@ ik_control_state::ik_control_state(shared_memory& data):data_(data),subdata(data
     subdata.move_failed.store(false);
 
     auto ik_planning = new ik_planning_substate(subdata);
+
+    // assigning shared memory data in ik_planning
+    ik_planning->sh_data = &data_;
+
     auto ik_checking_grasp = new ik_checking_grasp_substate(subdata);
     auto ik_moving = new ik_moving_substate(subdata);
     waiting = new ik_steady_substate(subdata);
