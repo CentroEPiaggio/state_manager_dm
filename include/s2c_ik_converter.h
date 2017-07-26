@@ -118,6 +118,7 @@ public:
     static void clearCachedIkSolutions();
 private:
     void compute_centroid(KDL::Frame& ws_centroid, const node_info& node) const;
+    void compute_centroid_slide(KDL::Frame& ws_centroid, const node_info& node, const shared_memory& data, bool is_first_node) const;
     static bool getGraspMatrixes(object_id object, grasp_id grasp, Object_SingleGrasp& Matrixes);
     bool check_ik(std::string ee_name, KDL::Frame World_EE) const;
     void addNewFilteredArc(const node_info& node, dual_manipulation_shared::planner_item& filtered_source_node, dual_manipulation_shared::planner_item& filtered_target_node) const;
