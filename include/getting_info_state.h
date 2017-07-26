@@ -106,6 +106,9 @@ private:
     bool target_request=false;
     bool use_vision=true;
     int table_ee_id=3;
+    int edge_ee_id=4;
+    int ext_ee_id=5;
+    int wall_ee_id=6;
 };
 
 #endif // GETTING_INFO_STATE_H
