@@ -7,6 +7,8 @@
 #define CLASS_NAMESPACE "semantic_to_cartesian_converter::"
 #define CLASS_LOGNAME "semantic_to_cartesian_converter"
 
+#define PI 3.14159
+
 semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseMapper& database) : database(database)
 {
     s2cik.reset(new s2c_ik_converter(this->database));
@@ -20,11 +22,12 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::EXCHANGE_GRASP] = &semantic_to_cartesian_converter::manage_transition_exchange_grasp;
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::MOVE_NONBLOCKING] = &semantic_to_cartesian_converter::manage_transition_move_nonblocking;
     manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::SLIDE] = &semantic_to_cartesian_converter::manage_transition_slide;
+    manage_transition_by_type[dual_manipulation::shared::NodeTransitionTypes::TILT] = &semantic_to_cartesian_converter::manage_transition_tilt;
     
     ros::NodeHandle node;
     std::vector<double> pOP(6,0), pOS(6,0); //Parameters for Object_Preslide and Object_Slide
-    use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide", pOP);
-    use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide", pOS);
+    use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide_L", pOP);
+    use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide_L", pOS);
     use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
     
     if( use_slide )
@@ -36,6 +39,348 @@ semantic_to_cartesian_converter::semantic_to_cartesian_converter(const databaseM
         std::cout << CLASS_NAMESPACE << __func__ << " Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
     
     
+}
+
+bool semantic_to_cartesian_converter::set_hand_pose_sliding(geometry_msgs::Pose source_position, geometry_msgs::Pose target_position)
+{
+    ros::NodeHandle node;
+    std::vector<double> pOP(6,0), pOS(6,0); //Parameters for Object_Preslide and Object_Slide
+
+    // Here we check if the yaw angles of the two objects differ more than 45° -> if so, send warning
+    KDL::Frame source_frame;
+    tf::poseMsgToKDL(source_position, source_frame);
+    KDL::Frame target_frame;
+    tf::poseMsgToKDL(target_position, target_frame);
+    double roll_s, pitch_s, yaw_s;
+    double roll_t, pitch_t, yaw_t;
+    source_frame.M.GetRPY(roll_s, pitch_s, yaw_s);
+    target_frame.M.GetRPY(roll_t, pitch_t, yaw_t);
+#if DEBUG
+    if(std::abs(yaw_t - yaw_s)>= PI/4){
+        ROS_WARN_STREAM_NAMED(CLASS_LOGNAME, CLASS_NAMESPACE << __func__ << " Source and Target differ in yaw more than 45°, sliding might not function correctly because of current IK limitations.");
+    }
+#endif
+    // extracting x_s, y_s, -x_s, -y_s vectors of source object frame and the diff_v vector (difference between two object positions)
+    KDL::Vector x_s = source_frame.M.UnitX();
+    KDL::Vector _x_s = x_s;
+    _x_s.ReverseSign();
+    KDL::Vector y_s = source_frame.M.UnitY();
+    KDL::Vector _y_s = y_s;
+    _y_s.ReverseSign();
+    KDL::Vector diff_v = target_frame.p - source_frame.p;
+
+    // Defining the 4 dot products between diff_v and x_s, y_s, -x_s, -y_s vectors
+    double xdot = dot(diff_v, x_s);
+    double _xdot = dot(diff_v, _x_s);
+    double ydot = dot(diff_v, y_s);
+    double _ydot = dot(diff_v, _y_s);
+
+    // choose the most negative dot product and set the hand pose but first check the correct side (sCbt or sCtt)
+    // case 1: current source grasp is sCbt
+    if(current_source_grasp == sCbt || current_source_grasp == sCbe)
+    {
+    if(xdot < _xdot && xdot < ydot && xdot < _ydot){
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide_L", pOP);
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide_L", pOS);
+        use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_slide ){
+            Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 1: Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(_xdot < xdot && _xdot < ydot && _xdot < _ydot){
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide_R", pOP);
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide_R", pOS);
+        use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_slide ){
+            Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 2: Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(ydot < xdot && ydot < _xdot && ydot < _ydot){
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide_D", pOP);
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide_D", pOS);
+        use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_slide ){
+            Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 3: Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(_ydot < xdot && _ydot < ydot && _ydot < _xdot){
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide_U", pOP);
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide_U", pOS);
+        use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_slide ){
+            Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 4: Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else{
+        std::cout << CLASS_NAMESPACE << __func__ << " These source and target poses are quite strange for sliding. There might be some problems." << std::endl;
+        return false;
+    }
+    }
+    // case 2: current source grasp is sCtt
+    else if(current_source_grasp == sCtt || current_source_grasp == sCte)
+    {
+    if(xdot < _xdot && xdot < ydot && xdot < _ydot){
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide_L_2", pOP);
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide_L_2", pOS);
+        use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_slide ){
+            Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 5: Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(_xdot < xdot && _xdot < ydot && _xdot < _ydot){
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide_R_2", pOP);
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide_R_2", pOS);
+        use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_slide ){
+            Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 6: Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(ydot < xdot && ydot < _xdot && ydot < _ydot){
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide_D_2", pOP);
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide_D_2", pOS);
+        use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_slide ){
+            Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 7: Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(_ydot < xdot && _ydot < ydot && _ydot < _xdot){
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_PreSlide_U_2", pOP);
+        use_slide &= node.getParam("ik_control_parameters/slide/Object_Slide_U_2", pOS);
+        use_slide &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_slide ){
+            Object_PreSlide = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Slide = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 8: Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else{
+        std::cout << CLASS_NAMESPACE << __func__ << " These source and target poses are quite strange for sliding. There might be some problems." << std::endl;
+        return false;
+    }
+    }
+}
+
+bool semantic_to_cartesian_converter::set_hand_pose_tilting(geometry_msgs::Pose source_position, geometry_msgs::Pose target_position)
+{
+    ros::NodeHandle node;
+    std::vector<double> pOP(6,0), pOS(6,0); //Parameters for Object_Pretilt and Object_Tilt
+
+    // Here we check if the yaw angles of the two objects differ more than 45° -> if so, send warning
+    KDL::Frame source_frame;
+    tf::poseMsgToKDL(source_position, source_frame);
+    KDL::Frame target_frame;
+    tf::poseMsgToKDL(target_position, target_frame);
+    double roll_s, pitch_s, yaw_s;
+    double roll_t, pitch_t, yaw_t;
+    source_frame.M.GetRPY(roll_s, pitch_s, yaw_s);
+    target_frame.M.GetRPY(roll_t, pitch_t, yaw_t);
+
+    // extracting x_s, y_s, -x_s, -y_s vectors of source object frame and the diff_v vector (difference between two object positions)
+    KDL::Vector x_s = source_frame.M.UnitX();
+    KDL::Vector _x_s = x_s;
+    _x_s.ReverseSign();
+    KDL::Vector y_s = source_frame.M.UnitY();
+    KDL::Vector _y_s = y_s;
+    _y_s.ReverseSign();
+    KDL::Vector diff_v = target_frame.p - source_frame.p;
+
+    // Defining the 4 dot products between diff_v and x_s, y_s, -x_s, -y_s vectors
+    double xdot = dot(diff_v, x_s);
+    double _xdot = dot(diff_v, _x_s);
+    double ydot = dot(diff_v, y_s);
+    double _ydot = dot(diff_v, _y_s);
+
+    // choose the most negative dot product and set the hand pose but first check the correct side (sCbt or sCtt)
+    // case 1: current source grasp is sCbt
+    if(current_source_grasp == sCbt || current_source_grasp == sCbe)
+    {
+    if(xdot < _xdot && xdot < ydot && xdot < _ydot){
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_PreTilt_L", pOP);
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_Tilt_L", pOS);
+        use_tilt &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_tilt ){
+            Object_PreTilt = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Tilt = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 1: Parameters for Object Tilt and Object preTilt not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(_xdot < xdot && _xdot < ydot && _xdot < _ydot){
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_PreTilt_R", pOP);
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_Tilt_R", pOS);
+        use_tilt &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_tilt ){
+            Object_PreTilt = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Tilt = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 2: Parameters for Object Tilt and Object preTilt not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(ydot < xdot && ydot < _xdot && ydot < _ydot){
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_PreTilt_D", pOP);
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_Tilt_D", pOS);
+        use_tilt &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_tilt ){
+            Object_PreTilt = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Tilt = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 3: Parameters for Object Tilt and Object preTilt not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(_ydot < xdot && _ydot < ydot && _ydot < _xdot){
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_PreTilt_U", pOP);
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_Tilt_U", pOS);
+        use_tilt &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_tilt ){
+            Object_PreTilt = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Tilt = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 4: Parameters for Object Tilt and Object preTilt not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else{
+        std::cout << CLASS_NAMESPACE << __func__ << " These source and target poses are quite strange for tilting. There might be some problems." << std::endl;
+        return false;
+    }
+    }
+    // case 2: current source grasp is sCtt
+    else if(current_source_grasp == sCtt || current_source_grasp == sCte)
+    {
+    if(xdot < _xdot && xdot < ydot && xdot < _ydot){
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_PreTilt_L_2", pOP);
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_Tilt_L_2", pOS);
+        use_tilt &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_tilt ){
+            Object_PreTilt = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Tilt = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 5: Parameters for Object Tilt and Object preTilt not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(_xdot < xdot && _xdot < ydot && _xdot < _ydot){
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_PreTilt_R_2", pOP);
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_Tilt_R_2", pOS);
+        use_tilt &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_tilt ){
+            Object_PreTilt = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Tilt = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 6: Parameters for Object Tilt and Object preTilt not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(ydot < xdot && ydot < _xdot && ydot < _ydot){
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_PreTilt_D_2", pOP);
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_Tilt_D_2", pOS);
+        use_tilt &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_tilt ){
+            Object_PreTilt = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Tilt = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 7: Parameters for Object Tilt and Object preTilt not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else if(_ydot < xdot && _ydot < ydot && _ydot < _xdot){
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_PreTilt_U_2", pOP);
+        use_tilt &= node.getParam("ik_control_parameters/tilt/Object_Tilt_U_2", pOS);
+        use_tilt &= ((pOP.size() >= 6) && (pOS.size() >= 6));
+    
+        if( use_tilt ){
+            Object_PreTilt = KDL::Frame(KDL::Rotation::EulerZYX(pOP.at(3),pOP.at(4),pOP.at(5)), KDL::Vector(pOP.at(0),pOP.at(1),pOP.at(2)));
+            Object_Tilt = KDL::Frame(KDL::Rotation::EulerZYX(pOS.at(3),pOS.at(4),pOS.at(5)), KDL::Vector(pOS.at(0),pOS.at(1),pOS.at(2)));
+            return true;
+        }
+        else{    
+            std::cout << CLASS_NAMESPACE << __func__ << " 8: Parameters for Object Tilt and Object preTilt not set correctly" << std::endl;
+            return false;
+        }
+    }
+    else{
+        std::cout << CLASS_NAMESPACE << __func__ << " These source and target poses are quite strange for tilting. There might be some problems." << std::endl;
+        return false;
+    }
+    }
 }
 
 node_info semantic_to_cartesian_converter::find_node_properties(const std::vector< dual_manipulation_shared::planner_item >& path, const std::vector< dual_manipulation_shared::planner_item >::const_iterator& node, std::vector< dual_manipulation_shared::planner_item >::const_iterator& next_node) const
@@ -51,8 +396,10 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
         transition_info t_info;
         object_state source_state(node->grasp_id,node->workspace_id);
         object_state target_state(next_node->grasp_id,next_node->workspace_id);
+        #if DEBUG
         ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : source: " << source_state);
         ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : target: " << target_state);
+        #endif
         bool supported_node = database.getTransitionInfo(source_state,target_state,t_info);
         if(supported_node)
         {
@@ -90,13 +437,29 @@ node_info semantic_to_cartesian_converter::find_node_properties(const std::vecto
     return result;
 }
 
-bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes) const
+bool semantic_to_cartesian_converter::convert(std::vector< std::pair< endeffector_id, cartesian_command > >& result, const std::vector< dual_manipulation_shared::planner_item >& path, const shared_memory& data, dual_manipulation_shared::planner_item& filtered_source_nodes, dual_manipulation_shared::planner_item& filtered_target_nodes)
 {
     // 1) Clearing result vector
     result.clear();
     
     // 2) Clear any previously found intergrasp configuration
     s2cik->clearCachedIkSolutions();
+#if DEBUG
+    // 2.1) Printing s and t positions for debugging
+    std::cout<<"Starting obj_pose is: "<<std::endl<<source_position<<std::endl;
+    std::cout<<"Arriving obj_pose is: "<<std::endl<<target_position<<std::endl;
+#endif
+    // 2.2) Setting the correct hand pose for a hypothetical case of a sliding
+    bool hand_positioning = set_hand_pose_sliding(source_position, target_position);
+    if (!hand_positioning){
+        std::cout << CLASS_NAMESPACE << __func__ << " In convert: Parameters for Object Slide and Object preSlide not set correctly" << std::endl;
+    }
+
+    // 2.3) Setting the correct hand pose for a hypothetical case of a tilting
+    bool tilt_positioning = set_hand_pose_tilting(source_position, target_position);
+    if (!tilt_positioning){
+        std::cout << CLASS_NAMESPACE << __func__ << " In convert: Parameters for Object Tilt and Object preTilt not set correctly" << std::endl;
+    }
     
     // 3) Start of the main conversion loop
     for (auto node_it=path.begin();node_it!=path.end();)//++node)
@@ -153,12 +516,24 @@ void semantic_to_cartesian_converter::getGraspMatrixesFatal(const shared_memory&
 
 MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_unknown)
 {
+    #if DEBUG
+    std::cout<< "I ENTERED MANAGE_TRANSITION_UNKNOWN." <<std::endl;
+    #endif
+    
+    current_transition_tilting = false;
+
     std::cout << CLASS_NAMESPACE << " : ERROR, the planner returned two nodes for which no known transition is implemented!!"<<std::endl;
     return false;
 }
 
 MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_last_ee_movable)
 {
+    #if DEBUG
+    std::cout<< "I ENTERED MANAGE_TRANSITION_LEEM." <<std::endl;
+    #endif
+    
+    current_transition_tilting = false;
+
     Object_GraspMatrixes Object;
     getGraspMatrixesFatal(data,node,Object);
     
@@ -178,11 +553,21 @@ MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_l
 
 MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_last_ee_fixed)
 {
+    #if DEBUG
+    std::cout<< "I ENTERED MANAGE_TRANSITION_LEEF." <<std::endl;
+    #endif
+    
     return true;
 }
 
 MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_grasp)
 {
+    #if DEBUG
+    std::cout<< "I ENTERED MANAGE_TRANSITION_GRASP." <<std::endl;
+    #endif
+    
+    current_transition_tilting = false;
+
     KDL::Frame World_Object,World_GraspSecondEE;
     Object_GraspMatrixes Object;
     getGraspMatrixesFatal(data,node,Object);
@@ -210,6 +595,12 @@ MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_g
 
 MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_ungrasp)
 {
+    #if DEBUG
+    std::cout<< "I ENTERED MANAGE_TRANSITION_UNGRASP." <<std::endl;
+    #endif
+    
+    current_transition_tilting = false;
+
     KDL::Frame World_Object;
     Object_GraspMatrixes Object;
     getGraspMatrixesFatal(data,node,Object);
@@ -241,6 +632,12 @@ MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_u
 
 MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_exchange_grasp)
 {
+    #if DEBUG
+    std::cout<< "I ENTERED MANAGE_TRANSITION_EXCHANGE_GRASP." <<std::endl;
+    #endif
+    
+    current_transition_tilting = false;
+
     KDL::Frame World_Object,World_GraspSecondEE;
     Object_GraspMatrixes Object;
     getGraspMatrixesFatal(data,node,Object);
@@ -272,6 +669,12 @@ MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_e
 
 MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_move_nonblocking)
 {
+    #if DEBUG
+    std::cout<< "I ENTERED MANAGE_TRANSITION_MNB." <<std::endl;
+    #endif
+    
+    current_transition_tilting = false;
+
     Object_GraspMatrixes Object;
     getGraspMatrixesFatal(data,node,Object);
     
@@ -290,8 +693,15 @@ MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_m
 
 MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_slide)
 {
+    #if DEBUG
+    std::cout<< "I ENTERED MANAGE_TRANSITION_SLIDE." <<std::endl;
+    #endif
+    
+    current_transition_tilting = false;
+
     if (!use_slide)
         return false;
+
     KDL::Frame World_Object,World_GraspSecondEE;
     Object_GraspMatrixes Object;
     
@@ -327,6 +737,63 @@ MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_s
     cartesian_command slide_command(cartesian_commands::SLIDE, 1, -1);
     tf::poseKDLToMsg(World_Object_Poses.at(1)*Object_Slide ,slide_command.cartesian_task);
     result.push_back(std::make_pair(ee_id_to_use, slide_command)); //do Sliding
+    
+    cartesian_command move_away(cartesian_commands::HOME,0,-1);
+    result.push_back(std::make_pair(ee_id_to_use,move_away));
+     
+   
+    return true;
+    
+}
+
+MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_tilt)
+{
+    #if DEBUG
+    std::cout<< "I ENTERED MANAGE_TRANSITION_TILT." <<std::endl;
+    #endif
+
+    current_transition_tilting = true;
+
+    if (!use_tilt)
+        return false;
+
+    KDL::Frame World_Object,World_GraspSecondEE;
+    Object_GraspMatrixes Object;
+    
+    endeffector_id ee_id_to_use = 0;
+    
+    for (endeffector_id ee:node.busy_ees)
+    {
+        if (    data.db_mapper.Reachability.count(ee) && data.db_mapper.Reachability.at(ee).count(node.current_workspace_id) 
+                && data.db_mapper.Reachability.at(ee).count(node.next_workspace_id) )
+        {
+            ee_id_to_use = ee;
+            break;
+        }
+    }
+    
+    assert(ee_id_to_use != 0);
+
+    std::vector<KDL::Frame> object_ee_poses({Object_PreTilt, Object_Tilt});
+    std::vector<KDL::Frame> World_Object_Poses;
+    
+    std::string ee_name = data.db_mapper.EndEffectors.at(ee_id_to_use).name;
+    if (!s2cik->checkSlidePoses(World_Object_Poses,node,data,node_it==path.begin(),((next_node_it+1) == path.end()),filtered_source_nodes,filtered_target_nodes, object_ee_poses, ee_name))
+        return false;
+    
+    cartesian_command move_command(cartesian_commands::MOVE_BEST_EFFORT, 1, -1);
+    tf::poseKDLToMsg(World_Object_Poses.at(0)*Object_PreTilt ,move_command.cartesian_task);
+    result.push_back(std::make_pair(ee_id_to_use, move_command)); //move to PreTilting 
+    
+    cartesian_command move_command_2(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, -1);
+    tf::poseKDLToMsg(World_Object_Poses.at(0)*Object_Tilt ,move_command_2.cartesian_task);
+    result.push_back(std::make_pair(ee_id_to_use, move_command_2)); //move to pose for Tilting 
+    
+    cartesian_command slide_command(cartesian_commands::SLIDE, 1, -1);
+    // As current cartesian command is TILT -> set bool tilt_only_now to true
+    slide_command.tilt_only_now = true;
+    tf::poseKDLToMsg(World_Object_Poses.at(1)*Object_Tilt ,slide_command.cartesian_task);
+    result.push_back(std::make_pair(ee_id_to_use, slide_command)); //do Tilting
     
     cartesian_command move_away(cartesian_commands::HOME,0,-1);
     result.push_back(std::make_pair(ee_id_to_use,move_away));
