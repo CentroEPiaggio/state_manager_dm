@@ -3,6 +3,8 @@
 #define CLASS_NAMESPACE "ik_planning_substate::"
 #define CLASS_LOGNAME "ik_planning_substate"
 
+#define DEBUG 1 // if 1, print some more information
+
 ik_planning_substate::ik_planning_substate(ik_shared_memory& data):data_(data),db_mapper(data.db_mapper)
 {
     if( !ros::isInitialized() )
@@ -156,7 +158,28 @@ void ik_planning_substate::run()
         srv.request.ee_pose.push_back(item.second.cartesian_task);
         srv.request.attObject.object.id = *data_.object_name;
         srv.request.object_db_id = (int)*data_.obj_id;
+        // sending information on s and t poses, source grasp and if there is a TILT in current plan to ik_control through ik_service
+        srv.request.obj_poses.clear();
+        srv.request.obj_poses.push_back(sh_data->source_position);
+        srv.request.obj_poses.push_back(sh_data->target_position);
+        srv.request.current_source_grasp_id = sh_data->source_grasp;
+        // Only when current cartesian command is TILT the bool tilt_only_now will be true -> used temporarly in slidingCapability to manage tilting (not added tilting capability yet)
+        srv.request.current_transition_tilting = item.second.tilt_only_now;
         
+#if DEBUG
+        std::cout<<"Starting ee_pose is: "<<std::endl<<srv.request.obj_poses[0].position<<std::endl;
+        std::cout<<"Arriving ee_pose is: "<<std::endl<<srv.request.obj_poses[1].position<<std::endl;
+
+        if(srv.request.current_transition_tilting){
+            std::cout << "current_transition_tilting is TRUE" << std::endl;
+            std::cout << "current cartesian command is: " << srv.request.command << std::endl;
+        }
+        else{
+            std::cout << "current_transition_tilting is FALSE" << std::endl;
+            std::cout << "current cartesian command is: " << srv.request.command << std::endl;
+        }
+#endif
+
         if(planning_ee_name.empty())
             planning_ee_name = srv.request.ee_name;
         else if(planning_ee_name != srv.request.ee_name)
