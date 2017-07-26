@@ -168,6 +168,7 @@ private:
     MANAGE_TRANSITION_FUN_MACRO(manage_transition_exchange_grasp);
     MANAGE_TRANSITION_FUN_MACRO(manage_transition_move_nonblocking);
     MANAGE_TRANSITION_FUN_MACRO(manage_transition_slide);
+    MANAGE_TRANSITION_FUN_MACRO(manage_transition_tilt);
     
 private:
     
@@ -184,6 +185,9 @@ private:
     
     bool use_slide =  true;
     KDL::Frame Object_PreSlide, Object_Slide;
+
+    bool use_tilt =  true;
+    KDL::Frame Object_PreTilt, Object_Tilt;
 };
 
 #endif // SEMANTIC_TO_CARTESIAN_CONVERTER_H
