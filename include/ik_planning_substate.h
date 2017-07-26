@@ -56,6 +56,11 @@ public:
     virtual void run();
     virtual bool isComplete();
     virtual std::string get_type();
+
+    /// adding pointer to shared memory to get info about s and t positions for correct hand positioning during sliding
+    /// Note: the following pointer is correctly assigned only in ik_control_state::ik_control_state
+    shared_memory *sh_data;
+
 private:
     ik_shared_memory& data_;
     ros::NodeHandle n;
