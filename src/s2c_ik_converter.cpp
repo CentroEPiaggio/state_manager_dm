@@ -698,6 +698,7 @@ bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, no
         KDL::Frame World_Target_Centroid;
         compute_centroid_slide(World_Target_Centroid,node,data,first_node);
         World_Target_Object = World_Target_Centroid*(Object.GraspSecondEE.Inverse());
+        #if DEBUG
         double roll, pitch, yaw;
         World_Target_Centroid.M.GetEulerZYX(yaw, pitch, roll);
         std::cout << "Target centroid is (ZYX): ROLL: " << roll << " PITCH: " << pitch << " YAW: " << yaw << " at position: " << World_Target_Centroid.p << std::endl;
@@ -719,6 +720,7 @@ bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, no
         KDL::Rotation NeededWSC = (Desired.M)*(Object.GraspSecondEE.M);
         NeededWSC.GetEulerZYX(yaw, pitch, roll);
         std::cout << "Needed WS centroid is: ROLL: " << roll << " PITCH: " << pitch << " YAW: " << yaw << std::endl;
+        #endif
     }
     
     assert(Object_ee_poses.size() == 2 && "Poses need to be 2: PreSlide and Slide");
@@ -731,8 +733,11 @@ bool s2c_ik_converter::checkSlidePoses(std::vector<KDL::Frame>& World_Object, no
             ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Slide source");
             if(check_ik(ee_name,World_Target_Object*Object_ee_poses.at(1)))
             {
-                ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Slide target");
-                intergrasp_ok = true;
+                if(check_ik(ee_name,World_Target_Object*Object_ee_poses.at(0)))
+                {
+                    ROS_DEBUG_STREAM_NAMED(CLASS_LOGNAME,CLASS_NAMESPACE << __func__ << " : Postslide target");
+                    intergrasp_ok = true;
+                }
             }
         }
     }

@@ -737,6 +737,10 @@ MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_s
     cartesian_command slide_command(cartesian_commands::SLIDE, 1, -1);
     tf::poseKDLToMsg(World_Object_Poses.at(1)*Object_Slide ,slide_command.cartesian_task);
     result.push_back(std::make_pair(ee_id_to_use, slide_command)); //do Sliding
+
+    cartesian_command move_command_3(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, -1);
+    tf::poseKDLToMsg(World_Object_Poses.at(1)*Object_PreSlide ,move_command_3.cartesian_task);
+    result.push_back(std::make_pair(ee_id_to_use, move_command_3)); //move to PostSliding 
     
     cartesian_command move_away(cartesian_commands::HOME,0,-1);
     result.push_back(std::make_pair(ee_id_to_use,move_away));
@@ -794,10 +798,13 @@ MANAGE_TRANSITION_FUN_MACRO(semantic_to_cartesian_converter::manage_transition_t
     slide_command.tilt_only_now = true;
     tf::poseKDLToMsg(World_Object_Poses.at(1)*Object_Tilt ,slide_command.cartesian_task);
     result.push_back(std::make_pair(ee_id_to_use, slide_command)); //do Tilting
+
+    cartesian_command move_command_3(cartesian_commands::MOVE_NO_COLLISION_CHECK, 1, -1);
+    tf::poseKDLToMsg(World_Object_Poses.at(1)*Object_PreTilt ,move_command_3.cartesian_task);
+    result.push_back(std::make_pair(ee_id_to_use, move_command_3)); //move to PostTilting 
     
     cartesian_command move_away(cartesian_commands::HOME,0,-1);
     result.push_back(std::make_pair(ee_id_to_use,move_away));
-     
    
     return true;
     
