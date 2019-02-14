@@ -1,5 +1,5 @@
 #include "../include/ik_checking_grasp_substate.h"
-#include "../../planning/src/gml2lgf/node.h"
+#include "../../planning_dm/src/gml2lgf/node.h"
 #include <tf_conversions/tf_kdl.h>
 #include "dual_manipulation_shared/serialization_utils.h"
 #include <dual_manipulation_shared/parsing_utils.h>
