@@ -56,6 +56,8 @@
 #include <ik_check_capability/ik_check_capability.h>
 #include <dual_manipulation_ik_control/shared_ik_memory.h>
 
+#include <random>
+
 /// keep @p node_info out of any namespace for compatibility...
 #define BIG_NR 10000
 typedef dual_manipulation::shared::NodeTransitionTypes node_properties;
